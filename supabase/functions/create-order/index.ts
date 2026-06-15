@@ -56,6 +56,22 @@ Deno.serve(async (req) => {
       const size = String(item.size || '').trim().toUpperCase();
       if (!size) return json({ error: 'Please select a size for every item.' }, 400);
 
+      const productColors = Array.isArray(product.colors) ? product.colors : [];
+      const selectedColor = String(item.color || '').trim();
+      if (productColors.length > 0) {
+        if (!selectedColor) return json({ error: `Please select a color for ${product.name_en}.` }, 400);
+        const colorAllowed = productColors.some((color: unknown) => {
+          if (typeof color === 'string') return color.toLowerCase() === selectedColor.toLowerCase();
+          if (color && typeof color === 'object') {
+            const c = color as { name?: string; nameEn?: string; nameAr?: string; id?: string; available?: boolean };
+            if (c.available === false) return false;
+            return [c.name, c.nameEn, c.nameAr, c.id].filter(Boolean).some((value) => String(value).toLowerCase() === selectedColor.toLowerCase());
+          }
+          return false;
+        });
+        if (!colorAllowed) return json({ error: `Selected color is not available for ${product.name_en}.` }, 400);
+      }
+
       const stockBySize = { ...(product.stock_by_size || {}) };
       const before = Number(stockBySize[size] ?? 0);
       if (before < qty) return json({ error: `${product.name_en} is not available in the selected quantity.` }, 400);

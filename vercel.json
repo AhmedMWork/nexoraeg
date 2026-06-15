@@ -1,4 +1,8 @@
 {
+  "framework": "vite",
+  "installCommand": "npm install --include=dev --no-audit --no-fund --registry=https://registry.npmjs.org/",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "rewrites": [
     {
       "source": "/(.*)",
