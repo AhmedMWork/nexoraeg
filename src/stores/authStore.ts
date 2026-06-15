@@ -1,18 +1,18 @@
 // ============================================================
-// NEXORA V4 — Studio Session Store
-// Studio access is protected by the /studio PIN gate and Supabase
-// Edge Functions. No external auth provider is used in V4 Studio PIN mode.
+// NEXORA V5 — Studio Session Store
+// Admin access is enforced by StudioGate + signed Edge Function token.
+// This lightweight store only represents local Studio UI identity.
 // ============================================================
 
 import { create } from 'zustand';
 import type { Admin } from '@/types';
-import { clearStudioToken } from '@/lib/supabase/client';
+import { clearStudioToken, getStudioToken } from '@/lib/supabase/client';
 
 interface AuthStore {
   user: Admin | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email?: string, password?: string) => Promise<void>;
+  login: (_email?: string, _password?: string) => Promise<void>;
   logout: () => Promise<void>;
   setUser: (user: Admin | null) => void;
   setLoading: (loading: boolean) => void;
@@ -29,8 +29,8 @@ const studioAdmin: Admin = {
 };
 
 export const useAuthStore = create<AuthStore>((set) => ({
-  user: studioAdmin,
-  isAuthenticated: true,
+  user: getStudioToken() ? studioAdmin : null,
+  isAuthenticated: !!getStudioToken(),
   isLoading: false,
 
   login: async () => {
@@ -39,10 +39,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   logout: async () => {
     clearStudioToken();
-    set({ user: studioAdmin, isAuthenticated: true, isLoading: false });
+    set({ user: null, isAuthenticated: false, isLoading: false });
   },
 
-  setUser: (user) => set({ user: user || studioAdmin, isAuthenticated: true, isLoading: false }),
+  setUser: (user) => set({ user, isAuthenticated: !!user, isLoading: false }),
   setLoading: (loading) => set({ isLoading: loading }),
 }));
 

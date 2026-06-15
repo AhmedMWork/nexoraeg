@@ -12,7 +12,7 @@ import { ArrowLeft, Banknote, Shield, CheckCircle, Copy, Smartphone } from 'luci
 import { useCartStore } from '@/stores/cartStore';
 import { checkoutSchema, type CheckoutFormData } from '@/lib/validators';
 import { getGovernorateNames, getCitiesForGovernorate, generateWhatsAppLink } from '@/lib/egyptData';
-import { formatPrice, generateOrderNumber } from '@/lib/utils';
+import { formatPrice } from '@/lib/utils';
 import SectionReveal from '@/components/ui/SectionReveal';
 import EmptyState from '@/components/ui/EmptyState';
 import { useI18n } from '@/i18n/I18nProvider';
@@ -104,10 +104,7 @@ export default function CheckoutPage() {
     try {
       void trackEvent('order_submit', { itemsCount: items.length, subtotal, total });
       const { createOrderWithStockTransaction } = await import('@/lib/supabase/db');
-      const newOrderNumber = generateOrderNumber();
-
       const createdOrder = await createOrderWithStockTransaction({
-        orderNumber: newOrderNumber,
         customer: {
           fullName: data.fullName,
           phone: data.phone,
@@ -145,8 +142,8 @@ export default function CheckoutPage() {
         ],
       });
 
-      void trackEvent('order_success', { orderNumber: createdOrder.orderNumber || newOrderNumber, total: createdOrder.total || total });
-      setOrderNumber(createdOrder.orderNumber || newOrderNumber);
+      void trackEvent('order_success', { orderNumber: createdOrder.orderNumber, total: createdOrder.total || total });
+      setOrderNumber(createdOrder.orderNumber);
       setOrderComplete(true);
       clearCart();
       toast.success(t('checkout.confirmed'));
@@ -204,6 +201,9 @@ export default function CheckoutPage() {
               </a>
             )}
             <p className="rounded-2xl border border-[#202024] bg-[#0b0b0d]/60 px-4 py-3 text-xs leading-6 text-[#b8b0a3]">{t('checkout.whatsappNext')}</p>
+            <Link to="/track" className="nexora-button flex items-center justify-center gap-2">
+              Track Order
+            </Link>
             <Link to="/shop" className="text-xs text-[#b8b0a3] hover:text-[#c8a96a] transition-colors tracking-wider uppercase">
               {t('common.continueShopping')}
             </Link>
@@ -293,6 +293,7 @@ export default function CheckoutPage() {
                       <div className="text-left rtl:text-right">
                         <p className="text-sm font-medium text-[#f4f0e8]">{t('checkout.cod')}</p>
                         <p className="text-[10px] text-[#8a8175]">{t('checkout.codDesc')}</p>
+                        <p className="mt-1 text-[10px] text-[#c8a96a]">Cash on Delivery is currently available for all orders in Egypt.</p>
                       </div>
                     </button>
                   </div>
@@ -310,7 +311,7 @@ export default function CheckoutPage() {
                 <div className="space-y-3 mb-5 max-h-60 overflow-y-auto">
                   {items.map((item) => (
                     <div key={`${item.productId}-${item.size}-${item.color || 'default'}`} className="flex gap-3">
-                      <img src={item.image} alt={item.name} className="w-12 h-12 object-cover bg-[#050505]" />
+                      <img src={item.image} alt={item.name} loading="lazy" decoding="async" className="w-12 h-12 object-cover bg-[#050505]" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-[#f4f0e8] truncate">{item.name}</p>
                         <p className="text-[10px] text-[#8a8175]">Size: {item.size}{item.color ? ` / Color: ${item.color}` : ''} x{item.quantity}</p>

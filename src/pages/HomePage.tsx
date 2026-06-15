@@ -8,6 +8,7 @@ import StarRating from '@/components/ui/StarRating';
 import type { Product, Review } from '@/types';
 import { loadProducts } from '@/services/productService';
 import { useI18n } from '@/i18n/I18nProvider';
+import { SITE_URL } from '@/lib/constants';
 
 const categoryTiles = [
   { title: 'Oversized Tees', ar: 'تيشيرتات واسعة', href: '/shop/unisex', image: '/assets/products/women-sand-tee.jpg' },
@@ -51,14 +52,14 @@ export default function HomePage() {
         <meta property="og:title" content="NEXORA | Soft Luxury Essentials" />
         <meta property="og:description" content="Premium essentials, clear COD ordering, and limited releases." />
         <meta property="og:type" content="website" />
-        <meta property="og:image" content="/assets/nexora-logo-bg.jpg" />
-        <link rel="canonical" href="/" />
+        <meta property="og:image" content={`${SITE_URL}/assets/nexora-logo-bg.jpg`} />
+        <link rel="canonical" href={SITE_URL} />
         <script type="application/ld+json">{JSON.stringify({
           '@context': 'https://schema.org',
           '@type': 'Organization',
           name: 'NEXORA',
-          url: 'https://nexora1-one.vercel.app',
-          logo: 'https://nexora1-one.vercel.app/assets/nexora-logo.png',
+          url: SITE_URL,
+          logo: `${SITE_URL}/assets/nexora-logo.png`,
           contactPoint: [{ '@type': 'ContactPoint', telephone: '+201037141322', contactType: 'customer support' }],
           sameAs: ['https://wa.me/201037141322'],
         })}</script>

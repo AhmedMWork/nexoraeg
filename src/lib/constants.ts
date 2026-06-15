@@ -1,3 +1,4 @@
+import { requiredPublicEnv } from './env';
 // ============================================================
 // NEXORA — Constants & Configuration
 // ============================================================
@@ -5,7 +6,7 @@
 export const SITE_NAME = 'NEXORA';
 export const SITE_TAGLINE = 'Quiet Luxury. Ready For Every Day.';
 export const SITE_DESCRIPTION = 'NEXORA is a refined Egyptian fashion store for quiet premium essentials, cash-on-delivery orders, clear returns, and a luxury Arabic/English shopping experience.';
-export const SITE_URL = 'https://nexora1-one.vercel.app';
+export const SITE_URL = requiredPublicEnv('VITE_SITE_URL').replace(/\/$/, '');
 
 export const NAV_LINKS = [
   { label: 'Shop', href: '/shop' },
@@ -87,6 +88,8 @@ export const ADMIN_NAV_LINKS = [
   { label: 'Limited Drops', href: '/nexora-admin/drops', icon: 'CalendarClock' },
   { label: 'Reviews', href: '/nexora-admin/reviews', icon: 'Star' },
   { label: 'Analytics', href: '/nexora-admin/analytics', icon: 'BarChart3' },
+  { label: 'Settings', href: '/nexora-admin/settings', icon: 'Settings' },
+  { label: 'System Health', href: '/nexora-admin/system-health', icon: 'Activity' },
 ];
 
 export const BRAND_VALUES = [

@@ -391,16 +391,35 @@ export async function getCoupons(): Promise<Coupon[]> {
   return (data.coupons || []).map(rowToCoupon);
 }
 
-export async function getCouponByCode(code: string): Promise<Coupon | null> {
-  const { data, error } = await supabase.from('coupons').select('*').eq('code', code.toUpperCase()).eq('status', 'active').maybeSingle();
-  if (error) throw error;
-  return data ? rowToCoupon(data) : null;
-}
-
 export async function validateCouponForCart(payload: { code: string; items: Array<{ productId: string; size: string; color?: string; quantity: number }>; subtotal: number }): Promise<{ valid: boolean; code?: string; discount: number; freeShipping?: boolean; message: string }> {
   const { data, error } = await supabase.functions.invoke('validate-coupon', { body: payload });
-  if (error) return { valid: false, discount: 0, message: 'Coupon could not be validated.' };
+  if (error) {
+    void supabase.from('analytics_events').insert({ event_name: 'edge_function_error', metadata: { function: 'validate-coupon', message: error.message } });
+    return { valid: false, discount: 0, message: 'Coupon could not be validated.' };
+  }
   return data as { valid: boolean; code?: string; discount: number; freeShipping?: boolean; message: string };
+}
+
+export interface PublicOrderTrackingResult {
+  found: boolean;
+  message?: string;
+  order?: {
+    orderNumber: string;
+    status: OrderStatus;
+    paymentStatus: Order['paymentStatus'];
+    total: number;
+    createdAt: string;
+    governorate: string;
+    city: string;
+    items: Array<{ name: string; quantity: number; size: string; color?: string; image?: string }>;
+    trackingUpdates: Array<{ status: OrderStatus; message: string; timestamp: string }>;
+  };
+}
+
+export async function trackOrderForCustomer(payload: { orderNumber: string; phone: string }): Promise<PublicOrderTrackingResult> {
+  const { data, error } = await supabase.functions.invoke('track-order', { body: payload });
+  if (error) return { found: false, message: error.message || 'Could not check this order.' };
+  return data as PublicOrderTrackingResult;
 }
 
 export async function createCoupon(coupon: Omit<Coupon, 'id' | 'createdAt'>): Promise<string> {
