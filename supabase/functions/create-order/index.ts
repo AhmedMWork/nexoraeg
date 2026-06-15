@@ -6,7 +6,21 @@ type CartItem = { productId: string; size: string; quantity: number; slug?: stri
 function orderNumber() {
   const d = new Date();
   const ymd = `${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
-  return `NXR-${ymd}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const entropy = crypto.getRandomValues(new Uint32Array(1))[0].toString(36).toUpperCase().slice(0, 5);
+  return `NXR-${ymd}-${entropy}`;
+}
+
+function normalizePhone(value: unknown) {
+  return String(value || '').replace(/\D/g, '').replace(/^20/, '0');
+}
+
+async function uniqueOrderNumber(supabase: ReturnType<typeof serviceClient>) {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const candidate = orderNumber();
+    const { data } = await supabase.from('orders').select('id').eq('order_number', candidate).maybeSingle();
+    if (!data) return candidate;
+  }
+  return orderNumber();
 }
 
 function normalizeCode(code: unknown) {
@@ -130,10 +144,13 @@ Deno.serve(async (req) => {
     const shippingFee = freeShippingByCoupon || (freeShippingThreshold > 0 && subtotal >= freeShippingThreshold) ? 0 : baseShippingFee;
     const total = Math.max(0, subtotal - discountTotal + shippingFee);
 
+    const customerPhone = normalizePhone(body.customer?.phone);
+    if (!/^01[0-9]{9}$/.test(customerPhone)) return json({ error: 'Enter a valid Egyptian phone number.' }, 400);
+
     const orderPayload = {
-      order_number: orderNumber(),
+      order_number: await uniqueOrderNumber(supabase),
       customer_name: body.customer?.fullName || body.customer?.name || '',
-      customer_phone: body.customer?.phone || '',
+      customer_phone: customerPhone,
       customer_email: body.customer?.email || null,
       governorate: body.customer?.governorate || '',
       city: body.customer?.city || '',
@@ -151,8 +168,8 @@ Deno.serve(async (req) => {
       status_history: [{ status: 'pending', message: 'Order received.', timestamp: new Date().toISOString(), updatedBy: 'system' }],
     };
 
-    if (!orderPayload.customer_name || !orderPayload.customer_phone || !orderPayload.address) {
-      return json({ error: 'Customer name, phone, and address are required.' }, 400);
+    if (!orderPayload.customer_name || !orderPayload.customer_phone || !orderPayload.governorate || !orderPayload.city || !orderPayload.address) {
+      return json({ error: 'Customer name, phone, governorate, city, and address are required.' }, 400);
     }
 
     const { data: order, error: orderError } = await supabase.from('orders').insert(orderPayload).select('*').single();

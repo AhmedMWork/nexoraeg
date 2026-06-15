@@ -70,15 +70,13 @@ function base64UrlDecode(value: string) {
 }
 
 function sessionSecret() {
-  return (
-    Deno.env.get('STUDIO_SESSION_SECRET') ||
-    Deno.env.get('STUDIO_ACCESS_PIN') ||
-    'nexora-v4-fix-link-only-session'
-  );
+  const secret = Deno.env.get('STUDIO_SESSION_SECRET');
+  if (!secret || secret.length < 24) throw new Error('Missing or weak STUDIO_SESSION_SECRET secret.');
+  return secret;
 }
 
 export async function createStudioToken() {
-  const expiresAt = Date.now() + 1000 * 60 * 60 * 12;
+  const expiresAt = Date.now() + 1000 * 60 * 60 * 4;
 
   const payload = base64UrlEncode({
     scope: 'studio',

@@ -32,3 +32,10 @@ verify_jwt = false
 
 [functions.studio-dashboard]
 verify_jwt = false
+
+[functions.track-order]
+verify_jwt = false
+[functions.studio-media-upload]
+verify_jwt = false
+[functions.studio-media-delete]
+verify_jwt = false

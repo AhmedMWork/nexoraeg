@@ -1,18 +1,20 @@
 {
-  "name": "nexora-v4-9-fix-production-polish",
+  "name": "nexora-v5-final-production",
   "private": true,
-  "version": "4.9.1",
+  "version": "5.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "node scripts/check-env.mjs && npm run generate:sitemap && tsc -b && vite build",
     "lint": "eslint .",
     "typecheck": "tsc -b --pretty",
     "preview": "vite preview",
     "verify": "npm run lint && npm run typecheck && npm run build",
-    "supabase:types": "supabase gen types typescript --project-id ccmuazjkgzjqzybxwrfd > src/lib/supabase/types.generated.ts",
+    "supabase:types": "supabase gen types typescript --linked > src/lib/supabase/types.generated.ts",
     "final-check": "npm run lint && npm run typecheck && npm run build",
-    "vercel-build": "npm run build"
+    "vercel-build": "npm run build",
+    "generate:sitemap": "node scripts/generate-sitemap.mjs",
+    "check:env": "node scripts/check-env.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
@@ -58,7 +60,6 @@
     "react-hook-form": "^7.78.0",
     "react-hot-toast": "^2.6.0",
     "react-resizable-panels": "^4.2.2",
-    "react-router": "^7.6.1",
     "react-router-dom": "^7.17.0",
     "recharts": "^2.15.4",
     "sonner": "^2.0.7",
@@ -91,6 +92,6 @@
     "node": "20.x",
     "npm": "10.x"
   },
-  "description": "NEXORA V4.9 Fix — Production Polish, Supabase data readiness, product color/size selection, admin UX, analytics, and routing stability.",
+  "description": "NEXORA V5.0.1 Final — production e-commerce release with pre-launch SEO, Vercel, Supabase, Studio, and deployment hardening.",
   "packageManager": "npm@10.9.2"
 }
