@@ -195,9 +195,18 @@ export default function AdminOrders() {
           <div className="space-y-2">
             <h4 className="text-[10px] uppercase tracking-wider text-[#8a8175]">Items</h4>
             {selectedOrder.items.map((item) => (
-              <div key={`${item.productId}-${item.size}`} className="flex justify-between text-xs border-b border-[#17171a]/50 pb-2">
-                <span className="text-[#f4f0e8]">{item.name} — {item.size} x{item.quantity}</span>
-                <span className="text-[#b8b0a3]">{formatPrice(item.price * item.quantity)}</span>
+              <div key={`${item.productId}-${item.size}-${item.color || 'default'}`} className="flex items-start justify-between gap-4 text-xs border-b border-[#17171a]/50 pb-3">
+                <div className="min-w-0">
+                  <p className="text-[#f4f0e8]">{item.name} — {item.size} x{item.quantity}</p>
+                  {item.color && (
+                    <p className="mt-1 flex items-center gap-2 text-[10px] uppercase tracking-wider text-[#8a8175]">
+                      Color:
+                      <span className="inline-flex h-3 w-3 rounded-full border border-white/20" style={{ background: item.colorHex || undefined }} />
+                      <span className="text-[#b8b0a3]">{item.color}</span>
+                    </p>
+                  )}
+                </div>
+                <span className="shrink-0 text-[#b8b0a3]">{formatPrice(item.price * item.quantity)}</span>
               </div>
             ))}
           </div>

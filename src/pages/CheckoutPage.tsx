@@ -19,7 +19,7 @@ import { useI18n } from '@/i18n/I18nProvider';
 import toast from 'react-hot-toast';
 import { trackEvent } from '@/services/analytics.service';
 
-const DEFAULT_WHATSAPP = import.meta.env.VITE_DEFAULT_WHATSAPP_NUMBER || '';
+const DEFAULT_WHATSAPP = import.meta.env.VITE_STORE_WHATSAPP || import.meta.env.VITE_DEFAULT_WHATSAPP_NUMBER || '';
 
 export default function CheckoutPage() {
   const { t } = useI18n();

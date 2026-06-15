@@ -267,42 +267,6 @@ export default function ProductDetailPage() {
                   )}
                 </div>
 
-                {/* Color Selection */}
-                {productColors.length > 0 && (
-                  <div className="mb-6">
-                    <div className="mb-3 flex items-center justify-between">
-                      <span className="text-xs font-medium tracking-wider uppercase text-[#b8b0a3]">Color</span>
-                      <span className="text-[10px] text-[#8a8175]">Choose color before adding to cart</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {productColors.map((color) => {
-                        const isSelected = selectedColorId === color.id;
-                        const isAvailable = color.available !== false;
-                        return (
-                          <button
-                            key={color.id}
-                            type="button"
-                            disabled={!isAvailable}
-                            onClick={() => {
-                              if (!isAvailable) return;
-                              setSelectedColorId(color.id);
-                              void trackEvent('color_select', { productId: product.id, productName: product.name, color: color.name });
-                            }}
-                            className={`flex items-center gap-2 rounded-full border px-3 py-2 text-xs transition-all ${
-                              isSelected
-                                ? 'border-[#c8a96a] bg-[#c8a96a]/10 text-[#f4f0e8]'
-                                : 'border-[#202024] text-[#b8b0a3] hover:border-[#6f675d] hover:text-[#f4f0e8]'
-                            } ${!isAvailable ? 'cursor-not-allowed opacity-40' : ''}`}
-                          >
-                            <span className="h-5 w-5 rounded-full border border-white/25 shadow-inner" style={getColorStyle(color)} />
-                            {getColorDisplayName(color)}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
                 {/* Size Selection */}
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-3">
@@ -349,6 +313,42 @@ export default function ProductDetailPage() {
                     </p>
                   )}
                 </div>
+
+                {/* Color Selection */}
+                {productColors.length > 0 && (
+                  <div className="mb-6">
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-xs font-medium tracking-wider uppercase text-[#b8b0a3]">Color</span>
+                      <span className="text-[10px] text-[#8a8175]">Choose color before adding to cart</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {productColors.map((color) => {
+                        const isSelected = selectedColorId === color.id;
+                        const isAvailable = color.available !== false;
+                        return (
+                          <button
+                            key={color.id}
+                            type="button"
+                            disabled={!isAvailable}
+                            onClick={() => {
+                              if (!isAvailable) return;
+                              setSelectedColorId(color.id);
+                              void trackEvent('color_select', { productId: product.id, productName: product.name, color: color.name });
+                            }}
+                            className={`flex items-center gap-2 rounded-full border px-3 py-2 text-xs transition-all ${
+                              isSelected
+                                ? 'border-[#c8a96a] bg-[#c8a96a]/10 text-[#f4f0e8]'
+                                : 'border-[#202024] text-[#b8b0a3] hover:border-[#6f675d] hover:text-[#f4f0e8]'
+                            } ${!isAvailable ? 'cursor-not-allowed opacity-40' : ''}`}
+                          >
+                            <span className="h-5 w-5 rounded-full border border-white/25 shadow-inner" style={getColorStyle(color)} />
+                            {getColorDisplayName(color)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Quantity */}
                 <div className="mb-8">
