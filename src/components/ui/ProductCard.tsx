@@ -29,6 +29,10 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (product.colors.length > 0) {
+      toast('Choose size and color on the product page first.');
+      return;
+    }
     const defaultSize = availableSizes[0]?.size;
     if (!defaultSize || isSoldOut) {
       toast.error('This piece is currently unavailable');
@@ -86,6 +90,9 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
             src={product.images[0] || product.thumbnail || '/assets/nexora-logo-bg.jpg'}
             alt={product.name}
             loading="lazy"
+            decoding="async"
+            width={600}
+            height={800}
             className={`w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.045] ${isSoldOut ? 'grayscale opacity-60' : 'opacity-95'}`}
           />
           <div className="v3-product-grad absolute inset-0 opacity-80" />

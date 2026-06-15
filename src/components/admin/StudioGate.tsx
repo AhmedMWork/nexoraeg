@@ -1,55 +1,38 @@
 // ============================================================
-// NEXORA V4_Fix — Link-only Studio Gate
-// No password is required by default. Opening the hidden Studio route
-// creates a short-lived Edge Function token used for private operations.
-// Optional PIN mode can be enabled later from Supabase with REQUIRE_STUDIO_PIN=true.
+// NEXORA V5 — Secure Studio Gate
+// Studio access requires a Supabase Edge Function PIN session.
+// The admin route is hidden from storefront navigation, but security is
+// enforced by verify-studio-access + signed short-lived Studio token.
 // ============================================================
 
-import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
-import { Shield, Unlock, RefreshCw } from 'lucide-react';
-import { createStudioSession, getStudioToken, setStudioToken } from '@/lib/supabase/client';
-
-const SESSION_KEY = 'nexora-studio-access-v4';
-const LOCAL_FALLBACK_TOKEN = 'nexora-v4-fix-local-studio-token';
+import { type FormEvent, type ReactNode, useState } from 'react';
+import { Shield, LockKeyhole, RefreshCw } from 'lucide-react';
+import { createStudioSession, getStudioToken } from '@/lib/supabase/client';
 
 export default function StudioGate({ children }: { children: ReactNode }) {
-  const [isUnlocked, setIsUnlocked] = useState(() => sessionStorage.getItem(SESSION_KEY) === 'true' && !!getStudioToken());
+  const [isUnlocked, setIsUnlocked] = useState(() => !!getStudioToken());
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showManualPin, setShowManualPin] = useState(false);
 
-  const unlock = async (pin = '') => {
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    const pin = value.trim();
+    if (!pin) {
+      setError('Enter your private Studio PIN.');
+      return;
+    }
+
     setError('');
     setIsSubmitting(true);
     try {
       await createStudioSession(pin);
-      sessionStorage.setItem(SESSION_KEY, 'true');
       setIsUnlocked(true);
     } catch (err) {
-      const localCode = import.meta.env.VITE_STUDIO_ACCESS_CODE || 'NEXORA-STUDIO';
-      const localFallback = import.meta.env.DEV || (import.meta.env.VITE_ENABLE_STUDIO_LOCAL_FALLBACK === 'true' && pin && pin === localCode);
-      if (localFallback) {
-        setStudioToken(`${LOCAL_FALLBACK_TOKEN}-${Date.now()}`);
-        sessionStorage.setItem(SESSION_KEY, 'true');
-        setIsUnlocked(true);
-      } else {
-        setShowManualPin(true);
-        setError(err instanceof Error ? err.message : 'Could not open Studio. Check Supabase function deployment.');
-      }
+      setError(err instanceof Error ? err.message : 'Studio access failed.');
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  useEffect(() => {
-    if (!isUnlocked) void unlock();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    await unlock(value.trim());
   };
 
   if (isUnlocked) return <>{children}</>;
@@ -65,37 +48,30 @@ export default function StudioGate({ children }: { children: ReactNode }) {
           </picture>
         </div>
         <p className="v3-kicker mb-3">NEXORA Studio</p>
-        <h1 className="text-2xl font-semibold tracking-[-0.04em]">Private operations portal</h1>
+        <h1 className="text-2xl font-semibold tracking-[-0.04em]">Secure operations portal</h1>
         <p className="mt-3 text-sm leading-7 text-[var(--v33-muted)]">
-          Link-only operations portal for products, orders, limited drops, reviews, coupons, and settings.
+          Enter the private Studio PIN to manage products, orders, inventory, coupons, reviews, settings, and media.
         </p>
 
-        {isSubmitting && (
-          <div className="mt-7 flex items-center justify-center gap-2 rounded-2xl border border-[var(--v33-border)] bg-[var(--v33-elevated)] px-4 py-3 text-xs text-[var(--v33-muted)]">
-            <RefreshCw className="h-4 w-4 animate-spin" /> Opening Studio...
-          </div>
-        )}
-
-        {showManualPin && (
-          <>
-            <label className="mt-7 block text-left text-[10px] font-black uppercase tracking-[0.22em] text-[var(--v33-muted)]">Studio Access Code</label>
-            <input
-              value={value}
-              onChange={(e) => { setValue(e.target.value); setError(''); }}
-              type="password"
-              className="nexora-input mt-2 text-center tracking-[0.18em]"
-              placeholder="Enter your Studio PIN"
-            />
-          </>
-        )}
+        <label className="mt-7 block text-left text-[10px] font-black uppercase tracking-[0.22em] text-[var(--v33-muted)]">Studio PIN</label>
+        <input
+          value={value}
+          onChange={(e) => { setValue(e.target.value); setError(''); }}
+          type="password"
+          className="nexora-input mt-2 text-center tracking-[0.18em]"
+          placeholder="Enter your private PIN"
+          autoComplete="current-password"
+        />
 
         {error && <p className="mt-3 text-xs leading-6 text-amber-300">{error}</p>}
 
-        <button className="nexora-button-primary mt-6 w-full" type={showManualPin ? 'submit' : 'button'} disabled={isSubmitting} onClick={showManualPin ? undefined : () => unlock()}>
-          {showManualPin ? <Shield className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
-          {isSubmitting ? 'Opening...' : 'Enter Studio'}
+        <button className="nexora-button-primary mt-6 w-full" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <LockKeyhole className="h-4 w-4" />}
+          {isSubmitting ? 'Verifying...' : 'Unlock Studio'}
         </button>
-        <p className="mt-5 text-[10px] uppercase tracking-[0.22em] text-[var(--v33-subtle)]">Hidden route. Not visible on the storefront.</p>
+        <p className="mt-5 flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.22em] text-[var(--v33-subtle)]">
+          <Shield className="h-3.5 w-3.5" /> Protected by Supabase Edge Functions
+        </p>
       </form>
     </main>
   );

@@ -15,6 +15,8 @@ import {
   UserRound,
   SearchCheck,
   ShieldCheck,
+  Settings,
+  Activity,
   ChevronLeft,
   Menu,
   X,
@@ -35,6 +37,8 @@ const iconMap: Record<string, React.ElementType> = {
   UserRound,
   SearchCheck,
   ShieldCheck,
+  Settings,
+  Activity,
 };
 
 export default function AdminSidebar() {
