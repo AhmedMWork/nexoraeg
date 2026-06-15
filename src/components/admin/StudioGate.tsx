@@ -28,7 +28,7 @@ export default function StudioGate({ children }: { children: ReactNode }) {
       setIsUnlocked(true);
     } catch (err) {
       const localCode = import.meta.env.VITE_STUDIO_ACCESS_CODE || 'NEXORA-STUDIO';
-      const localFallback = import.meta.env.DEV || (pin && pin === localCode);
+      const localFallback = import.meta.env.DEV || (import.meta.env.VITE_ENABLE_STUDIO_LOCAL_FALLBACK === 'true' && pin && pin === localCode);
       if (localFallback) {
         setStudioToken(`${LOCAL_FALLBACK_TOKEN}-${Date.now()}`);
         sessionStorage.setItem(SESSION_KEY, 'true');
@@ -78,13 +78,13 @@ export default function StudioGate({ children }: { children: ReactNode }) {
 
         {showManualPin && (
           <>
-            <label className="mt-7 block text-left text-[10px] font-black uppercase tracking-[0.22em] text-[var(--v33-muted)]">Optional Access Code</label>
+            <label className="mt-7 block text-left text-[10px] font-black uppercase tracking-[0.22em] text-[var(--v33-muted)]">Studio Access Code</label>
             <input
               value={value}
               onChange={(e) => { setValue(e.target.value); setError(''); }}
               type="password"
               className="nexora-input mt-2 text-center tracking-[0.18em]"
-              placeholder="Only needed if PIN mode is enabled"
+              placeholder="Enter your Studio PIN"
             />
           </>
         )}
