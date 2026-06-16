@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { corsHeaders, json, serviceClient } from '../_shared/studio.ts';
+import { corsHeaders, json, serviceClient, rateLimit, auditLog } from '../_shared/studio.ts';
 
 type CartItem = { productId: string; size: string; quantity: number; slug?: string; image?: string; color?: string; colorHex?: string; colorPattern?: string };
 
@@ -40,11 +40,18 @@ function couponDiscount(coupon: any, subtotal: number) {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const limited = rateLimit(req, 'create-order', 12, 1000 * 60 * 10);
+  if (limited) return limited;
 
   const supabase = serviceClient();
 
   try {
     const body = await req.json();
+    const idempotencyKey = String(body.idempotencyKey || '').trim();
+    if (idempotencyKey) {
+      const { data: existing } = await supabase.from('orders').select('id, order_number, total').eq('idempotency_key', idempotencyKey).maybeSingle();
+      if (existing) return json({ orderId: existing.id, orderNumber: existing.order_number, total: existing.total });
+    }
     const items: CartItem[] = body.items || [];
     if (!items.length) return json({ error: 'Cart is empty.' }, 400);
 
@@ -164,6 +171,7 @@ Deno.serve(async (req) => {
       payment_status: 'pending',
       order_status: 'pending',
       coupon_code: couponCode,
+      idempotency_key: idempotencyKey || null,
       source: 'web',
       status_history: [{ status: 'pending', message: 'Order received.', timestamp: new Date().toISOString(), updatedBy: 'system' }],
     };
@@ -206,8 +214,10 @@ Deno.serve(async (req) => {
       });
     }
 
+    await auditLog('order_created', 'order', order.id, { orderNumber: order.order_number, total: order.total });
     return json({ orderId: order.id, orderNumber: order.order_number, total: order.total });
   } catch (error) {
+    await auditLog('checkout_failed', 'order', 'create-order', { message: error instanceof Error ? error.message : 'unknown' });
     return json({ error: error instanceof Error ? error.message : 'Could not create order.' }, 500);
   }
 });

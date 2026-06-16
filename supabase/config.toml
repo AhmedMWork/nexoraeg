@@ -39,3 +39,6 @@ verify_jwt = false
 verify_jwt = false
 [functions.studio-media-delete]
 verify_jwt = false
+
+[functions.studio-audit-logs]
+verify_jwt = false

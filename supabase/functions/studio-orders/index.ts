@@ -1,4 +1,4 @@
-import { corsHeaders, json, requireStudio, serviceClient } from '../_shared/studio.ts';
+import { corsHeaders, json, requireStudio, serviceClient, auditLog } from '../_shared/studio.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -14,14 +14,19 @@ Deno.serve(async (req) => {
       return json({ orders: orders || [], items: items || [] });
     }
     if (body.action === 'update-status') {
-      const { data: order } = await supabase.from('orders').select('status_history').eq('id', body.orderId).single();
+      const { data: order } = await supabase.from('orders').select('order_status, status_history').eq('id', body.orderId).single();
       const history = Array.isArray(order?.status_history) ? order.status_history : [];
-      history.push({ status: body.status, message: body.message || `Order marked as ${body.status}`, timestamp: new Date().toISOString(), updatedBy: body.updatedBy || 'studio' });
+      const oldStatus = order?.order_status || null;
+      const message = body.message || `Order marked as ${body.status}`;
+      history.push({ status: body.status, message, timestamp: new Date().toISOString(), updatedBy: body.updatedBy || 'studio' });
       await supabase.from('orders').update({ order_status: body.status, status_history: history }).eq('id', body.orderId);
+      await supabase.from('order_status_history').insert({ order_id: body.orderId, old_status: oldStatus, new_status: body.status, note: message, changed_by: body.updatedBy || 'studio' }).then(() => undefined);
+      await auditLog('studio_order_status_updated', 'order', body.orderId, { oldStatus, newStatus: body.status });
       return json({ ok: true });
     }
     if (body.action === 'mark-payment-collected') {
       await supabase.from('orders').update({ payment_status: 'collected' }).eq('id', body.orderId);
+      await auditLog('studio_order_payment_collected', 'order', body.orderId, {});
       return json({ ok: true });
     }
     return json({ error: 'Unknown action.' }, 400);

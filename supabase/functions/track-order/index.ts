@@ -1,4 +1,4 @@
-import { corsHeaders, json, serviceClient } from '../_shared/studio.ts';
+import { corsHeaders, json, serviceClient, rateLimit } from '../_shared/studio.ts';
 
 function normalizePhone(value: unknown) {
   return String(value || '').replace(/\D/g, '').replace(/^20/, '0');
@@ -6,6 +6,8 @@ function normalizePhone(value: unknown) {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const limited = rateLimit(req, 'track-order', 20, 1000 * 60 * 10);
+  if (limited) return limited;
   if (req.method !== 'POST') return json({ found: false, message: 'Method not allowed.' }, 405);
 
   const supabase = serviceClient();

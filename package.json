@@ -1,7 +1,7 @@
 {
-  "name": "nexora-v5-final-production",
+  "name": "nexora-v5-1-production",
   "private": true,
-  "version": "5.0.1",
+  "version": "5.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,12 +9,14 @@
     "lint": "eslint .",
     "typecheck": "tsc -b --pretty",
     "preview": "vite preview",
-    "verify": "npm run lint && npm run typecheck && npm run build",
+    "verify": "npm run qa",
     "supabase:types": "supabase gen types typescript --linked > src/lib/supabase/types.generated.ts",
-    "final-check": "npm run lint && npm run typecheck && npm run build",
+    "final-check": "npm run qa",
     "vercel-build": "npm run build",
     "generate:sitemap": "node scripts/generate-sitemap.mjs",
-    "check:env": "node scripts/check-env.mjs"
+    "check:env": "node scripts/check-env.mjs",
+    "qa": "npm run lint && npm run typecheck && npm run build",
+    "smoke": "node scripts/smoke-check.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
@@ -92,6 +94,6 @@
     "node": "20.x",
     "npm": "10.x"
   },
-  "description": "NEXORA V5.0.1 Final — production e-commerce release with pre-launch SEO, Vercel, Supabase, Studio, and deployment hardening.",
+  "description": "NEXORA V5.1 — premium commerce system with stronger Studio operations, product UX, SEO, analytics, security, and deployment hardening.",
   "packageManager": "npm@10.9.2"
 }

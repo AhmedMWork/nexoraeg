@@ -1,7 +1,9 @@
-import { corsHeaders, json, serviceClient } from '../_shared/studio.ts';
+import { corsHeaders, json, serviceClient, rateLimit } from '../_shared/studio.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const limited = rateLimit(req, 'validate-coupon', 40, 1000 * 60 * 10);
+  if (limited) return limited;
   const supabase = serviceClient();
   try {
     const { code, subtotal } = await req.json();

@@ -1,20 +1,35 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.76.1';
 
-// NEXORA V4_Fix — permissive, reliable CORS for browser Edge Function calls.
-// No cookies/credentials are used, so '*' avoids domain mismatch issues during Vercel previews.
-export const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type, x-studio-token, x-nexora-client, x-supabase-api-version, accept, origin, prefer',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-  'Access-Control-Max-Age': '86400',
-};
+function requestOrigin(req?: Request) {
+  return req?.headers.get('origin') || '';
+}
 
-export function json(data: unknown, status = 200) {
+function allowedOrigin(req?: Request) {
+  const configured = (Deno.env.get('ALLOWED_ORIGIN') || '').split(',').map((v) => v.trim()).filter(Boolean);
+  const origin = requestOrigin(req);
+  if (!configured.length) return '*';
+  if (origin && configured.includes(origin)) return origin;
+  return configured[0] || '*';
+}
+
+export function cors(req?: Request) {
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin(req),
+    'Vary': 'Origin',
+    'Access-Control-Allow-Headers':
+      'authorization, x-client-info, apikey, content-type, x-studio-token, x-nexora-client, x-supabase-api-version, accept, origin, prefer',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+    'Access-Control-Max-Age': '86400',
+  };
+}
+
+export const corsHeaders = cors();
+
+export function json(data: unknown, status = 200, req?: Request) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      ...corsHeaders,
+      ...cors(req),
       'Content-Type': 'application/json',
     },
   });
@@ -33,6 +48,43 @@ export function serviceClient() {
       autoRefreshToken: false,
     },
   });
+}
+
+const memoryBuckets = new Map<string, { count: number; resetAt: number }>();
+
+export function clientId(req: Request) {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || 'unknown';
+}
+
+export function rateLimit(req: Request, key: string, limit = 20, windowMs = 1000 * 60 * 10) {
+  const id = `${key}:${clientId(req)}`;
+  const now = Date.now();
+  const current = memoryBuckets.get(id);
+  if (!current || current.resetAt < now) {
+    memoryBuckets.set(id, { count: 1, resetAt: now + windowMs });
+    return null;
+  }
+  current.count += 1;
+  memoryBuckets.set(id, current);
+  if (current.count > limit) {
+    return json({ error: 'Too many requests. Please try again later.' }, 429, req);
+  }
+  return null;
+}
+
+export async function auditLog(action: string, entityType: string, entityId: string, metadata: Record<string, unknown> = {}) {
+  try {
+    const supabase = serviceClient();
+    await supabase.from('audit_logs').insert({
+      admin_email: 'studio@nexora.local',
+      action,
+      entity_type: entityType,
+      entity_id: entityId,
+      after: metadata,
+    });
+  } catch {
+    // Audit must not break critical store operations.
+  }
 }
 
 async function hmacSHA256(message: string, secret: string) {
@@ -111,7 +163,7 @@ export async function verifyStudioToken(req: Request) {
 
 export async function requireStudio(req: Request) {
   if (!(await verifyStudioToken(req))) {
-    return json({ error: 'Unauthorized studio request. Reopen Studio and try again.' }, 401);
+    return json({ error: 'Unauthorized studio request. Reopen Studio and try again.' }, 401, req);
   }
 
   return null;
