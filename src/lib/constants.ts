@@ -4,8 +4,8 @@ import { requiredPublicEnv } from './env';
 // ============================================================
 
 export const SITE_NAME = 'NEXORA';
-export const SITE_TAGLINE = 'Quiet Luxury. Ready For Every Day.';
-export const SITE_DESCRIPTION = 'NEXORA is a refined Egyptian fashion store for quiet premium essentials, cash-on-delivery orders, clear returns, and a luxury Arabic/English shopping experience.';
+export const SITE_TAGLINE = 'Defined by intention. Not for everyone.';
+export const SITE_DESCRIPTION = 'NEXORA exists in silence. Defined by intention. Crafted with precision. We don’t chase attention. We command presence. Limited by design. Not for everyone.';
 export const SITE_URL = requiredPublicEnv('VITE_SITE_URL').replace(/\/$/, '');
 
 export const NAV_LINKS = [
@@ -94,24 +94,24 @@ export const ADMIN_NAV_LINKS = [
 
 export const BRAND_VALUES = [
   {
-    title: 'Simple Ordering',
-    description: 'Choose your piece, add it to cart, and confirm the order through a clear cash-on-delivery flow.',
-    icon: 'ShoppingBag',
+    title: 'Defined by intention',
+    description: 'Every release is deliberate: controlled lines, precise materials, and a clear reason to exist.',
+    icon: 'Sparkles',
   },
   {
-    title: 'Everyday Comfort',
-    description: 'Clean finishing and comfortable materials designed for daily wear without exaggerated claims.',
-    icon: 'Heart',
+    title: 'Crafted with precision',
+    description: 'Defined silhouettes, precise fabrics, and finishing made to hold presence without noise.',
+    icon: 'ShieldCheck',
   },
   {
-    title: 'Close Support',
-    description: 'Questions about size, order confirmation, and returns are handled through WhatsApp and contact forms.',
-    icon: 'MessageCircle',
+    title: 'We command presence',
+    description: 'We don’t chase attention; we command it through restraint, proportion, and clarity.',
+    icon: 'Crown',
   },
   {
-    title: 'Clear Returns',
-    description: 'Returns are available within 14 days when the item is unused and kept in its original condition.',
-    icon: 'RefreshCw',
+    title: 'Not for everyone',
+    description: 'Limited by design for those who understand quiet confidence. Not for everyone.',
+    icon: 'Lock',
   },
 ];
 

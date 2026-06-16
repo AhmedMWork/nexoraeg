@@ -7,16 +7,16 @@ export default function WhyNexoraSection() {
   const { lang } = useI18n();
   const values = lang === 'ar'
     ? [
-        { icon: Sparkles, title: 'Defined by intention', description: 'Every release is deliberate, considered, and made with a clear reason to exist.' },
-        { icon: ShieldCheck, title: 'Crafted with precision', description: 'Silhouettes, weight, and finishing are refined to feel quiet, sharp, and lasting.' },
-        { icon: Crown, title: 'We command presence', description: 'NEXORA avoids noise and builds confidence through restraint, proportion, and clarity.' },
-        { icon: Lock, title: 'Not for everyone', description: 'Limited by design for customers who understand presence without chasing attention.' },
+        { icon: Sparkles, title: 'Defined by intention', description: 'Every release is deliberate, controlled, and made with a clear reason to exist.' },
+        { icon: ShieldCheck, title: 'Crafted with precision', description: 'Defined silhouettes, precise fabrics, and finishing made to hold presence without noise.' },
+        { icon: Crown, title: 'We command presence', description: 'We don’t chase attention; we command it through restraint, proportion, and clarity.' },
+        { icon: Lock, title: 'Not for everyone', description: 'Limited by design for those who understand quiet confidence.' },
       ]
     : [
-        { icon: Sparkles, title: 'Defined by intention', description: 'Every release is deliberate, considered, and made with a clear reason to exist.' },
-        { icon: ShieldCheck, title: 'Crafted with precision', description: 'Silhouettes, weight, and finishing are refined to feel quiet, sharp, and lasting.' },
-        { icon: Crown, title: 'We command presence', description: 'NEXORA avoids noise and builds confidence through restraint, proportion, and clarity.' },
-        { icon: Lock, title: 'Not for everyone', description: 'Limited by design for customers who understand presence without chasing attention.' },
+        { icon: Sparkles, title: 'Defined by intention', description: 'Every release is deliberate, controlled, and made with a clear reason to exist.' },
+        { icon: ShieldCheck, title: 'Crafted with precision', description: 'Defined silhouettes, precise fabrics, and finishing made to hold presence without noise.' },
+        { icon: Crown, title: 'We command presence', description: 'We don’t chase attention; we command it through restraint, proportion, and clarity.' },
+        { icon: Lock, title: 'Not for everyone', description: 'Limited by design for those who understand quiet confidence.' },
       ];
 
   return (

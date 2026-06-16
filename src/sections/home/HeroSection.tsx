@@ -44,8 +44,8 @@ export default function HeroSection() {
               transition={{ delay: 0.28, duration: 0.65 }}
               className="max-w-xl text-base leading-8 text-[#b8b0a3] sm:text-lg"
             >
-              Defined by intention. Crafted with precision. We don’t chase attention.
-              We command presence. Limited by design. Not for everyone.
+              Defined silhouettes. Precise fabrics. A quiet edge for daily presence.
+              We don’t chase attention. We command presence. Not for everyone.
             </motion.p>
 
             <motion.div
@@ -70,7 +70,7 @@ export default function HeroSection() {
               className="mt-12 grid max-w-xl grid-cols-3 border-y border-[#202024] py-5"
             >
               {[
-                ['Premium Cotton', 'Fabric'],
+                ['Precise Fabrics', 'Craft'],
                 ['Limited Runs', 'Limited'],
                 ['Egypt', 'Crafted'],
               ].map(([value, label]) => (
@@ -95,13 +95,13 @@ export default function HeroSection() {
               <div className="relative aspect-[4/5] overflow-hidden bg-[#0b0b0d] ring-1 ring-[#202024]">
                 <img
                   src="/assets/hero-model.jpg"
-                  alt="NEXORA premium essentials"
+                  alt="NEXORA intentional essentials"
                   className="h-full w-full object-cover opacity-90 saturate-[0.82] contrast-110" loading="eager" fetchPriority="high" decoding="async"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#050505]/75 via-transparent to-[#050505]/10" />
                 <div className="absolute bottom-5 left-5 right-5 border border-[#c8a96a]/20 bg-[#050505]/65 p-4 backdrop-blur-xl">
                   <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#c8a96a]">NEXORA Manifesto</p>
-                  <p className="mt-2 text-sm leading-6 text-[#f4f0e8]/85">Crafted with precision. Limited by design. Not for everyone.</p>
+                  <p className="mt-2 text-sm leading-6 text-[#f4f0e8]/85">Defined silhouettes. Crafted with precision. Not for everyone.</p>
                 </div>
               </div>
             </div>

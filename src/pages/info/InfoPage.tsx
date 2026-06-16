@@ -37,13 +37,13 @@ const faq = {
 const valueCards = {
   en: [
     ['Defined by intention', 'Every line, material, and release is chosen with purpose.'],
-    ['Crafted with precision', 'Clean silhouettes, controlled details, and a presence that does not need noise.'],
-    ['Not for everyone', 'Limited by design for customers who understand quiet confidence.'],
+    ['Crafted with precision', 'Defined silhouettes, precise fabrics, and a presence that does not need noise.'],
+    ['Not for everyone', 'Limited by design for those who understand quiet confidence.'],
   ],
   ar: [
     ['Defined by intention', 'Every line, material, and release is chosen with purpose.'],
-    ['Crafted with precision', 'Clean silhouettes, controlled details, and a presence that does not need noise.'],
-    ['Not for everyone', 'Limited by design for customers who understand quiet confidence.'],
+    ['Crafted with precision', 'Defined silhouettes, precise fabrics, and a presence that does not need noise.'],
+    ['Not for everyone', 'Limited by design for those who understand quiet confidence.'],
   ],
 };
 

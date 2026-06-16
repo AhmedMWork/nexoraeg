@@ -92,8 +92,8 @@ export default function AdminSettings() {
           facebook: settings.facebook,
         },
         seo: {
-          title: 'NEXORA | Premium Summer Essentials',
-          description: 'Premium summer essentials and t-shirts for men and women.',
+          title: 'NEXORA | Defined by intention',
+          description: 'NEXORA exists in silence. Crafted with precision. Limited by design. Not for everyone.',
           keywords: 'nexora, fashion, t-shirts, egypt, premium streetwear',
         },
         announcements: [],
