@@ -21,6 +21,8 @@ import {
   Menu,
   X,
   ExternalLink,
+  BadgePercent,
+  ClipboardList,
 } from 'lucide-react';
 import { useState } from 'react';
 import { ADMIN_NAV_LINKS } from '@/lib/constants';
@@ -39,6 +41,8 @@ const iconMap: Record<string, React.ElementType> = {
   ShieldCheck,
   Settings,
   Activity,
+  BadgePercent,
+  ClipboardList,
 };
 
 export default function AdminSidebar() {
