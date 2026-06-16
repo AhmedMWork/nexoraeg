@@ -47,10 +47,10 @@ export default function HomePage() {
   return (
     <>
       <Helmet>
-        <title>NEXORA | {lang === 'ar' ? 'تصاميم هادئة بخامات فاخرة' : 'Soft Luxury Essentials'}</title>
-        <meta name="description" content={lang === 'ar' ? 'NEXORA تقدم قطع يومية هادئة بخامات مختارة، طلب واضح، ودفع عند الاستلام.' : 'NEXORA creates soft luxury essentials with refined fabrics, clear COD ordering, and a calm premium shopping experience.'} />
-        <meta property="og:title" content="NEXORA | Soft Luxury Essentials" />
-        <meta property="og:description" content="Premium essentials, clear COD ordering, and limited releases." />
+        <title>NEXORA | Not for everyone.</title>
+        <meta name="description" content="NEXORA exists in silence. Defined by intention. Crafted with precision. Limited by design. Not for everyone." />
+        <meta property="og:title" content="NEXORA | Not for everyone." />
+        <meta property="og:description" content="NEXORA exists in silence. Defined by intention. Crafted with precision. Not for everyone." />
         <meta property="og:type" content="website" />
         <meta property="og:image" content={`${SITE_URL}/assets/nexora-logo-bg.jpg`} />
         <link rel="canonical" href={SITE_URL} />
@@ -156,7 +156,7 @@ export default function HomePage() {
           <div className="v3-panel p-6 md:p-8">
             <ShieldCheck className="mb-5 h-8 w-8 text-[var(--v33-accent-strong)]" />
             <h2 className="text-xl font-semibold text-[var(--v33-text)]">{t('home.aboutTitle')}</h2>
-            <p className="mt-4 text-sm leading-7 text-[var(--v33-muted)]">{t('home.aboutBody')}</p>
+            <p className="mt-4 whitespace-pre-line text-sm leading-8 text-[var(--v33-muted)]">{t('home.aboutBody')}</p>
             <Link to="/info/about" className="v3-btn-secondary mt-6 inline-flex">{lang === 'ar' ? 'اعرف أكثر' : 'Learn More'} <ArrowRight className="h-4 w-4" /></Link>
           </div>
         </section>

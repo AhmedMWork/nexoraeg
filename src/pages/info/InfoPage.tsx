@@ -36,14 +36,14 @@ const faq = {
 
 const valueCards = {
   en: [
-    ['Simple Ordering', 'Choose your piece, add it to cart, and confirm your order through a clear COD checkout.'],
-    ['Everyday Comfort', 'Clean finishing and comfortable materials designed for daily wear.'],
-    ['Close Support', 'Questions about size or orders are handled easily through WhatsApp.'],
+    ['Defined by intention', 'Every line, material, and release is chosen with purpose.'],
+    ['Crafted with precision', 'Clean silhouettes, controlled details, and a presence that does not need noise.'],
+    ['Not for everyone', 'Limited by design for customers who understand quiet confidence.'],
   ],
   ar: [
-    ['طلب بسيط وواضح', 'اختر القطعة، أضفها للسلة، وأكمل الطلب بسهولة بالدفع عند الاستلام.'],
-    ['راحة مناسبة لكل يوم', 'تشطيب نظيف وخامات مريحة مصممة للاستخدام اليومي.'],
-    ['دعم قريب منك', 'أي سؤال عن المقاس أو الطلب يمكنك إرساله بسهولة عبر واتساب.'],
+    ['Defined by intention', 'Every line, material, and release is chosen with purpose.'],
+    ['Crafted with precision', 'Clean silhouettes, controlled details, and a presence that does not need noise.'],
+    ['Not for everyone', 'Limited by design for customers who understand quiet confidence.'],
   ],
 };
 
@@ -86,7 +86,7 @@ export default function InfoPage() {
             </div>
             <p className="v3-kicker mb-3">NEXORA</p>
             <h1 className="nexora-heading-md mb-6">{title}</h1>
-            <p className="max-w-3xl text-base leading-8 text-[var(--v33-muted)] sm:text-lg">{body}</p>
+            <p className="max-w-3xl whitespace-pre-line text-base leading-8 text-[var(--v33-muted)] sm:text-lg">{body}</p>
           </SectionReveal>
 
           {isFaq && (

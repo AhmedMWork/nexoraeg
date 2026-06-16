@@ -1,5 +1,5 @@
 // ============================================================
-// NEXORA — Midnight Atelier Hero Section
+// NEXORA — NEXORA exists in silence Hero Section
 // ============================================================
 
 import { Link } from 'react-router-dom';
@@ -24,7 +24,7 @@ export default function HeroSection() {
               className="mb-6 inline-flex w-fit items-center gap-2 border border-[#c8a96a]/25 bg-[#0b0b0d]/70 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.24em] text-[#c8a96a]"
             >
               <Sparkles className="h-3.5 w-3.5" />
-              Midnight Atelier
+              NEXORA exists in silence
             </motion.div>
 
             <motion.h1
@@ -33,9 +33,9 @@ export default function HeroSection() {
               transition={{ delay: 0.12, duration: 0.78 }}
               className="nexora-heading-lg mb-7 text-[#f4f0e8]"
             >
-              BUILT
+              DEFINED
               <br />
-              <span className="text-gradient">DIFFERENT</span>
+              <span className="text-gradient">BY INTENTION</span>
             </motion.h1>
 
             <motion.p
@@ -44,8 +44,8 @@ export default function HeroSection() {
               transition={{ delay: 0.28, duration: 0.65 }}
               className="max-w-xl text-base leading-8 text-[#b8b0a3] sm:text-lg"
             >
-              Premium essentials with a quiet edge. Clean silhouettes, refined fabric weight,
-              and a presence built for every day.
+              Defined by intention. Crafted with precision. We don’t chase attention.
+              We command presence. Limited by design. Not for everyone.
             </motion.p>
 
             <motion.div
@@ -96,12 +96,12 @@ export default function HeroSection() {
                 <img
                   src="/assets/hero-model.jpg"
                   alt="NEXORA premium essentials"
-                  className="h-full w-full object-cover opacity-90 saturate-[0.82] contrast-110"
+                  className="h-full w-full object-cover opacity-90 saturate-[0.82] contrast-110" loading="eager" fetchPriority="high" decoding="async"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#050505]/75 via-transparent to-[#050505]/10" />
                 <div className="absolute bottom-5 left-5 right-5 border border-[#c8a96a]/20 bg-[#050505]/65 p-4 backdrop-blur-xl">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#c8a96a]">NEXORA Standard</p>
-                  <p className="mt-2 text-sm leading-6 text-[#f4f0e8]/85">Elevated fit. Balanced weight. Made to move differently.</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#c8a96a]">NEXORA Manifesto</p>
+                  <p className="mt-2 text-sm leading-6 text-[#f4f0e8]/85">Crafted with precision. Limited by design. Not for everyone.</p>
                 </div>
               </div>
             </div>
