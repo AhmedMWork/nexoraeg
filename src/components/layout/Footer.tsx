@@ -91,7 +91,7 @@ export default function Footer() {
               <img src="/assets/nexora-logo-dark.png" alt="NEXORA" className="h-11 w-auto object-contain opacity-95 dark:hidden" />
               <img src="/assets/nexora-logo-ivory.png" alt="NEXORA" className="hidden h-11 w-auto object-contain opacity-95 dark:block" />
             </Link>
-            <p className="max-w-[280px] text-sm leading-7 text-[var(--v33-muted)]">{t('footer.brandText')}</p>
+            <p className="max-w-[300px] whitespace-pre-line text-sm leading-7 text-[var(--v33-muted)]">{t('footer.brandText')}</p>
             <div className="mt-7 flex items-center gap-3">
               {socialLinks.map(({ Icon, href, label }) => (
                 <a

@@ -36,15 +36,21 @@ export default function SplashScreen() {
               'radial-gradient(circle at 50% 34%, color-mix(in srgb, var(--v33-accent) 24%, transparent), transparent 24rem), radial-gradient(circle at 18% 80%, color-mix(in srgb, var(--v33-accent-strong) 13%, transparent), transparent 24rem), linear-gradient(135deg, var(--v33-card) 0%, var(--v33-bg) 48%, var(--v33-bg-soft) 100%)',
           }}
         />
-        <motion.button
-          type="button"
-          aria-label="Enter NEXORA"
-          onClick={handleEnter}
+        <motion.div
           initial={{ opacity: 0, y: 24, scale: 0.94 }}
           animate={{ opacity: isLeaving ? 0 : 1, y: 0, scale: isLeaving ? 1.08 : 1, filter: isLeaving ? 'blur(10px)' : 'blur(0px)' }}
           transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
-          className="group relative flex h-[280px] w-[280px] sm:h-[360px] sm:w-[360px] items-center justify-center rounded-full v34-logo-plate outline-none focus-visible:ring-4 focus-visible:ring-primary/25"
+          className="relative flex flex-col items-center gap-5"
         >
+          <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.42em] text-[var(--v33-accent-strong)] opacity-90">
+            {t('splash.tap')}
+          </span>
+          <button
+            type="button"
+            aria-label="Enter NEXORA"
+            onClick={handleEnter}
+            className="group relative flex h-[280px] w-[280px] sm:h-[360px] sm:w-[360px] items-center justify-center rounded-full v34-logo-plate outline-none focus-visible:ring-4 focus-visible:ring-primary/25"
+          >
           <motion.span
             aria-hidden="true"
             className="absolute inset-[-2px] rounded-full border border-[color-mix(in_srgb,var(--v33-accent)_36%,transparent)] opacity-70"
@@ -77,10 +83,11 @@ export default function SplashScreen() {
             animate={{ y: [0, -5, 0] }}
             transition={{ duration: 4.2, repeat: Infinity, ease: 'easeInOut' }}
           />
-          <span className="absolute bottom-8 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.38em] text-[var(--v33-muted)] opacity-75 transition-opacity group-hover:opacity-100">
-            {t('splash.tap')}
+          <span className="absolute bottom-8 text-[10px] sm:text-[11px] font-black tracking-[0.24em] text-[var(--v33-muted)] opacity-85 transition-opacity group-hover:opacity-100">
+            Not for everyone.
           </span>
-        </motion.button>
+          </button>
+        </motion.div>
       </motion.div>
     </AnimatePresence>
   );
