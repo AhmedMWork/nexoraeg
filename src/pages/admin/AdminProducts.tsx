@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Edit, Eye, GripVertical, Plus, RefreshCw, Trash2, Upload, X, Star as StarIcon } from 'lucide-react';
+import { Edit, Eye, GripVertical, Plus, RefreshCw, Trash2, Upload, X, Star as StarIcon, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PRODUCT_COLORS, PRODUCT_SIZES } from '@/lib/constants';
 import { colorToStorage, normalizeColors } from '@/lib/productOptions';
@@ -84,6 +84,8 @@ export default function AdminProducts() {
   const [mode, setMode] = useState<ProductFormMode>('list');
   const [products, setProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [draft, setDraft] = useState<ProductDraft>(emptyDraft);
   const [isLoading, setIsLoading] = useState(true);
@@ -103,10 +105,37 @@ export default function AdminProducts() {
 
   useEffect(() => { void loadCatalog(); }, []);
 
-  const filteredProducts = useMemo(() => products.filter((p) =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.sku.toLowerCase().includes(searchQuery.toLowerCase())
-  ), [products, searchQuery]);
+  const filteredProducts = useMemo(() => products.filter((p) => {
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch = !q || p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || p.slug.toLowerCase().includes(q);
+    const matchesStatus = statusFilter ? (p.status || 'active') === statusFilter : true;
+    const matchesCategory = categoryFilter ? p.category === categoryFilter : true;
+    return matchesSearch && matchesStatus && matchesCategory;
+  }), [products, searchQuery, statusFilter, categoryFilter]);
+
+  const exportProductsCsv = () => {
+    const headers = ['name','slug','sku','price','status','category','collection','stock_total','colors','sizes'];
+    const rows = filteredProducts.map((product) => [
+      product.name,
+      product.slug,
+      product.sku,
+      String(product.price),
+      product.status || 'active',
+      product.category,
+      product.collection,
+      String(product.sizes.reduce((sum, size) => sum + Number(size.stock || 0), 0)),
+      product.colors.map((color) => typeof color === 'string' ? color : color.name).join('|'),
+      product.sizes.map((size) => `${size.size}:${size.stock}`).join('|'),
+    ]);
+    const csv = [headers, ...rows].map((row) => row.map((cell) => `"${String(cell || '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `nexora-products-${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   const updateDraft = <K extends keyof ProductDraft>(key: K, value: ProductDraft[K]) => {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -257,6 +286,7 @@ export default function AdminProducts() {
           <p className="mt-1 text-sm text-[#BCAEA0]">Create, edit, publish, and manage images for NEXORA products.</p>
         </div>
         <div className="flex gap-2">
+          <button onClick={exportProductsCsv} className="nexora-button"><Download className="h-4 w-4" />Export</button>
           <button onClick={loadCatalog} className="nexora-button"><RefreshCw className="h-4 w-4" />Refresh</button>
           <button onClick={openCreate} className="nexora-button-primary"><Plus className="h-4 w-4" />Add Product</button>
         </div>
@@ -264,7 +294,22 @@ export default function AdminProducts() {
 
       {mode === 'list' && (
         <>
-          <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search by product name or SKU" className="studio-input" />
+          <div className="grid gap-3 md:grid-cols-[1fr_180px_180px]">
+            <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search by product name, slug, or SKU" className="studio-input" />
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="studio-input">
+              <option value="">All statuses</option>
+              <option value="active">Active</option>
+              <option value="draft">Draft</option>
+              <option value="sold_out">Sold out</option>
+              <option value="archived">Archived</option>
+            </select>
+            <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="studio-input">
+              <option value="">All categories</option>
+              <option value="men">Men</option>
+              <option value="women">Women</option>
+              <option value="unisex">Unisex</option>
+            </select>
+          </div>
           <div className="studio-card overflow-x-auto">
             <table className="w-full min-w-[820px] text-left">
               <thead><tr className="border-b border-[#4A3D37]">
@@ -278,7 +323,7 @@ export default function AdminProducts() {
                     <td className="p-4"><Link to={`/product/${product.slug}`} className="text-sm font-semibold text-[#FFF0E1] hover:text-[#D2B48C]">{product.name}</Link><p className="text-[10px] uppercase tracking-wider text-[#BCAEA0]">{product.status}</p></td>
                     <td className="p-4 text-xs text-[#BCAEA0]">{product.sku}</td>
                     <td className="p-4 text-xs font-semibold text-[#D2B48C]">{formatPrice(product.price)}</td>
-                    <td className="p-4 text-xs text-[#BCAEA0]">{totalStock} units</td>
+                    <td className="p-4 text-xs text-[#BCAEA0]">{totalStock} units{product.sizes.some((size) => size.stock <= size.lowStockThreshold) && <p className="mt-1 text-[10px] text-amber-300">Low stock size</p>}</td>
                     <td className="p-4 text-xs text-[#BCAEA0]">{product.category}</td>
                     <td className="p-4"><div className="flex gap-2"><button onClick={() => openEdit(product)} className="text-[#BCAEA0] hover:text-[#D2B48C]"><Edit className="h-4 w-4" /></button><Link to={`/nexora-admin/reviews?productId=${product.id}`} className="text-[#BCAEA0] hover:text-[#D2B48C]" title="Manage product reviews"><StarIcon className="h-4 w-4" /></Link><button onClick={() => handleDelete(product.id)} className="text-[#BCAEA0] hover:text-red-300"><Trash2 className="h-4 w-4" /></button></div></td>
                   </tr>;
@@ -344,6 +389,26 @@ export default function AdminProducts() {
                 {PRODUCT_SIZES.map((size) => <label key={size} className="rounded-2xl border border-[#5B473C] bg-[#0E0B0A] p-2 text-center text-xs text-[#F4E8DA]"><span className="mb-1 block font-bold">{size}</span><input type="number" min={0} value={draft.sizes[size] ?? 0} onChange={(e) => updateDraft('sizes', { ...draft.sizes, [size]: Number(e.target.value) })} className="w-full rounded-xl border border-[#332923] bg-[#17110F] px-2 py-1 text-center text-xs" /></label>)}
               </div>
             </Field>
+          </div>
+
+          <div className="mt-7 rounded-[28px] border border-[#332923] bg-[#0E0B0A] p-5">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-[#FFF0E1]">Variant Matrix Preview</h3>
+                <p className="mt-1 text-xs leading-5 text-[#BCAEA0]">V5.1 generates operational size/color combinations from the selected colors and stock entries. Dedicated product_variants APIs are included for future granular SKU control.</p>
+              </div>
+              <span className="rounded-full border border-[#D2B48C]/30 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-[#D2B48C]">
+                {Object.values(draft.sizes).filter((stock) => Number(stock) > 0).length * Math.max(1, draft.colors.length)} variants
+              </span>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {Object.entries(draft.sizes).filter(([, stock]) => Number(stock) > 0).slice(0, 12).map(([size, stock]) => draft.colors.map((color) => (
+                <div key={`${size}-${color.id}`} className="rounded-2xl border border-[#332923] bg-[#17110F] px-3 py-2 text-xs">
+                  <p className="font-semibold text-[#FFF0E1]">{draft.sku || 'SKU'}-{size}-{color.id}</p>
+                  <p className="mt-1 text-[#BCAEA0]">{size} · {color.name} · {stock} units</p>
+                </div>
+              ))) }
+            </div>
           </div>
 
           <div className="mt-7">

@@ -1,11 +1,12 @@
 import { requiredPublicEnv } from './env';
+import { BRAND } from '@/content/brand';
 // ============================================================
 // NEXORA — Constants & Configuration
 // ============================================================
 
 export const SITE_NAME = 'NEXORA';
-export const SITE_TAGLINE = 'Defined by intention. Not for everyone.';
-export const SITE_DESCRIPTION = 'NEXORA exists in silence. Defined by intention. Crafted with precision. We don’t chase attention. We command presence. Limited by design. Not for everyone.';
+export const SITE_TAGLINE = BRAND.shortTagline;
+export const SITE_DESCRIPTION = BRAND.seoDescription;
 export const SITE_URL = requiredPublicEnv('VITE_SITE_URL').replace(/\/$/, '');
 
 export const NAV_LINKS = [
@@ -85,11 +86,13 @@ export const ADMIN_NAV_LINKS = [
   { label: 'Customers', href: '/nexora-admin/customers', icon: 'UserRound' },
   { label: 'Inventory', href: '/nexora-admin/inventory', icon: 'Warehouse' },
   { label: 'Coupons', href: '/nexora-admin/coupons', icon: 'Tag' },
+  { label: 'Promotions', href: '/nexora-admin/promotions', icon: 'BadgePercent' },
   { label: 'Limited Drops', href: '/nexora-admin/drops', icon: 'CalendarClock' },
   { label: 'Reviews', href: '/nexora-admin/reviews', icon: 'Star' },
   { label: 'Analytics', href: '/nexora-admin/analytics', icon: 'BarChart3' },
   { label: 'Settings', href: '/nexora-admin/settings', icon: 'Settings' },
   { label: 'System Health', href: '/nexora-admin/system-health', icon: 'Activity' },
+  { label: 'Audit Logs', href: '/nexora-admin/audit-logs', icon: 'ClipboardList' },
 ];
 
 export const BRAND_VALUES = [

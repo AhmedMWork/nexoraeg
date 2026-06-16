@@ -16,15 +16,15 @@ import { normalizeColor } from '@/lib/productOptions';
 
 export default function ShopPage() {
   const { category } = useParams<{ category?: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [selectedCollection, setSelectedCollection] = useState(category || '');
-  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
-  const [selectedColors, setSelectedColors] = useState<string[]>([]);
-  const [selectedPriceRange, setSelectedPriceRange] = useState('');
-  const [sortBy, setSortBy] = useState('newest');
+  const [selectedSizes, setSelectedSizes] = useState<string[]>(searchParams.get('size')?.split(',').filter(Boolean) || []);
+  const [selectedColors, setSelectedColors] = useState<string[]>(searchParams.get('color')?.split(',').filter(Boolean) || []);
+  const [selectedPriceRange, setSelectedPriceRange] = useState(searchParams.get('price') || '');
+  const [sortBy, setSortBy] = useState(searchParams.get('sort') || 'newest');
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
@@ -38,11 +38,25 @@ export default function ShopPage() {
 
   useEffect(() => {
     setSearchQuery(searchParams.get('search') || '');
+    setSelectedSizes(searchParams.get('size')?.split(',').filter(Boolean) || []);
+    setSelectedColors(searchParams.get('color')?.split(',').filter(Boolean) || []);
+    setSelectedPriceRange(searchParams.get('price') || '');
+    setSortBy(searchParams.get('sort') || 'newest');
   }, [searchParams]);
 
   useEffect(() => {
     setSelectedCollection(category || '');
   }, [category]);
+
+  useEffect(() => {
+    const next = new URLSearchParams();
+    if (searchQuery.trim()) next.set('search', searchQuery.trim());
+    if (selectedSizes.length) next.set('size', selectedSizes.join(','));
+    if (selectedColors.length) next.set('color', selectedColors.join(','));
+    if (selectedPriceRange) next.set('price', selectedPriceRange);
+    if (sortBy && sortBy !== 'newest') next.set('sort', sortBy);
+    setSearchParams(next, { replace: true });
+  }, [searchQuery, selectedSizes, selectedColors, selectedPriceRange, sortBy, setSearchParams]);
 
   const filteredProducts = useMemo(() => {
     let result = [...products];
@@ -126,6 +140,8 @@ export default function ShopPage() {
     setSelectedColors([]);
     setSelectedPriceRange('');
     setSearchQuery('');
+    setSortBy('newest');
+    setSearchParams({}, { replace: true });
   };
 
   const hasActiveFilters =
@@ -308,6 +324,16 @@ export default function ShopPage() {
             </motion.div>
           )}
 
+          {/* Active filter chips */}
+          {hasActiveFilters && (
+            <div className="mb-5 flex flex-wrap items-center gap-2">
+              {[searchQuery && `Search: ${searchQuery}`, ...selectedSizes.map((s) => `Size: ${s}`), ...selectedColors.map((c) => `Color: ${c}`), selectedPriceRange && `Price: ${selectedPriceRange}`].filter(Boolean).map((chip) => (
+                <span key={String(chip)} className="rounded-full border border-[#202024] bg-[#0b0b0d] px-3 py-1.5 text-[10px] uppercase tracking-[0.14em] text-[#b8b0a3]">{chip}</span>
+              ))}
+              <button onClick={clearFilters} className="rounded-full border border-[#c8a96a]/30 px-3 py-1.5 text-[10px] uppercase tracking-[0.14em] text-[#c8a96a]">Clear all</button>
+            </div>
+          )}
+
           {/* Results count */}
           <p className="text-xs text-[#8a8175] mb-6">
             {filteredProducts.length} product{filteredProducts.length !== 1 ? 's' : ''}
@@ -328,7 +354,7 @@ export default function ShopPage() {
             </div>
           ) : (
             <div className="text-center py-20">
-              <p className="text-[#8a8175] mb-4">No products match your criteria</p>
+              <p className="text-[#8a8175] mb-4">Nothing matches your selection. Clear filters or explore a different category.</p>
               <button
                 onClick={clearFilters}
                 className="nexora-button text-xs"

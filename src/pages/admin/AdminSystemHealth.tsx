@@ -38,13 +38,13 @@ export default function AdminSystemHealth() {
       </div>
 
       <div className="studio-card p-6">
-        <h2 className="text-sm font-semibold text-[#FFF0E1]">Production deployment order</h2>
+        <h2 className="text-sm font-semibold text-[#FFF0E1]">V5.1 production deployment order</h2>
         <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-7 text-[#BCAEA0]">
-          <li>Run <span className="text-[#FFF0E1]">SUPABASE_FINAL_SCHEMA.sql</span> then <span className="text-[#FFF0E1]">SUPABASE_FINAL_RLS.sql</span> in Supabase SQL Editor.</li>
-          <li>Confirm Supabase Secrets: SUPABASE_SERVICE_ROLE_KEY, STUDIO_SESSION_SECRET, and optional REQUIRE_STUDIO_PIN/STUDIO_ACCESS_PIN.</li>
-          <li>Deploy every Edge Function with <span className="text-[#FFF0E1]">scripts/deploy-supabase-functions.ps1</span>.</li>
-          <li>Add Vercel env vars: VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY, VITE_STORE_WHATSAPP, VITE_SUPPORT_EMAIL.</li>
-          <li>Redeploy Vercel and test {SITE_URL}/nexora-admin, checkout, images, coupons, and mobile routes.</li>
+          <li>Run <span className="text-[#FFF0E1]">supabase db push</span> so migrations 0001 → 0004 are applied.</li>
+          <li>Confirm Supabase Secrets: STUDIO_SESSION_SECRET, REQUIRE_STUDIO_PIN, STUDIO_ACCESS_PIN, and optional ALLOWED_ORIGIN.</li>
+          <li>Deploy every Edge Function with <span className="text-[#FFF0E1]">scripts/deploy-supabase-functions.ps1</span>, including studio-audit-logs.</li>
+          <li>Add Vercel env vars: VITE_SITE_URL, VITE_SUPABASE_URL without /rest/v1, VITE_SUPABASE_PUBLISHABLE_KEY, VITE_STORE_WHATSAPP, VITE_SUPPORT_EMAIL.</li>
+          <li>Redeploy Vercel and test {SITE_URL}/nexora-admin, checkout, images, coupons, tracking, mobile filters, and direct route refresh.</li>
         </ol>
       </div>
     </div>

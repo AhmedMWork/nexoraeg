@@ -18,6 +18,8 @@ import EmptyState from '@/components/ui/EmptyState';
 import { useI18n } from '@/i18n/I18nProvider';
 import toast from 'react-hot-toast';
 import { trackEvent } from '@/services/analytics.service';
+import { classifyCheckoutError } from '@/lib/checkoutErrors';
+import FreeShippingProgress from '@/components/ui/FreeShippingProgress';
 
 const DEFAULT_WHATSAPP = import.meta.env.VITE_STORE_WHATSAPP || import.meta.env.VITE_DEFAULT_WHATSAPP_NUMBER || '';
 
@@ -55,6 +57,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     void trackEvent('checkout_start', { itemsCount: items.length, subtotal });
+    void trackEvent('checkout_started', { itemsCount: items.length, subtotal });
     let mounted = true;
     import('@/lib/supabase/db')
       .then(({ getSiteSettings }) => getSiteSettings())
@@ -72,6 +75,7 @@ export default function CheckoutPage() {
   const applyCoupon = async () => {
     if (!couponCode.trim()) return;
     setIsCheckingCoupon(true);
+    void trackEvent('coupon_attempted', { code: couponCode.trim().toUpperCase(), subtotal });
     try {
       const { validateCouponForCart } = await import('@/lib/supabase/db');
       const result = await validateCouponForCart({
@@ -87,6 +91,7 @@ export default function CheckoutPage() {
       }
       setAppliedCoupon({ code: result.code || couponCode.toUpperCase(), discount: result.discount, freeShipping: result.freeShipping });
       void trackEvent('coupon_apply', { code: result.code || couponCode.toUpperCase(), discount: result.discount });
+      void trackEvent('coupon_applied', { code: result.code || couponCode.toUpperCase(), discount: result.discount });
       toast.success(result.message);
     } catch {
       toast.error('Could not validate this code');
@@ -105,6 +110,7 @@ export default function CheckoutPage() {
       void trackEvent('order_submit', { itemsCount: items.length, subtotal, total });
       const { createOrderWithStockTransaction } = await import('@/lib/supabase/db');
       const createdOrder = await createOrderWithStockTransaction({
+        idempotencyKey: `nx-${Date.now()}-${Math.random().toString(16).slice(2)}`,
         customer: {
           fullName: data.fullName,
           phone: data.phone,
@@ -143,14 +149,16 @@ export default function CheckoutPage() {
       });
 
       void trackEvent('order_success', { orderNumber: createdOrder.orderNumber, total: createdOrder.total || total });
+      void trackEvent('order_created', { orderNumber: createdOrder.orderNumber, total: createdOrder.total || total });
       setOrderNumber(createdOrder.orderNumber);
       setOrderComplete(true);
       clearCart();
       toast.success(t('checkout.confirmed'));
     } catch (error) {
-      void trackEvent('order_failed', { message: error instanceof Error ? error.message : 'unknown' });
-      const message = error instanceof Error ? error.message : t('checkout.failed');
-      toast.error(message || t('checkout.failed'));
+      const checkoutError = classifyCheckoutError(error);
+      void trackEvent('order_failed', { kind: checkoutError.kind, message: checkoutError.message });
+      void trackEvent('checkout_error', { kind: checkoutError.kind, message: checkoutError.message });
+      toast.error(checkoutError.message || t('checkout.failed'));
     }
   };
 
@@ -224,7 +232,14 @@ export default function CheckoutPage() {
               Back to Cart
             </Link>
             <p className="nexora-caption text-[#c8a96a] mb-3">{t('checkout.almostThere')}</p>
-            <h1 className="nexora-heading-md mb-10">{t('checkout.title').toUpperCase()}</h1>
+            <h1 className="nexora-heading-md mb-8">{t('checkout.title').toUpperCase()}</h1>
+            <div className="mb-10 grid grid-cols-4 gap-2 text-center text-[10px] uppercase tracking-[0.16em] text-[#8a8175]">
+              {['Contact', 'Delivery', 'Review', 'Confirmation'].map((step, index) => (
+                <div key={step} className="rounded-full border border-[#202024] bg-[#0b0b0d] px-2 py-2">
+                  <span className={index < 3 ? 'text-[#c8a96a]' : 'text-[#8a8175]'}>{index + 1}. {step}</span>
+                </div>
+              ))}
+            </div>
           </SectionReveal>
 
           <div className="grid lg:grid-cols-3 gap-8">
@@ -308,6 +323,7 @@ export default function CheckoutPage() {
             <div className="lg:col-span-1">
               <div className="p-6 bg-[#0b0b0d] border border-[#17171a] sticky top-24">
                 <h3 className="text-xs font-bold tracking-[0.2em] uppercase text-[#f4f0e8] mb-5">{t('checkout.orderSummary')}</h3>
+                <div className="mb-5"><FreeShippingProgress subtotal={subtotal} threshold={freeShippingThreshold} /></div>
                 <div className="space-y-3 mb-5 max-h-60 overflow-y-auto">
                   {items.map((item) => (
                     <div key={`${item.productId}-${item.size}-${item.color || 'default'}`} className="flex gap-3">

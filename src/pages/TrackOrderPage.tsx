@@ -3,15 +3,18 @@
 // Public lookup uses order number + phone via secure Edge Function.
 // ============================================================
 
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Search, PackageCheck, AlertCircle, ShoppingBag } from 'lucide-react';
 import { trackOrderForCustomer, type PublicOrderTrackingResult } from '@/lib/supabase/db';
 import { formatPrice, getStatusLabel } from '@/lib/utils';
 import { useI18n } from '@/i18n/I18nProvider';
+import { trackEvent } from '@/services/analytics.service';
+import { generateWhatsAppLink } from '@/lib/egyptData';
 
 const FLOW = ['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered'];
+const DEFAULT_WHATSAPP = import.meta.env.VITE_STORE_WHATSAPP || import.meta.env.VITE_DEFAULT_WHATSAPP_NUMBER || '';
 
 export default function TrackOrderPage() {
   const { t, lang } = useI18n();
@@ -20,6 +23,8 @@ export default function TrackOrderPage() {
   const [isChecking, setIsChecking] = useState(false);
   const [result, setResult] = useState<PublicOrderTrackingResult | null>(null);
   const [error, setError] = useState('');
+
+  useEffect(() => { void trackEvent('track_order_opened'); }, []);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -32,9 +37,15 @@ export default function TrackOrderPage() {
     setIsChecking(true);
     try {
       const data = await trackOrderForCustomer({ orderNumber: orderNumber.trim(), phone: phone.trim() });
-      if (!data.found) setError(data.message || t('track.notFound'));
+      if (!data.found) {
+        void trackEvent('track_order_failed', { orderNumber: orderNumber.trim().toUpperCase() });
+        setError(data.message || t('track.notFound'));
+      } else {
+        void trackEvent('track_order_success', { orderNumber: data.order?.orderNumber });
+      }
       setResult(data);
     } catch (err) {
+      void trackEvent('track_order_failed', { orderNumber: orderNumber.trim().toUpperCase(), message: err instanceof Error ? err.message : 'unknown' });
       setError(err instanceof Error ? err.message : t('track.notFound'));
     } finally {
       setIsChecking(false);
@@ -100,7 +111,10 @@ export default function TrackOrderPage() {
                 {result.order.items.map((item, index) => <div key={`${item.name}-${index}`} className="flex items-center gap-3 rounded-2xl border border-[#202024] p-3"><img src={item.image || '/assets/nexora-logo-bg.jpg'} alt={item.name} className="h-14 w-14 rounded-xl object-cover" loading="lazy" decoding="async" /><div className="min-w-0 flex-1"><p className="truncate text-sm text-[#f4f0e8]">{item.name}</p><p className="text-[10px] text-[#8a8175]">Size: {item.size}{item.color ? ` · Color: ${item.color}` : ''} · x{item.quantity}</p></div></div>)}
               </div>
 
-              <Link to="/shop" className="nexora-button mt-7 inline-flex"><ShoppingBag className="h-4 w-4" /> Continue Shopping</Link>
+              <div className="mt-7 flex flex-wrap gap-3">
+                <Link to="/shop" className="nexora-button inline-flex"><ShoppingBag className="h-4 w-4" /> Continue Shopping</Link>
+                {DEFAULT_WHATSAPP && <a href={generateWhatsAppLink(DEFAULT_WHATSAPP, `Hello NEXORA, I want to ask about order ${result.order.orderNumber}.`)} target="_blank" rel="noopener noreferrer" className="nexora-button-primary inline-flex">Ask on WhatsApp</a>}
+              </div>
             </section>
           )}
         </div>

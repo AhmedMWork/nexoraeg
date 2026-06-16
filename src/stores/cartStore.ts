@@ -57,6 +57,8 @@ export const useCartStore = create<CartStore>()(
           get().removeItem(productId, size, color);
           return;
         }
+        const item = get().items.find((i) => i.productId === productId && i.size === size && (i.color || '') === (color || ''));
+        if (item) void trackEvent('cart_quantity_changed', { productId, productName: item.name, size, color: item.color, quantity });
         set({
           items: get().items.map((i) =>
             i.productId === productId && i.size === size && (i.color || '') === (color || '')
@@ -80,7 +82,7 @@ export const useCartStore = create<CartStore>()(
       },
     }),
     {
-      name: 'nexora-cart',
+      name: 'nexora-cart-v5-1',
       partialize: (state) => ({ items: state.items }),
     }
   )

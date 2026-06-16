@@ -9,6 +9,7 @@
 import { supabase, invokeStudioFunction, getStudioToken } from './client';
 import type {
   Product,
+  ProductVariant,
   Order,
   Review,
   Coupon,
@@ -112,6 +113,46 @@ function productToRow(product: Partial<Product>): Record<string, any> {
     seo_description: product.seoDescription,
     updated_at: new Date().toISOString(),
   };
+}
+
+
+function rowToVariant(row: Record<string, any>): ProductVariant {
+  return {
+    id: row.id,
+    productId: row.product_id || row.productId,
+    size: row.size || '',
+    color: row.color || '',
+    sku: row.sku || undefined,
+    stock: Number(row.stock || 0),
+    reservedStock: Number(row.reserved_stock || row.reservedStock || 0),
+    lowStockThreshold: Number(row.low_stock_threshold || row.lowStockThreshold || 3),
+    imageUrl: row.image_url || row.imageUrl || undefined,
+    barcode: row.barcode || undefined,
+    status: row.status || 'active',
+    sortOrder: Number(row.sort_order || row.sortOrder || 0),
+    createdAt: row.created_at ? toDate(row.created_at) : undefined,
+    updatedAt: row.updated_at ? toDate(row.updated_at) : undefined,
+  };
+}
+
+function variantToRow(variant: Partial<ProductVariant>): Record<string, any> {
+  const row: Record<string, any> = {
+    id: variant.id,
+    product_id: variant.productId,
+    size: variant.size,
+    color: variant.color,
+    sku: variant.sku,
+    stock: variant.stock,
+    reserved_stock: variant.reservedStock,
+    low_stock_threshold: variant.lowStockThreshold,
+    image_url: variant.imageUrl,
+    barcode: variant.barcode,
+    status: variant.status,
+    sort_order: variant.sortOrder,
+    updated_at: new Date().toISOString(),
+  };
+  Object.keys(row).forEach((key) => row[key] === undefined && delete row[key]);
+  return row;
 }
 
 function rowToDrop(row: Record<string, any>): Drop {
@@ -355,6 +396,21 @@ export async function deleteProduct(id: string): Promise<void> {
   await invokeStudioFunction('studio-products', studioHeadersPayload('archive', { id }));
 }
 
+
+export async function getProductVariants(productId: string): Promise<ProductVariant[]> {
+  const data = await invokeStudioFunction<Record<string, unknown>, { variants: any[] }>('studio-products', { action: 'variants-list', productId });
+  return (data.variants || []).map(rowToVariant);
+}
+
+export async function upsertProductVariants(productId: string, variants: Partial<ProductVariant>[]): Promise<void> {
+  await invokeStudioFunction('studio-products', studioHeadersPayload('variants-upsert', { productId, variants: variants.map((variant) => variantToRow({ ...variant, productId })) }));
+}
+
+export async function deleteProductVariant(id: string): Promise<void> {
+  await invokeStudioFunction('studio-products', studioHeadersPayload('variants-delete', { id }));
+}
+
+
 // Orders
 export async function createOrder(order: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
   const data = await invokeStudioFunction('studio-orders', studioHeadersPayload('create-manual', { order }));
@@ -513,7 +569,7 @@ export async function updateProductStock(productId: string, size: string, quanti
 export async function createInventoryLog(log: Omit<InventoryLog, 'id' | 'createdAt'>): Promise<string> { const data = await invokeStudioFunction('studio-products', studioHeadersPayload('inventory-log', { log })); return (data as any).id; }
 export async function getInventoryLogs(productId?: string): Promise<InventoryLog[]> { const data = await invokeStudioFunction<Record<string, unknown>, { logs: InventoryLog[] }>('studio-products', { action: 'inventory-logs', productId }); return data.logs || []; }
 export async function createAuditLog(log: Omit<AuditLog, 'id' | 'createdAt'>): Promise<string> { const data = await invokeStudioFunction('studio-settings', studioHeadersPayload('audit-log', { log })); return (data as any).id; }
-export async function getAuditLogs(): Promise<AuditLog[]> { const data = await invokeStudioFunction<Record<string, unknown>, { logs: AuditLog[] }>('studio-settings', { action: 'audit-logs' }); return data.logs || []; }
+export async function getAuditLogs(): Promise<AuditLog[]> { const data = await invokeStudioFunction<Record<string, unknown>, { logs: AuditLog[] }>('studio-audit-logs', { action: 'list' }); return data.logs || []; }
 export async function getDashboardStats(): Promise<{ totalOrders: number; totalRevenue: number; totalProducts: number; pendingOrders: number; lowStockProducts: number; activeCoupons: number; liveDrops: number; activePromotions: number }> { const data = await invokeStudioFunction<Record<string, unknown>, any>('studio-dashboard', { action: 'stats' }); return { totalOrders: data.totalOrders || 0, totalRevenue: data.totalRevenue || 0, totalProducts: data.totalProducts || 0, pendingOrders: data.pendingOrders || 0, lowStockProducts: data.lowStockProducts || 0, activeCoupons: data.activeCoupons || 0, liveDrops: data.liveDrops || 0, activePromotions: data.activePromotions || 0 }; }
 
 

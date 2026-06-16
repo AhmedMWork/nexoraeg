@@ -3,23 +3,37 @@ import { supabase } from '@/lib/supabase/client';
 export type AnalyticsEventName =
   | 'page_view'
   | 'product_view'
+  | 'shop_filter_used'
+  | 'search_used'
   | 'color_select'
   | 'size_select'
   | 'add_to_cart'
   | 'remove_from_cart'
+  | 'cart_quantity_changed'
   | 'cart_view'
+  | 'checkout_started'
   | 'checkout_start'
+  | 'coupon_attempted'
   | 'coupon_apply'
+  | 'coupon_applied'
   | 'coupon_fail'
   | 'coupon_failed'
   | 'checkout_error'
   | 'order_submit'
+  | 'order_created'
   | 'order_success'
   | 'order_failed'
+  | 'track_order_opened'
+  | 'track_order_success'
+  | 'track_order_failed'
+  | 'studio_login_success'
+  | 'studio_login_failed'
+  | 'studio_order_updated'
+  | 'studio_product_updated'
   | 'whatsapp_click';
 
 function sessionId() {
-  const key = 'nexora-analytics-session-v41';
+  const key = 'nexora-analytics-session-v5-1';
   const existing = localStorage.getItem(key);
   if (existing) return existing;
   const value = `${Date.now()}-${Math.random().toString(16).slice(2)}`;

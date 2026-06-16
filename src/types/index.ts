@@ -5,6 +5,24 @@
 export type ProductStatus = 'draft' | 'active' | 'hidden' | 'archived' | 'sold_out';
 export type ProductVisibility = 'public' | 'private' | 'scheduled';
 
+
+export interface ProductVariant {
+  id?: string;
+  productId: string;
+  size: string;
+  color: string;
+  sku?: string;
+  stock: number;
+  reservedStock?: number;
+  lowStockThreshold: number;
+  imageUrl?: string;
+  barcode?: string;
+  status: 'active' | 'disabled' | 'sold_out';
+  sortOrder?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export interface ProductColor {
   id: string;
   name: string;

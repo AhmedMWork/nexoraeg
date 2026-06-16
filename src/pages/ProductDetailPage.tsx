@@ -9,9 +9,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Heart,
   ShoppingBag,
-  Truck,
-  RotateCcw,
-  Shield,
   ChevronRight,
   Minus,
   Plus,
@@ -30,6 +27,8 @@ import { SITE_URL } from '@/lib/constants';
 import { absoluteUrl } from '@/lib/env';
 import { normalizeColors, getColorDisplayName, getColorStyle } from '@/lib/productOptions';
 import ProductCard from '@/components/ui/ProductCard';
+import SizeGuideModal from '@/components/ui/SizeGuideModal';
+import TrustStrip from '@/components/ui/TrustStrip';
 import SectionReveal from '@/components/ui/SectionReveal';
 import toast from 'react-hot-toast';
 import { trackEvent } from '@/services/analytics.service';
@@ -45,6 +44,7 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
   const [isZoomOpen, setIsZoomOpen] = useState(false);
+  const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'description' | 'shipping' | 'reviews'>('description');
 
   const { isInWishlist, toggleItem } = useWishlistStore();
@@ -160,6 +160,23 @@ export default function ProductDetailPage() {
     },
   };
 
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+      { '@type': 'ListItem', position: 2, name: 'Shop', item: `${SITE_URL}/shop` },
+      { '@type': 'ListItem', position: 3, name: product.category, item: `${SITE_URL}/shop/${product.category}` },
+      { '@type': 'ListItem', position: 4, name: product.name, item: canonicalUrl },
+    ],
+  };
+
+  const stockMessage = selectedSizeData
+    ? selectedSizeData.stock <= selectedSizeData.lowStockThreshold
+      ? `Only ${selectedSizeData.stock} left in ${selectedSize}. Limited by design.`
+      : `${selectedSizeData.stock} pieces available in ${selectedSize}.`
+    : 'Select your size to check live stock.';
+
   const handleAddToCart = () => {
     if (!selectedSize) {
       toast.error('Please select a size first');
@@ -209,6 +226,7 @@ export default function ProductDetailPage() {
         <meta name="twitter:image" content={primaryImage} />
         <link rel="canonical" href={canonicalUrl} />
         <script type="application/ld+json">{JSON.stringify(productSchema)}</script>
+        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
       </Helmet>
 
       <div className="pt-24 pb-28 md:pb-20 bg-[#050505] min-h-screen">
@@ -274,7 +292,7 @@ export default function ProductDetailPage() {
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-medium tracking-wider uppercase text-[#b8b0a3]">Size</span>
-                    <span className="text-[10px] text-[#8a8175]">Choose size first</span>
+                    <button type="button" onClick={() => setIsSizeGuideOpen(true)} className="text-[10px] uppercase tracking-[0.16em] text-[#c8a96a] hover:text-[#f4f0e8]">Size guide</button>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {product.sizes.map((size) => {
@@ -290,7 +308,7 @@ export default function ProductDetailPage() {
                       );
                     })}
                   </div>
-                  {selectedSizeData && <p className="text-[10px] text-[#8a8175] mt-2">{selectedSizeData.stock} units available{selectedSizeData.stock <= selectedSizeData.lowStockThreshold ? ' — low stock' : ''}</p>}
+                  <p className="mt-2 rounded-2xl border border-[#17171a] bg-[#0b0b0d]/60 px-3 py-2 text-[10px] leading-5 text-[#8a8175]">{stockMessage}</p>
                 </div>
 
                 {productColors.length > 0 && (
@@ -328,12 +346,8 @@ export default function ProductDetailPage() {
                   <button onClick={handleWishlist} className={`w-14 h-14 flex items-center justify-center border transition-all ${inWishlist ? 'border-[#c8a96a] bg-[#c8a96a]/5 text-[#c8a96a]' : 'border-[#202024] text-[#b8b0a3] hover:border-[#6f675d]'}`} aria-label="Toggle wishlist"><Heart className={`w-5 h-5 ${inWishlist ? 'fill-current' : ''}`} /></button>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3 mb-8 pb-8 border-b border-[#17171a]">
-                  {[
-                    { icon: Truck, label: 'Egypt Delivery' },
-                    { icon: RotateCcw, label: '14 Day Returns' },
-                    { icon: Shield, label: 'COD Checkout' },
-                  ].map(({ icon: Icon, label }) => <div key={label} className="flex flex-col items-center gap-2 py-3"><Icon className="w-4 h-4 text-[#8a8175]" /><span className="text-[9px] text-[#8a8175] text-center uppercase tracking-wider">{label}</span></div>)}
+                <div className="mb-8 border-b border-[#17171a] pb-8">
+                  <TrustStrip compact />
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -354,6 +368,8 @@ export default function ProductDetailPage() {
                 <div className="grid sm:grid-cols-2 gap-4 max-w-2xl">
                   <div><h4 className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#b8b0a3] mb-2">Materials</h4><ul className="space-y-1">{(product.materials || []).map((m) => <li key={m} className="text-xs text-[#8a8175]">{m}</li>)}</ul></div>
                   <div><h4 className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#b8b0a3] mb-2">Colors</h4><div className="flex flex-wrap gap-2">{productColors.map((c) => <span key={c.id} className="inline-flex items-center gap-2 rounded-full border border-[#202024] px-3 py-1 text-xs text-[#8a8175]"><span className="h-3 w-3 rounded-full border border-white/20" style={getColorStyle(c)} />{getColorDisplayName(c)}</span>)}</div></div>
+                  <div><h4 className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#b8b0a3] mb-2">Fit</h4><p className="text-xs leading-6 text-[#8a8175]">{product.fit || 'Structured relaxed fit with quiet presence.'}</p></div>
+                  <div><h4 className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#b8b0a3] mb-2">Care</h4><p className="text-xs leading-6 text-[#8a8175]">{product.careInstructions || 'Wash inside out with similar colors. Air dry for lasting shape.'}</p></div>
                 </div>
               </motion.div>
             )}
@@ -378,6 +394,8 @@ export default function ProductDetailPage() {
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#202024] bg-[#050505]/95 p-3 backdrop-blur md:hidden">
         <button onClick={handleAddToCart} className="w-full nexora-button-primary flex items-center justify-center gap-2 py-3"><ShoppingBag className="w-4 h-4" />Add to Cart — {formatPrice(product.price * quantity)}</button>
       </div>
+
+      <SizeGuideModal open={isSizeGuideOpen} onClose={() => setIsSizeGuideOpen(false)} />
 
       <AnimatePresence>
         {isZoomOpen && (

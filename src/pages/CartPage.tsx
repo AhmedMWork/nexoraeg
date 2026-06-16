@@ -11,6 +11,8 @@ import { useCartStore } from '@/stores/cartStore';
 import { formatPrice } from '@/lib/utils';
 import EmptyState from '@/components/ui/EmptyState';
 import SectionReveal from '@/components/ui/SectionReveal';
+import FreeShippingProgress from '@/components/ui/FreeShippingProgress';
+import TrustStrip from '@/components/ui/TrustStrip';
 import { SHIPPING_FEE, FREE_SHIPPING_THRESHOLD } from '@/lib/constants';
 import { trackEvent } from '@/services/analytics.service';
 
@@ -111,6 +113,7 @@ export default function CartPage() {
                 <h2 className="text-sm font-bold tracking-wider uppercase text-[#f4f0e8] mb-6">
                   Order Summary
                 </h2>
+                <div className="mb-5"><FreeShippingProgress subtotal={subtotal} /></div>
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between text-sm">
                     <span className="text-[#b8b0a3]">Subtotal</span>
@@ -123,9 +126,7 @@ export default function CartPage() {
                     </span>
                   </div>
                   {subtotal < FREE_SHIPPING_THRESHOLD && (
-                    <p className="text-[10px] text-[#8a8175]">
-                      Add {formatPrice(FREE_SHIPPING_THRESHOLD - subtotal)} more for free shipping
-                    </p>
+                    <p className="text-[10px] text-[#8a8175]">Live stock is rechecked at checkout before the order is created.</p>
                   )}
                   <div className="h-px bg-[#17171a]" />
                   <div className="flex justify-between">
@@ -150,6 +151,8 @@ export default function CartPage() {
               </div>
             </div>
           </div>
+
+          <div className="mt-10"><TrustStrip /></div>
         </div>
       </div>
     </>

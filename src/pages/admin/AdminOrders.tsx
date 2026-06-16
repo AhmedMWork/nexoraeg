@@ -3,7 +3,7 @@
 // ============================================================
 
 import { useEffect, useMemo, useState } from 'react';
-import { Eye, Package, ChevronDown, RefreshCw, Search, MessageCircle, Copy, CheckCircle } from 'lucide-react';
+import { Eye, Package, ChevronDown, RefreshCw, Search, MessageCircle, Copy, CheckCircle, Download } from 'lucide-react';
 import { formatPrice, formatTimestamp, getStatusColor, getStatusLabel, getNextStatus } from '@/lib/utils';
 import { generateWhatsAppLink } from '@/lib/egyptData';
 import type { Order, OrderStatus } from '@/types';
@@ -89,6 +89,31 @@ export default function AdminOrders() {
     }
   };
 
+
+  const exportOrdersCsv = () => {
+    const headers = ['order_number','customer_name','phone','governorate','city','total','status','payment_status','items','created_at'];
+    const rows = filteredOrders.map((order) => [
+      order.orderNumber,
+      order.customer.fullName,
+      order.customer.phone,
+      order.customer.governorate,
+      order.customer.city,
+      String(order.total),
+      order.status,
+      order.paymentStatus,
+      order.items.map((item) => `${item.name} ${item.size}${item.color ? `/${item.color}` : ''} x${item.quantity}`).join(' | '),
+      order.createdAt.toISOString(),
+    ]);
+    const csv = [headers, ...rows].map((row) => row.map((cell) => `"${String(cell || '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `nexora-orders-${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -110,6 +135,9 @@ export default function AdminOrders() {
             <option value="">All Statuses</option>
             {ORDER_STATUSES.map((s) => <option key={s} value={s}>{getStatusLabel(s)}</option>)}
           </select>
+          <button onClick={exportOrdersCsv} className="nexora-button flex items-center justify-center gap-2">
+            <Download className="w-3.5 h-3.5" /> Export CSV
+          </button>
           <button onClick={loadOrders} className="nexora-button flex items-center justify-center gap-2">
             <RefreshCw className="w-3.5 h-3.5" /> Refresh
           </button>
@@ -192,6 +220,17 @@ export default function AdminOrders() {
               </button>
             ))}
           </div>
+          <div className="space-y-2">
+            <h4 className="text-[10px] uppercase tracking-wider text-[#8a8175]">Timeline</h4>
+            {(selectedOrder.trackingUpdates || []).length ? selectedOrder.trackingUpdates.map((entry, index) => (
+              <div key={`${entry.status}-${index}`} className="rounded-2xl border border-[#17171a] bg-[#050505] px-3 py-2 text-xs">
+                <p className="font-semibold text-[#f4f0e8]">{getStatusLabel(entry.status)}</p>
+                <p className="mt-1 text-[#8a8175]">{entry.message}</p>
+                <p className="mt-1 text-[10px] text-[#6f675d]">{formatTimestamp(entry.timestamp)}</p>
+              </div>
+            )) : <p className="text-xs text-[#8a8175]">No timeline entries yet.</p>}
+          </div>
+
           <div className="space-y-2">
             <h4 className="text-[10px] uppercase tracking-wider text-[#8a8175]">Items</h4>
             {selectedOrder.items.map((item) => (
