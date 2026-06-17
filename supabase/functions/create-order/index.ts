@@ -172,7 +172,12 @@ Deno.serve(async (req) => {
       order_status: 'pending',
       coupon_code: couponCode,
       idempotency_key: idempotencyKey || null,
-      source: 'web',
+      source: body.attribution?.source || 'web',
+      visitor_id: body.visitorId || body.attribution?.visitorId || null,
+      session_id: body.sessionId || body.attribution?.sessionId || null,
+      attribution: body.attribution || {},
+      source_platform: body.attribution?.source || null,
+      campaign: body.attribution?.campaign || null,
       status_history: [{ status: 'pending', message: 'Order received.', timestamp: new Date().toISOString(), updatedBy: 'system' }],
     };
 
@@ -214,7 +219,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    await auditLog('order_created', 'order', order.id, { orderNumber: order.order_number, total: order.total });
+    if (customerPhone) {
+      const { data: lead } = await supabase.from('lead_profiles').select('id').eq('phone', customerPhone).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (lead?.id) await supabase.from('lead_profiles').update({ status: 'ordered', updated_at: new Date().toISOString() }).eq('id', lead.id);
+    }
+
+    await auditLog('order_created', 'order', order.id, { orderNumber: order.order_number, total: order.total, source: body.attribution?.source, campaign: body.attribution?.campaign });
     return json({ orderId: order.id, orderNumber: order.order_number, total: order.total });
   } catch (error) {
     await auditLog('checkout_failed', 'order', 'create-order', { message: error instanceof Error ? error.message : 'unknown' });

@@ -1,7 +1,7 @@
 {
-  "name": "nexora-v5-1-production",
+  "name": "nexora-v5-2-ultimate-production",
   "private": true,
-  "version": "5.1.0",
+  "version": "5.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -94,6 +94,6 @@
     "node": "20.x",
     "npm": "10.x"
   },
-  "description": "NEXORA V5.1 — premium commerce system with stronger Studio operations, product UX, SEO, analytics, security, and deployment hardening.",
+  "description": "NEXORA V5.2 Ultimate — premium storefront, Studio CRM, visitor intelligence, attribution, leads, campaigns, reports, and growth-ready commerce.",
   "packageManager": "npm@10.9.2"
 }
