@@ -50,7 +50,7 @@ export default function StudioGate({ children }: { children: ReactNode }) {
         <p className="v3-kicker mb-3">NEXORA Studio</p>
         <h1 className="text-2xl font-semibold tracking-[-0.04em]">Secure operations portal</h1>
         <p className="mt-3 text-sm leading-7 text-[var(--v33-muted)]">
-          Enter the private Studio PIN to manage products, orders, inventory, coupons, reviews, settings, and media.
+          Enter the private Studio PIN to manage products, storefront, orders, inventory, coupons, reviews, visitors, leads, campaigns, reports, and media.
         </p>
 
         <label className="mt-7 block text-left text-[10px] font-black uppercase tracking-[0.22em] text-[var(--v33-muted)]">Studio PIN</label>
