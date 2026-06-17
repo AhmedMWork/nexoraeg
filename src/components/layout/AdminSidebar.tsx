@@ -27,6 +27,7 @@ import {
   ExternalLink,
   BadgePercent,
   ClipboardList,
+  MonitorSmartphone,
 } from 'lucide-react';
 import { useState } from 'react';
 import { ADMIN_NAV_LINKS } from '@/lib/constants';
@@ -51,6 +52,7 @@ const iconMap: Record<string, React.ElementType> = {
   FileBarChart,
   BadgePercent,
   ClipboardList,
+  MonitorSmartphone,
 };
 
 export default function AdminSidebar() {
