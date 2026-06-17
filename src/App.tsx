@@ -47,6 +47,7 @@ const AdminCampaigns = lazy(() => import('@/pages/admin/AdminCampaigns'));
 const AdminReports = lazy(() => import('@/pages/admin/AdminReports'));
 const AdminSEO = lazy(() => import('@/pages/admin/AdminSEO'));
 const AdminPromotions = lazy(() => import('@/pages/admin/AdminPromotions'));
+const AdminStorefront = lazy(() => import('@/pages/admin/AdminStorefront'));
 
 // ─── Scroll to top on route change ───
 function ScrollToTop() {
@@ -102,6 +103,7 @@ function AdminRoutes() {
           <Route path="/" element={<Navigate to="/nexora-admin/dashboard" replace />} />
           <Route path="/dashboard" element={<PageTransition><AdminDashboard /></PageTransition>} />
           <Route path="/products" element={<PageTransition><AdminProducts /></PageTransition>} />
+          <Route path="/storefront" element={<PageTransition><AdminStorefront /></PageTransition>} />
           <Route path="/orders" element={<PageTransition><AdminOrders /></PageTransition>} />
           <Route path="/inventory" element={<PageTransition><AdminInventory /></PageTransition>} />
           <Route path="/reviews" element={<PageTransition><AdminReviews /></PageTransition>} />

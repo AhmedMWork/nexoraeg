@@ -9,20 +9,15 @@ import type { Product, Review } from '@/types';
 import { loadProducts } from '@/services/productService';
 import { useI18n } from '@/i18n/I18nProvider';
 import { SITE_URL } from '@/lib/constants';
+import { DEFAULT_HOME_COLLECTION_TILES, type HomeCollectionTile } from '@/content/homeTiles';
 import PrivateListForm from '@/components/growth/PrivateListForm';
-
-const categoryTiles = [
-  { title: 'Oversized Tees', ar: 'تيشيرتات واسعة', href: '/shop/unisex', image: '/assets/products/women-sand-tee.jpg' },
-  { title: 'Core Essentials', ar: 'أساسيات يومية', href: '/shop', image: '/assets/products/men-cream-tee.jpg' },
-  { title: 'Limited Drop', ar: 'الإصدارات المحدودة', href: '/limited', image: '/assets/nexora-logo-bg.jpg' },
-  { title: 'Last Pieces', ar: 'آخر القطع', href: '/shop?availability=last-pieces', image: '/assets/products/men-black-tee.jpg' },
-];
 
 export default function HomePage() {
   const { lang, t } = useI18n();
   const [products, setProducts] = useState<Product[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [categoryTiles, setCategoryTiles] = useState<HomeCollectionTile[]>(DEFAULT_HOME_COLLECTION_TILES);
 
   useEffect(() => {
     let mounted = true;
@@ -36,6 +31,11 @@ export default function HomePage() {
       .then(({ getReviews }) => getReviews({ isApproved: true, isFeatured: true }))
       .then((items) => { if (mounted) setReviews(items.slice(0, 3)); })
       .catch(() => { if (mounted) setReviews([]); });
+
+    import('@/lib/supabase/db')
+      .then(({ getHomeCollectionTiles }) => getHomeCollectionTiles())
+      .then((tiles) => { if (mounted) setCategoryTiles(tiles); })
+      .catch(() => { if (mounted) setCategoryTiles(DEFAULT_HOME_COLLECTION_TILES); });
 
     return () => { mounted = false; };
   }, []);
@@ -91,10 +91,10 @@ export default function HomePage() {
           {categoryTiles.map((tile, index) => (
             <motion.div key={tile.title} initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.06 }}>
               <Link to={tile.href} className="v3-category-card">
-                <img src={tile.image} alt={lang === 'ar' ? tile.ar : tile.title} />
+                <img src={tile.image} alt={lang === 'ar' ? (tile.titleAr || tile.title) : tile.title} />
                 <div>
-                  <h3>{lang === 'ar' ? tile.ar : tile.title}</h3>
-                  <span>{lang === 'ar' ? 'تسوق الآن' : 'Explore'} <ArrowRight className="h-3 w-3" /></span>
+                  <h3>{lang === 'ar' ? (tile.titleAr || tile.title) : tile.title}</h3>
+                  <span>{lang === 'ar' ? 'تسوق الآن' : (tile.eyebrow || 'Explore')} <ArrowRight className="h-3 w-3" /></span>
                 </div>
               </Link>
             </motion.div>

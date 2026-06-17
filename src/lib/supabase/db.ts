@@ -7,6 +7,7 @@
 // ============================================================
 
 import { supabase, invokeStudioFunction, getStudioToken } from './client';
+import { DEFAULT_HOME_COLLECTION_TILES, normalizeHomeTiles, type HomeCollectionTile } from '@/content/homeTiles';
 import type {
   Product,
   ProductVariant,
@@ -534,6 +535,34 @@ export async function getNewsletterSubscribers(): Promise<NewsletterSubscriber[]
 export async function createContactMessage(message: Omit<ContactMessage, 'id' | 'createdAt' | 'isRead'>): Promise<void> { await supabase.from('contact_messages').insert({ name: message.name, email: message.email, subject: message.subject, message: message.message }); }
 export async function getContactMessages(): Promise<ContactMessage[]> { const data = await invokeStudioFunction<Record<string, unknown>, { messages: ContactMessage[] }>('studio-settings', { action: 'contact-messages' }); return data.messages || []; }
 
+
+
+// Storefront / homepage controls
+export async function getHomeCollectionTiles(): Promise<HomeCollectionTile[]> {
+  try {
+    const { data, error } = await supabase
+      .from('site_settings')
+      .select('home_collection_tiles')
+      .eq('id', 'main')
+      .maybeSingle();
+    if (error) throw error;
+    return normalizeHomeTiles((data as any)?.home_collection_tiles);
+  } catch {
+    return DEFAULT_HOME_COLLECTION_TILES;
+  }
+}
+
+export async function updateHomeCollectionTiles(tiles: HomeCollectionTile[]): Promise<void> {
+  await invokeStudioFunction('studio-settings', {
+    action: 'storefront-update',
+    homeCollectionTiles: normalizeHomeTiles(tiles),
+  });
+}
+
+export async function resetHomeCollectionTiles(): Promise<void> {
+  await updateHomeCollectionTiles(DEFAULT_HOME_COLLECTION_TILES);
+}
+
 // Settings
 export async function getSiteSettings(): Promise<SiteSettings | null> {
   const { data, error } = await supabase.from('site_settings').select('*').eq('id', 'main').maybeSingle();
@@ -567,7 +596,23 @@ export async function updateSiteSettings(data: Partial<SiteSettings>): Promise<v
 // Inventory/Audit/Dashboard
 export async function updateProductStock(productId: string, size: string, quantity: number, reason: InventoryLog['reason'] = 'manual_adjustment', note?: string): Promise<void> { await invokeStudioFunction('studio-products', studioHeadersPayload('adjust-stock', { productId, size, quantity, reason, note })); }
 export async function createInventoryLog(log: Omit<InventoryLog, 'id' | 'createdAt'>): Promise<string> { const data = await invokeStudioFunction('studio-products', studioHeadersPayload('inventory-log', { log })); return (data as any).id; }
-export async function getInventoryLogs(productId?: string): Promise<InventoryLog[]> { const data = await invokeStudioFunction<Record<string, unknown>, { logs: InventoryLog[] }>('studio-products', { action: 'inventory-logs', productId }); return data.logs || []; }
+export async function getInventoryLogs(productId?: string): Promise<InventoryLog[]> {
+  const data = await invokeStudioFunction<Record<string, unknown>, { logs: any[] }>('studio-products', { action: 'inventory-logs', productId });
+  return (data.logs || []).map((row) => ({
+    id: row.id,
+    productId: row.product_id || row.productId,
+    sku: row.sku,
+    size: row.size || '',
+    change: Number(row.change || 0),
+    reason: row.reason || 'manual_adjustment',
+    previousStock: Number(row.previous_stock ?? row.previousStock ?? 0),
+    newStock: Number(row.new_stock ?? row.newStock ?? 0),
+    orderId: row.order_id || row.orderId,
+    adminId: row.admin_id || row.adminId,
+    note: row.note,
+    createdAt: toDate(row.created_at || row.createdAt),
+  }));
+}
 export async function createAuditLog(log: Omit<AuditLog, 'id' | 'createdAt'>): Promise<string> { const data = await invokeStudioFunction('studio-settings', studioHeadersPayload('audit-log', { log })); return (data as any).id; }
 export async function getAuditLogs(): Promise<AuditLog[]> { const data = await invokeStudioFunction<Record<string, unknown>, { logs: AuditLog[] }>('studio-audit-logs', { action: 'list' }); return data.logs || []; }
 export async function getDashboardStats(): Promise<{ totalOrders: number; totalRevenue: number; totalProducts: number; pendingOrders: number; lowStockProducts: number; activeCoupons: number; liveDrops: number; activePromotions: number }> { const data = await invokeStudioFunction<Record<string, unknown>, any>('studio-dashboard', { action: 'stats' }); return { totalOrders: data.totalOrders || 0, totalRevenue: data.totalRevenue || 0, totalProducts: data.totalProducts || 0, pendingOrders: data.pendingOrders || 0, lowStockProducts: data.lowStockProducts || 0, activeCoupons: data.activeCoupons || 0, liveDrops: data.liveDrops || 0, activePromotions: data.activePromotions || 0 }; }

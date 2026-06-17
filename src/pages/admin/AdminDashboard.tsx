@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, BarChart3, MousePointerClick, Package, ShoppingBag, Target, TrendingDown, TrendingUp, UserPlus, Users, Warehouse } from 'lucide-react';
+import { ArrowRight, BarChart3, ImageUp, MousePointerClick, Package, ShoppingBag, Target, TrendingDown, TrendingUp, UserPlus, Users, Warehouse } from 'lucide-react';
 import { formatPrice, formatTimestamp, getStatusColor, getStatusLabel } from '@/lib/utils';
 import type { Coupon, Drop, Order, Product } from '@/types';
 
@@ -70,6 +70,7 @@ export default function AdminDashboard() {
   const recentOrders = data.orders.slice(0, 6);
   const quickActions = [
     { label: 'Add Product', desc: 'Create product with price, compare price, colors, sizes, stock, and multiple images.', href: '/nexora-admin/products', icon: Package },
+    { label: 'Storefront Images', desc: 'Change the four home collection images/cards without editing code.', href: '/nexora-admin/storefront', icon: ImageUp },
     { label: 'Review Orders', desc: 'Confirm COD orders, update statuses, and open WhatsApp templates.', href: '/nexora-admin/orders', icon: ShoppingBag },
     { label: 'Customers', desc: 'See customer contact data, locations, purchase totals, and last order.', href: '/nexora-admin/customers', icon: Users },
     { label: 'Visitors', desc: 'See who opened links, source, campaign, device, last page, and known lead linkage.', href: '/nexora-admin/visitors', icon: MousePointerClick },
