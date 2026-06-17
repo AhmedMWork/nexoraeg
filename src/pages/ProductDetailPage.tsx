@@ -32,6 +32,7 @@ import TrustStrip from '@/components/ui/TrustStrip';
 import SectionReveal from '@/components/ui/SectionReveal';
 import toast from 'react-hot-toast';
 import { trackEvent } from '@/services/analytics.service';
+import { trackWhatsAppClick } from '@/lib/analytics/tracker';
 
 export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -211,6 +212,13 @@ export default function ProductDetailPage() {
     toast(inWishlist ? 'Removed from wishlist' : 'Added to wishlist', { icon: inWishlist ? '💔' : '❤️' });
   };
 
+  const handleAskWhatsApp = async () => {
+    const number = import.meta.env.VITE_STORE_WHATSAPP || '201037141322';
+    const message = `Hello NEXORA. I need help with ${product.name}${selectedSize ? ` — size ${selectedSize}` : ''}${selectedColor ? ` / ${getColorDisplayName(selectedColor)}` : ''}.`;
+    await trackWhatsAppClick({ phone: number, message, productId: product.id, productName: product.name, sourceType: 'product_detail' });
+    window.open(`https://wa.me/${number}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <>
       <Helmet>
@@ -341,10 +349,11 @@ export default function ProductDetailPage() {
                   </div>
                 </div>
 
-                <div className="flex gap-3 mb-8">
+                <div className="flex gap-3 mb-3">
                   <button onClick={handleAddToCart} className="flex-1 nexora-button-primary flex items-center justify-center gap-2 py-4"><ShoppingBag className="w-4 h-4" />Add to Cart</button>
                   <button onClick={handleWishlist} className={`w-14 h-14 flex items-center justify-center border transition-all ${inWishlist ? 'border-[#c8a96a] bg-[#c8a96a]/5 text-[#c8a96a]' : 'border-[#202024] text-[#b8b0a3] hover:border-[#6f675d]'}`} aria-label="Toggle wishlist"><Heart className={`w-5 h-5 ${inWishlist ? 'fill-current' : ''}`} /></button>
                 </div>
+                <button onClick={handleAskWhatsApp} className="mb-8 w-full nexora-button flex items-center justify-center gap-2 py-3"><MessageSquare className="h-4 w-4" />Ask about this piece</button>
 
                 <div className="mb-8 border-b border-[#17171a] pb-8">
                   <TrustStrip compact />

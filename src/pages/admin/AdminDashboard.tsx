@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, BarChart3, Package, SearchCheck, ShieldCheck, ShoppingBag, TrendingDown, TrendingUp, Users, Warehouse } from 'lucide-react';
+import { ArrowRight, BarChart3, MousePointerClick, Package, ShoppingBag, Target, TrendingDown, TrendingUp, UserPlus, Users, Warehouse } from 'lucide-react';
 import { formatPrice, formatTimestamp, getStatusColor, getStatusLabel } from '@/lib/utils';
 import type { Coupon, Drop, Order, Product } from '@/types';
 
@@ -10,6 +10,7 @@ type DashboardData = {
   coupons: Coupon[];
   drops: Drop[];
   analytics: { events: Array<{ event_name: string; session_id?: string; payload?: Record<string, unknown> }>; orders: Array<{ total?: number }> };
+  growth: { visitorsToday?: number; leadsToday?: number; whatsappClicksToday?: number; topSources?: Array<{ source: string; count: number }> };
 };
 
 function Card({ label, value, helper, icon: Icon, tone = 'default' }: { label: string; value: string; helper: string; icon: React.ElementType; tone?: 'default' | 'warn' | 'good' }) {
@@ -24,21 +25,22 @@ function Card({ label, value, helper, icon: Icon, tone = 'default' }: { label: s
 }
 
 export default function AdminDashboard() {
-  const [data, setData] = useState<DashboardData>({ orders: [], products: [], coupons: [], drops: [], analytics: { events: [], orders: [] } });
+  const [data, setData] = useState<DashboardData>({ orders: [], products: [], coupons: [], drops: [], analytics: { events: [], orders: [] }, growth: {} });
   const [isLoading, setIsLoading] = useState(true);
 
   const load = async () => {
     setIsLoading(true);
     try {
       const db = await import('@/lib/supabase/db');
-      const [orders, products, coupons, drops, analytics] = await Promise.all([
+      const [orders, products, coupons, drops, analytics, growth] = await Promise.all([
         db.getOrders().catch(() => []),
         db.getAdminProducts().catch(() => []),
         db.getCoupons().catch(() => []),
         db.getDrops().catch(() => []),
         db.getAnalyticsSummary().catch(() => ({ events: [], orders: [] })),
+        db.getGrowthDashboard().catch(() => ({})),
       ]);
-      setData({ orders, products, coupons, drops, analytics });
+      setData({ orders, products, coupons, drops, analytics, growth });
     } finally {
       setIsLoading(false);
     }
@@ -54,7 +56,7 @@ export default function AdminDashboard() {
     const pendingOrders = data.orders.filter((order) => ['pending', 'confirmed'].includes(order.status)).length;
     const activeCoupons = data.coupons.filter((coupon) => coupon.isActive || coupon.status === 'active').length;
     const liveDrops = data.drops.filter((drop) => drop.status === 'live').length;
-    const sessions = new Set(data.analytics.events.map((event) => event.session_id).filter(Boolean)).size;
+    const sessions = Number(data.growth.visitorsToday || 0) || new Set(data.analytics.events.map((event) => event.session_id).filter(Boolean)).size;
     const count = (name: string) => data.analytics.events.filter((event) => event.event_name === name).length;
     const productViews = count('product_view');
     const addToCart = count('add_to_cart');
@@ -62,7 +64,7 @@ export default function AdminDashboard() {
     const orderSignals = count('order_success') + data.orders.length;
     const conversion = productViews ? Math.round((orderSignals / productViews) * 100) : 0;
     const cartDrop = Math.max(0, addToCart - orderSignals);
-    return { revenue, customers: customers.size, lowStock, pendingOrders, activeCoupons, liveDrops, sessions, productViews, addToCart, checkoutStart, orderSignals, conversion, cartDrop };
+    return { revenue, customers: customers.size, lowStock, pendingOrders, activeCoupons, liveDrops, sessions, productViews, addToCart, checkoutStart, orderSignals, conversion, cartDrop, leadsToday: Number(data.growth.leadsToday || 0), whatsappClicksToday: Number(data.growth.whatsappClicksToday || 0), topSource: data.growth.topSources?.[0]?.source || 'No data' };
   }, [data]);
 
   const recentOrders = data.orders.slice(0, 6);
@@ -70,9 +72,10 @@ export default function AdminDashboard() {
     { label: 'Add Product', desc: 'Create product with price, compare price, colors, sizes, stock, and multiple images.', href: '/nexora-admin/products', icon: Package },
     { label: 'Review Orders', desc: 'Confirm COD orders, update statuses, and open WhatsApp templates.', href: '/nexora-admin/orders', icon: ShoppingBag },
     { label: 'Customers', desc: 'See customer contact data, locations, purchase totals, and last order.', href: '/nexora-admin/customers', icon: Users },
+    { label: 'Visitors', desc: 'See who opened links, source, campaign, device, last page, and known lead linkage.', href: '/nexora-admin/visitors', icon: MousePointerClick },
+    { label: 'Leads', desc: 'Contact private-list, WhatsApp, notify-me, and checkout abandoned leads.', href: '/nexora-admin/leads', icon: UserPlus },
+    { label: 'Campaigns', desc: 'Build Facebook/Instagram UTM links and compare campaign performance.', href: '/nexora-admin/campaigns', icon: Target },
     { label: 'Analytics', desc: 'Track visits, cart adds, checkout starts, orders, and product interest.', href: '/nexora-admin/analytics', icon: BarChart3 },
-    { label: 'SEO', desc: 'Check Google files, sitemap, search setup, and product SEO readiness.', href: '/nexora-admin/seo', icon: SearchCheck },
-    { label: 'System Health', desc: 'Review Supabase, functions, storage, routes, and deployment steps.', href: '/nexora-admin/system-health', icon: ShieldCheck },
   ];
 
   return (
@@ -95,10 +98,10 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card label="Visitors" value={String(stats.sessions)} helper="Unique browser sessions from analytics events." icon={Users} />
+        <Card label="Visitors Today" value={String(stats.sessions)} helper={`Top source: ${stats.topSource}.`} icon={MousePointerClick} />
         <Card label="Cart Adds" value={String(stats.addToCart)} helper={`${stats.cartDrop} cart additions did not become orders yet.`} icon={TrendingDown} tone={stats.cartDrop ? 'warn' : 'default'} />
         <Card label="Conversion" value={`${stats.conversion}%`} helper="Orders compared with product-view signals." icon={BarChart3} />
-        <Card label="Campaigns" value={`${stats.activeCoupons}/${stats.liveDrops}`} helper="Active coupons / live limited drops." icon={Package} />
+        <Card label="Leads / WhatsApp" value={`${stats.leadsToday}/${stats.whatsappClicksToday}`} helper="Leads captured / WhatsApp clicks today." icon={UserPlus} />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">

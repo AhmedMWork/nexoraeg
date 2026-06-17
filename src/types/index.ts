@@ -335,3 +335,85 @@ export interface DashboardStats {
 }
 
 export interface EgyptianGovernorate { name: string; cities: string[]; }
+
+export interface VisitorProfile {
+  id?: string;
+  anonymousId: string;
+  firstSeenAt?: Date;
+  lastSeenAt?: Date;
+  firstSource?: string;
+  firstMedium?: string;
+  firstCampaign?: string;
+  lastSource?: string;
+  lastMedium?: string;
+  lastCampaign?: string;
+  firstLandingPage?: string;
+  lastPage?: string;
+  deviceType?: string;
+  browser?: string;
+  os?: string;
+  country?: string;
+  city?: string;
+  isKnown?: boolean;
+  leadId?: string;
+  customerId?: string;
+  eventCount?: number;
+}
+
+export interface VisitorEvent {
+  id?: string;
+  visitorId?: string;
+  anonymousId?: string;
+  sessionId?: string;
+  eventName: string;
+  pageUrl?: string;
+  productId?: string;
+  cartValue?: number;
+  source?: string;
+  medium?: string;
+  campaign?: string;
+  content?: string;
+  metadata?: Record<string, unknown>;
+  createdAt?: Date;
+}
+
+export interface LeadProfile {
+  id?: string;
+  visitorId?: string;
+  name?: string;
+  phone?: string;
+  email?: string;
+  source?: string;
+  medium?: string;
+  campaign?: string;
+  interestProductId?: string;
+  interestProductName?: string;
+  status: 'new' | 'contacted' | 'interested' | 'ordered' | 'no_response' | 'not_interested' | 'checkout_abandoned';
+  notes?: string;
+  lastContactedAt?: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface CampaignLink {
+  id?: string;
+  name: string;
+  platform: 'facebook' | 'instagram' | 'tiktok' | 'google' | 'direct' | 'other';
+  source: string;
+  medium: string;
+  campaign: string;
+  content?: string;
+  landingPage: string;
+  finalUrl: string;
+  createdAt?: Date;
+}
+
+export interface GrowthDashboard {
+  visitorsToday: number;
+  leadsToday: number;
+  whatsappClicksToday: number;
+  topSources: Array<{ source: string; count: number }>;
+  topCampaigns: Array<{ campaign: string; visitors: number; leads: number; orders: number; revenue: number }>;
+  recentLeads: LeadProfile[];
+  recentVisitors: VisitorProfile[];
+}

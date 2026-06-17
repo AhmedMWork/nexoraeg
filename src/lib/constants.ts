@@ -81,18 +81,18 @@ export const ORDER_STATUS_FLOW = [
 
 export const ADMIN_NAV_LINKS = [
   { label: 'Overview', href: '/nexora-admin/dashboard', icon: 'LayoutDashboard' },
-  { label: 'Products', href: '/nexora-admin/products', icon: 'Package' },
   { label: 'Orders', href: '/nexora-admin/orders', icon: 'ShoppingBag' },
-  { label: 'Customers', href: '/nexora-admin/customers', icon: 'UserRound' },
-  { label: 'Inventory', href: '/nexora-admin/inventory', icon: 'Warehouse' },
+  { label: 'Products', href: '/nexora-admin/products', icon: 'Package' },
   { label: 'Coupons', href: '/nexora-admin/coupons', icon: 'Tag' },
   { label: 'Promotions', href: '/nexora-admin/promotions', icon: 'BadgePercent' },
-  { label: 'Limited Drops', href: '/nexora-admin/drops', icon: 'CalendarClock' },
   { label: 'Reviews', href: '/nexora-admin/reviews', icon: 'Star' },
+  { label: 'Inventory', href: '/nexora-admin/inventory', icon: 'Warehouse' },
+  { label: 'Customers', href: '/nexora-admin/customers', icon: 'UserRound' },
+  { label: 'Visitors', href: '/nexora-admin/visitors', icon: 'MousePointerClick' },
+  { label: 'Leads', href: '/nexora-admin/leads', icon: 'UserPlus' },
+  { label: 'Campaigns', href: '/nexora-admin/campaigns', icon: 'Target' },
   { label: 'Analytics', href: '/nexora-admin/analytics', icon: 'BarChart3' },
-  { label: 'Settings', href: '/nexora-admin/settings', icon: 'Settings' },
-  { label: 'System Health', href: '/nexora-admin/system-health', icon: 'Activity' },
-  { label: 'Audit Logs', href: '/nexora-admin/audit-logs', icon: 'ClipboardList' },
+  { label: 'Reports', href: '/nexora-admin/reports', icon: 'FileBarChart' },
 ];
 
 export const BRAND_VALUES = [

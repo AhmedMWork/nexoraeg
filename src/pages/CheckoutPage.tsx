@@ -18,6 +18,7 @@ import EmptyState from '@/components/ui/EmptyState';
 import { useI18n } from '@/i18n/I18nProvider';
 import toast from 'react-hot-toast';
 import { trackEvent } from '@/services/analytics.service';
+import { captureLead, getAttribution } from '@/lib/analytics/tracker';
 import { classifyCheckoutError } from '@/lib/checkoutErrors';
 import FreeShippingProgress from '@/components/ui/FreeShippingProgress';
 
@@ -53,6 +54,8 @@ export default function CheckoutPage() {
   });
 
   const watchedGovernorate = watch('governorate');
+  const watchedName = watch('fullName');
+  const watchedPhone = watch('phone');
   const cities = selectedGovernorate ? getCitiesForGovernorate(selectedGovernorate) : [];
 
   useEffect(() => {
@@ -71,6 +74,25 @@ export default function CheckoutPage() {
       .catch(() => undefined);
     return () => { mounted = false; };
   }, [items.length, subtotal]);
+
+
+
+  useEffect(() => {
+    const phone = String(watchedPhone || '').replace(/\s/g, '');
+    if (!/^01[0-9]{9}$/.test(phone)) return;
+    const timer = window.setTimeout(() => {
+      void captureLead({
+        name: watchedName,
+        phone,
+        sourceType: 'checkout_contact',
+        status: 'checkout_abandoned',
+        notes: 'Customer entered checkout contact details before order completion.',
+        metadata: { itemsCount: items.length, subtotal },
+      });
+      void trackEvent('checkout_contact_entered', { hasName: Boolean(watchedName), itemsCount: items.length, subtotal });
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [watchedName, watchedPhone, items.length, subtotal]);
 
   const applyCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -109,7 +131,11 @@ export default function CheckoutPage() {
     try {
       void trackEvent('order_submit', { itemsCount: items.length, subtotal, total });
       const { createOrderWithStockTransaction } = await import('@/lib/supabase/db');
+      const attribution = getAttribution();
       const createdOrder = await createOrderWithStockTransaction({
+        attribution,
+        visitorId: attribution.visitorId,
+        sessionId: attribution.sessionId,
         idempotencyKey: `nx-${Date.now()}-${Math.random().toString(16).slice(2)}`,
         customer: {
           fullName: data.fullName,

@@ -579,3 +579,122 @@ export async function getAnalyticsSummary(): Promise<{ events: any[]; orders: an
 }
 
 export async function seedDatabase(products: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>[]): Promise<void> { await invokeStudioFunction('studio-products', studioHeadersPayload('seed', { products: products.map(productToRow) })); }
+
+// Growth Intelligence / Visitors / Leads / Campaigns
+function rowToVisitor(row: Record<string, any>) {
+  return {
+    id: row.id,
+    anonymousId: row.anonymous_id || row.anonymousId || '',
+    firstSeenAt: toDate(row.first_seen_at || row.created_at),
+    lastSeenAt: toDate(row.last_seen_at || row.updated_at || row.created_at),
+    firstSource: row.first_source || row.source,
+    firstMedium: row.first_medium || row.medium,
+    firstCampaign: row.first_campaign || row.campaign,
+    lastSource: row.last_source,
+    lastMedium: row.last_medium,
+    lastCampaign: row.last_campaign,
+    firstLandingPage: row.first_landing_page,
+    lastPage: row.last_page,
+    deviceType: row.device_type,
+    browser: row.browser,
+    os: row.os,
+    country: row.country,
+    city: row.city,
+    isKnown: Boolean(row.is_known),
+    leadId: row.lead_id,
+    customerId: row.customer_id,
+    eventCount: Number(row.event_count || 0),
+  };
+}
+
+function rowToLead(row: Record<string, any>) {
+  return {
+    id: row.id,
+    visitorId: row.visitor_id,
+    name: row.name,
+    phone: row.phone,
+    email: row.email,
+    source: row.source,
+    medium: row.medium,
+    campaign: row.campaign,
+    interestProductId: row.interest_product_id,
+    interestProductName: row.interest_product_name,
+    status: row.status || 'new',
+    notes: row.notes,
+    lastContactedAt: row.last_contacted_at ? toDate(row.last_contacted_at) : undefined,
+    createdAt: toDate(row.created_at),
+    updatedAt: row.updated_at ? toDate(row.updated_at) : undefined,
+  };
+}
+
+function rowToCampaignLink(row: Record<string, any>) {
+  return {
+    id: row.id,
+    name: row.name || '',
+    platform: row.platform || 'facebook',
+    source: row.source || 'facebook',
+    medium: row.medium || 'paid_social',
+    campaign: row.campaign || '',
+    content: row.content || '',
+    landingPage: row.landing_page || '/',
+    finalUrl: row.final_url || '',
+    createdAt: toDate(row.created_at),
+  };
+}
+
+export async function getGrowthDashboard(): Promise<any> {
+  const data = await invokeStudioFunction<Record<string, unknown>, any>('studio-reports', { action: 'growth-dashboard' });
+  return {
+    ...data,
+    recentLeads: (data.recentLeads || []).map(rowToLead),
+    recentVisitors: (data.recentVisitors || []).map(rowToVisitor),
+  };
+}
+
+export async function getVisitors(): Promise<any[]> {
+  const data = await invokeStudioFunction<Record<string, unknown>, { visitors: any[] }>('studio-visitors', { action: 'list' });
+  return (data.visitors || []).map(rowToVisitor);
+}
+
+export async function getVisitorJourney(visitorId: string): Promise<any[]> {
+  const data = await invokeStudioFunction<Record<string, unknown>, { events: any[] }>('studio-visitors', { action: 'journey', visitorId });
+  return (data.events || []).map((row) => ({
+    id: row.id,
+    visitorId: row.visitor_id,
+    anonymousId: row.anonymous_id,
+    sessionId: row.session_id,
+    eventName: row.event_name,
+    pageUrl: row.page_url,
+    productId: row.product_id,
+    cartValue: Number(row.cart_value || 0),
+    source: row.source,
+    medium: row.medium,
+    campaign: row.campaign,
+    content: row.content,
+    metadata: row.metadata || {},
+    createdAt: toDate(row.created_at),
+  }));
+}
+
+export async function getLeads(): Promise<any[]> {
+  const data = await invokeStudioFunction<Record<string, unknown>, { leads: any[] }>('studio-leads', { action: 'list' });
+  return (data.leads || []).map(rowToLead);
+}
+
+export async function updateLeadStatus(id: string, status: string, notes?: string): Promise<void> {
+  await invokeStudioFunction('studio-leads', { action: 'update-status', id, status, notes });
+}
+
+export async function getCampaignLinks(): Promise<any[]> {
+  const data = await invokeStudioFunction<Record<string, unknown>, { links: any[] }>('studio-campaigns', { action: 'list' });
+  return (data.links || []).map(rowToCampaignLink);
+}
+
+export async function createCampaignLink(payload: { name: string; platform: string; source: string; medium: string; campaign: string; content?: string; landingPage: string; finalUrl: string }): Promise<string> {
+  const data = await invokeStudioFunction<Record<string, unknown>, { id: string }>('studio-campaigns', { action: 'create', link: payload });
+  return data.id;
+}
+
+export async function getCampaignReports(): Promise<any> {
+  return invokeStudioFunction<Record<string, unknown>, any>('studio-reports', { action: 'campaigns' });
+}

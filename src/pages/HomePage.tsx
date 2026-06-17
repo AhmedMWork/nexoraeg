@@ -2,18 +2,20 @@ import { useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, RotateCcw, ShieldCheck, Sparkles, Truck } from 'lucide-react';
+import { ArrowRight, RotateCcw, ShieldCheck, Sparkles, Truck, Lock, Eye, Gem } from 'lucide-react';
 import ProductCard from '@/components/ui/ProductCard';
 import StarRating from '@/components/ui/StarRating';
 import type { Product, Review } from '@/types';
 import { loadProducts } from '@/services/productService';
 import { useI18n } from '@/i18n/I18nProvider';
 import { SITE_URL } from '@/lib/constants';
+import PrivateListForm from '@/components/growth/PrivateListForm';
 
 const categoryTiles = [
   { title: 'Oversized Tees', ar: 'تيشيرتات واسعة', href: '/shop/unisex', image: '/assets/products/women-sand-tee.jpg' },
   { title: 'Core Essentials', ar: 'أساسيات يومية', href: '/shop', image: '/assets/products/men-cream-tee.jpg' },
-  { title: 'Limited', ar: 'الإصدارات المحدودة', href: '/limited', image: '/assets/nexora-logo-bg.jpg' },
+  { title: 'Limited Drop', ar: 'الإصدارات المحدودة', href: '/limited', image: '/assets/nexora-logo-bg.jpg' },
+  { title: 'Last Pieces', ar: 'آخر القطع', href: '/shop?availability=last-pieces', image: '/assets/products/men-black-tee.jpg' },
 ];
 
 export default function HomePage() {
@@ -85,7 +87,7 @@ export default function HomePage() {
           </motion.div>
         </section>
 
-        <section className="v3-shell mt-8 grid gap-4 md:grid-cols-3">
+        <section className="v3-shell mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {categoryTiles.map((tile, index) => (
             <motion.div key={tile.title} initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.06 }}>
               <Link to={tile.href} className="v3-category-card">
@@ -97,6 +99,25 @@ export default function HomePage() {
               </Link>
             </motion.div>
           ))}
+        </section>
+
+        <section className="v3-shell mt-12">
+          <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="v3-panel p-6 md:p-8">
+              <p className="v3-kicker">The Quiet Drop</p>
+              <h2 className="mt-4 text-3xl font-semibold tracking-[-0.05em] text-[var(--v33-text)] md:text-5xl">Luxury should not ask for attention.</h2>
+              <p className="mt-5 max-w-2xl text-sm leading-8 text-[var(--v33-muted)]">NEXORA is built around controlled silhouettes, limited releases, clean product journeys, and a calm checkout designed for serious intent.</p>
+              <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                {[['Limited by design', Lock], ['Source-aware growth', Eye], ['Premium finish', Gem]].map(([label, Icon]) => (
+                  <div key={String(label)} className="rounded-3xl border border-[var(--v33-border)] bg-[var(--v33-bg-soft)]/35 p-4">
+                    <Icon className="mb-3 h-5 w-5 text-[var(--v33-accent-strong)]" />
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--v33-text)]">{String(label)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <PrivateListForm />
+          </div>
         </section>
 
         <section className="v3-shell mt-12">

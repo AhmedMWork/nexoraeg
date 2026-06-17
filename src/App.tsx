@@ -41,10 +41,11 @@ const AdminCoupons = lazy(() => import('@/pages/admin/AdminCoupons'));
 const AdminDrops = lazy(() => import('@/pages/admin/AdminDrops'));
 const AdminAnalytics = lazy(() => import('@/pages/admin/AdminAnalytics'));
 const AdminCustomers = lazy(() => import('@/pages/admin/AdminCustomers'));
+const AdminVisitors = lazy(() => import('@/pages/admin/AdminVisitors'));
+const AdminLeads = lazy(() => import('@/pages/admin/AdminLeads'));
+const AdminCampaigns = lazy(() => import('@/pages/admin/AdminCampaigns'));
+const AdminReports = lazy(() => import('@/pages/admin/AdminReports'));
 const AdminSEO = lazy(() => import('@/pages/admin/AdminSEO'));
-const AdminSystemHealth = lazy(() => import('@/pages/admin/AdminSystemHealth'));
-const AdminSettings = lazy(() => import('@/pages/admin/AdminSettings'));
-const AdminAuditLogs = lazy(() => import('@/pages/admin/AdminAuditLogs'));
 const AdminPromotions = lazy(() => import('@/pages/admin/AdminPromotions'));
 
 // ─── Scroll to top on route change ───
@@ -108,10 +109,14 @@ function AdminRoutes() {
           <Route path="/drops" element={<PageTransition><AdminDrops /></PageTransition>} />
           <Route path="/analytics" element={<PageTransition><AdminAnalytics /></PageTransition>} />
           <Route path="/customers" element={<PageTransition><AdminCustomers /></PageTransition>} />
+          <Route path="/visitors" element={<PageTransition><AdminVisitors /></PageTransition>} />
+          <Route path="/leads" element={<PageTransition><AdminLeads /></PageTransition>} />
+          <Route path="/campaigns" element={<PageTransition><AdminCampaigns /></PageTransition>} />
+          <Route path="/reports" element={<PageTransition><AdminReports /></PageTransition>} />
           <Route path="/seo" element={<PageTransition><AdminSEO /></PageTransition>} />
-          <Route path="/system-health" element={<PageTransition><AdminSystemHealth /></PageTransition>} />
-          <Route path="/settings" element={<PageTransition><AdminSettings /></PageTransition>} />
-          <Route path="/audit-logs" element={<PageTransition><AdminAuditLogs /></PageTransition>} />
+          <Route path="/settings" element={<Navigate to="/nexora-admin/dashboard" replace />} />
+          <Route path="/system-health" element={<Navigate to="/nexora-admin/dashboard" replace />} />
+          <Route path="/audit-logs" element={<Navigate to="/nexora-admin/dashboard" replace />} />
           <Route path="/promotions" element={<PageTransition><AdminPromotions /></PageTransition>} />
         </Routes>
       </AnimatePresence>
