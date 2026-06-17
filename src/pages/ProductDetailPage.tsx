@@ -21,7 +21,7 @@ import { useWishlistStore } from '@/stores/wishlistStore';
 import { useCartStore } from '@/stores/cartStore';
 import { useRecentlyViewedStore } from '@/stores/recentlyViewedStore';
 import { loadProductBySlug, loadProducts } from '@/services/productService';
-import type { Product, Review } from '@/types';
+import type { Product, ProductVariant, Review } from '@/types';
 import { formatPrice, calculateDiscount } from '@/lib/utils';
 import { SITE_URL } from '@/lib/constants';
 import { absoluteUrl } from '@/lib/env';
@@ -39,6 +39,7 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColorId, setSelectedColorId] = useState('');
@@ -66,16 +67,26 @@ export default function ProductDetailPage() {
             setRelatedProducts(products.filter((p) => p.slug !== loadedProduct.slug).slice(0, 4));
           }
           try {
-            const { getReviews } = await import('@/lib/supabase/db');
-            const loadedReviews = await getReviews({ productId: loadedProduct.id, isApproved: true });
-            if (mounted) setReviews(loadedReviews);
+            const { getReviews, getPublicProductVariants } = await import('@/lib/supabase/db');
+            const [loadedReviews, loadedVariants] = await Promise.all([
+              getReviews({ productId: loadedProduct.id, isApproved: true }).catch(() => []),
+              getPublicProductVariants(loadedProduct.id).catch(() => []),
+            ]);
+            if (mounted) {
+              setReviews(loadedReviews);
+              setVariants(loadedVariants);
+            }
           } catch {
-            if (mounted) setReviews([]);
+            if (mounted) {
+              setReviews([]);
+              setVariants([]);
+            }
           }
           void trackEvent('product_view', { productId: loadedProduct.id, productName: loadedProduct.name, slug: loadedProduct.slug });
         } else {
           setRelatedProducts([]);
           setReviews([]);
+          setVariants([]);
         }
       })
       .finally(() => { if (mounted) setIsLoading(false); });
@@ -130,9 +141,35 @@ export default function ProductDetailPage() {
   const inWishlist = isInWishlist(product.id);
   const productImages = Array.isArray(product.images) ? product.images.filter(Boolean) : [];
   const productColors = normalizeColors(product.colors);
+  const activeVariants = variants.filter((variant) => variant.status !== 'disabled' && variant.status !== 'sold_out' && variant.status !== 'archived');
+  const variantsBySize = new Map<string, ProductVariant[]>();
+  activeVariants.forEach((variant) => {
+    const sizeKey = String(variant.size || '').toUpperCase();
+    if (!sizeKey) return;
+    variantsBySize.set(sizeKey, [...(variantsBySize.get(sizeKey) || []), variant]);
+  });
+  const displaySizes = activeVariants.length
+    ? Array.from(variantsBySize.entries()).map(([size, rows]) => ({
+      size,
+      stock: rows.reduce((sum, row) => sum + Math.max(0, Number(row.stock || 0) - Number(row.reservedStock || 0)), 0),
+      lowStockThreshold: Math.min(...rows.map((row) => Number(row.lowStockThreshold || 3))),
+    }))
+    : product.sizes;
   const selectedColor = productColors.find((color) => color.id === selectedColorId) || null;
-  const selectedSizeData = product.sizes.find((s) => s.size === selectedSize);
-  const maxQuantity = Math.max(1, Number(selectedSizeData?.stock || 1));
+  const selectedVariant = activeVariants.find((variant) => {
+    const sizeMatch = String(variant.size || '').toUpperCase() === selectedSize;
+    if (!sizeMatch) return false;
+    if (!selectedColor) return true;
+    return String(variant.color || '').toLowerCase() === getColorDisplayName(selectedColor).toLowerCase()
+      || String(variant.color || '').toLowerCase() === String(selectedColor.id || '').toLowerCase();
+  }) || null;
+  const selectedSizeData = activeVariants.length
+    ? displaySizes.find((s) => s.size === selectedSize)
+    : product.sizes.find((s) => s.size === selectedSize);
+  const liveSelectedStock = selectedVariant
+    ? Math.max(0, Number(selectedVariant.stock || 0) - Number(selectedVariant.reservedStock || 0))
+    : Number(selectedSizeData?.stock || 0);
+  const maxQuantity = Math.max(1, liveSelectedStock || 1);
   const visibleReviews = reviews.filter((review) => review.isApproved !== false);
   const averageRating = visibleReviews.length
     ? Math.round((visibleReviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / visibleReviews.length) * 10) / 10
@@ -154,7 +191,7 @@ export default function ProductDetailPage() {
       url: canonicalUrl,
       priceCurrency: 'EGP',
       price: product.price,
-      availability: product.status === 'sold_out' || product.sizes.every((s) => Number(s.stock) <= 0)
+      availability: product.status === 'sold_out' || displaySizes.every((s) => Number(s.stock) <= 0)
         ? 'https://schema.org/OutOfStock'
         : 'https://schema.org/InStock',
       itemCondition: 'https://schema.org/NewCondition',
@@ -173,9 +210,9 @@ export default function ProductDetailPage() {
   };
 
   const stockMessage = selectedSizeData
-    ? selectedSizeData.stock <= selectedSizeData.lowStockThreshold
-      ? `Only ${selectedSizeData.stock} left in ${selectedSize}. Limited by design.`
-      : `${selectedSizeData.stock} pieces available in ${selectedSize}.`
+    ? liveSelectedStock <= selectedSizeData.lowStockThreshold
+      ? `Only ${liveSelectedStock} left in ${selectedSize}. Limited by design.`
+      : `${liveSelectedStock} pieces available in ${selectedSize}.`
     : 'Select your size to check live stock.';
 
   const handleAddToCart = () => {
@@ -187,12 +224,13 @@ export default function ProductDetailPage() {
       toast.error('Please select a color');
       return;
     }
-    if (!selectedSizeData || selectedSizeData.stock < quantity) {
+    if (!selectedSizeData || liveSelectedStock < quantity) {
       toast.error('Not enough stock');
       return;
     }
     addItem({
       productId: product.id,
+      variantId: selectedVariant?.id,
       slug: product.slug,
       name: product.name,
       price: product.price,
@@ -201,9 +239,9 @@ export default function ProductDetailPage() {
       colorHex: selectedColor?.hex,
       colorPattern: selectedColor?.pattern,
       quantity,
-      image: productImages[activeImage] || productImages[0] || '/assets/nexora-logo-bg.jpg',
+      image: selectedVariant?.imageUrl || productImages[activeImage] || productImages[0] || '/assets/nexora-logo-bg.jpg',
     });
-    void trackEvent('add_to_cart', { productId: product.id, productName: product.name, size: selectedSize, color: selectedColor?.name, quantity });
+    void trackEvent('add_to_cart', { productId: product.id, variantId: selectedVariant?.id, productName: product.name, size: selectedSize, color: selectedColor?.name, quantity });
     toast.success(`${product.name} added to cart`);
   };
 
@@ -303,8 +341,8 @@ export default function ProductDetailPage() {
                     <button type="button" onClick={() => setIsSizeGuideOpen(true)} className="text-[10px] uppercase tracking-[0.16em] text-[#c8a96a] hover:text-[#f4f0e8]">Size guide</button>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {product.sizes.map((size) => {
-                      const isAvailable = size.stock > 0;
+                    {displaySizes.map((size) => {
+                      const isAvailable = Number(size.stock || 0) > 0;
                       const isSelected = selectedSize === size.size;
                       const isLowStock = size.stock <= size.lowStockThreshold && isAvailable;
                       return (
@@ -328,7 +366,8 @@ export default function ProductDetailPage() {
                     <div className="flex flex-wrap gap-2">
                       {productColors.map((color) => {
                         const isSelected = selectedColorId === color.id;
-                        const isAvailable = !!selectedSize && color.available !== false;
+                        const colorName = getColorDisplayName(color).toLowerCase();
+                        const isAvailable = !!selectedSize && color.available !== false && (!activeVariants.length || activeVariants.some((variant) => String(variant.size || '').toUpperCase() === selectedSize && Math.max(0, Number(variant.stock || 0) - Number(variant.reservedStock || 0)) > 0 && (String(variant.color || '').toLowerCase() === colorName || String(variant.color || '').toLowerCase() === String(color.id || '').toLowerCase())));
                         return (
                           <button key={color.id} type="button" disabled={!isAvailable} onClick={() => { if (!isAvailable) return; setSelectedColorId(color.id); void trackEvent('color_select', { productId: product.id, productName: product.name, color: color.name }); }} className={`flex items-center gap-2 rounded-full border px-3 py-2 text-xs transition-all ${isSelected ? 'border-[#c8a96a] bg-[#c8a96a]/10 text-[#f4f0e8]' : 'border-[#202024] text-[#b8b0a3] hover:border-[#6f675d] hover:text-[#f4f0e8]'} ${!isAvailable ? 'cursor-not-allowed opacity-40' : ''}`}>
                             <span className="h-5 w-5 rounded-full border border-white/25 shadow-inner" style={getColorStyle(color)} />

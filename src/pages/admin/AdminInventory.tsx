@@ -4,24 +4,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Download, Minus, PackageCheck, PackageX, Plus, RefreshCw, Search, Warehouse } from 'lucide-react';
-import type { InventoryLog, Product } from '@/types';
+import type { InventoryLog, Product, ProductVariant } from '@/types';
 import toast from 'react-hot-toast';
 
 function csvEscape(value: unknown) {
   return `"${String(value ?? '').replace(/"/g, '""')}"`;
 }
 
-function totalStock(product: Product) {
-  return product.sizes.reduce((sum, size) => sum + Number(size.stock || 0), 0);
-}
-
-function stockStatus(product: Product) {
-  const total = totalStock(product);
-  if (!product.sizes.length) return { label: 'Missing stock setup', tone: 'warning' as const };
-  if (total <= 0 || product.status === 'sold_out') return { label: 'Sold out', tone: 'danger' as const };
-  if (product.sizes.some((size) => Number(size.stock || 0) <= Number(size.lowStockThreshold ?? 3))) return { label: 'Low stock', tone: 'warning' as const };
-  return { label: 'In stock', tone: 'success' as const };
-}
 
 function Metric({ label, value, helper, icon: Icon }: { label: string; value: string; helper: string; icon: React.ElementType }) {
   return (
@@ -38,6 +27,7 @@ function Metric({ label, value, helper, icon: Icon }: { label: string; value: st
 
 export default function AdminInventory() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [logs, setLogs] = useState<InventoryLog[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'sold_out' | 'missing'>('all');
@@ -48,15 +38,17 @@ export default function AdminInventory() {
     setIsLoading(true);
     try {
       const db = await import('@/lib/supabase/db');
-      const [adminProducts, inventoryLogs] = await Promise.all([
-        db.getAdminProducts(),
+      const [inventory, inventoryLogs] = await Promise.all([
+        db.getAdminInventory().catch(async () => ({ products: await db.getAdminProducts(), variants: [] })),
         db.getInventoryLogs().catch(() => []),
       ]);
-      setProducts(adminProducts);
+      setProducts(inventory.products);
+      setVariants(inventory.variants || []);
       setLogs(inventoryLogs);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not load inventory');
       setProducts([]);
+      setVariants([]);
       setLogs([]);
     } finally {
       setIsLoading(false);
@@ -64,6 +56,51 @@ export default function AdminInventory() {
   };
 
   useEffect(() => { void loadInventory(); }, []);
+
+  const variantRowsByProduct = useMemo(() => {
+    const map = new Map<string, ProductVariant[]>();
+    variants.forEach((variant) => map.set(variant.productId, [...(map.get(variant.productId) || []), variant]));
+    return map;
+  }, [variants]);
+
+  const stockRowsForProduct = (product: Product) => {
+    const rows = variantRowsByProduct.get(product.id) || [];
+    if (rows.length) {
+      return rows.map((variant) => ({
+        key: variant.id || `${variant.productId}-${variant.size}-${variant.color}`,
+        variantId: variant.id,
+        size: variant.size,
+        color: variant.color,
+        sku: variant.sku || product.sku,
+        stock: Math.max(0, Number(variant.stock || 0) - Number(variant.reservedStock || 0)),
+        rawStock: Number(variant.stock || 0),
+        lowStockThreshold: Number(variant.lowStockThreshold ?? 3),
+        status: variant.status,
+      }));
+    }
+    return product.sizes.map((size) => ({
+      key: `${product.id}-${size.size}`,
+      variantId: undefined,
+      size: size.size,
+      color: '',
+      sku: product.sku,
+      stock: Number(size.stock || 0),
+      rawStock: Number(size.stock || 0),
+      lowStockThreshold: Number(size.lowStockThreshold ?? 3),
+      status: product.status || 'active',
+    }));
+  };
+
+  const totalStock = (product: Product) => stockRowsForProduct(product).reduce((sum, row) => sum + Number(row.stock || 0), 0);
+
+  const stockStatus = (product: Product) => {
+    const rows = stockRowsForProduct(product);
+    const total = totalStock(product);
+    if (!rows.length) return { label: 'Missing stock setup', tone: 'warning' as const };
+    if (total <= 0 || product.status === 'sold_out') return { label: 'Sold out', tone: 'danger' as const };
+    if (rows.some((row) => Number(row.stock || 0) <= Number(row.lowStockThreshold ?? 3))) return { label: 'Low stock', tone: 'warning' as const };
+    return { label: 'In stock', tone: 'success' as const };
+  };
 
   const filteredProducts = useMemo(() => products.filter((product) => {
     const q = searchQuery.trim().toLowerCase();
@@ -84,10 +121,10 @@ export default function AdminInventory() {
     return { totalUnits, low, soldOut, missing };
   }, [products]);
 
-  const adjustStock = async (productId: string, size: string, delta: number) => {
+  const adjustStock = async (productId: string, size: string, delta: number, variantId?: string) => {
     const product = products.find((p) => p.id === productId);
     if (!product || !size) return;
-    const key = `${productId}-${size}`;
+    const key = variantId || `${productId}-${size}`;
     setIsAdjusting(key);
 
     const previous = products;
@@ -95,8 +132,9 @@ export default function AdminInventory() {
     setProducts((current) => current.map((item) => item.id === productId ? { ...item, sizes: updatedSizes } : item));
 
     try {
-      const { updateProductStock } = await import('@/lib/supabase/db');
-      await updateProductStock(productId, size, delta, 'manual_adjustment', `Studio inventory ${delta > 0 ? '+' : ''}${delta}`);
+      const { updateProductStock, updateVariantStock } = await import('@/lib/supabase/db');
+      if (variantId) await updateVariantStock(variantId, delta, 'manual_adjustment', `Studio inventory ${delta > 0 ? '+' : ''}${delta}`);
+      else await updateProductStock(productId, size, delta, 'manual_adjustment', `Studio inventory ${delta > 0 ? '+' : ''}${delta}`);
       toast.success('Stock updated');
       void loadInventory();
     } catch (error) {
@@ -110,7 +148,7 @@ export default function AdminInventory() {
   const exportCsv = () => {
     const rows = [
       ['product', 'slug', 'sku', 'status', 'size', 'stock', 'low_stock_threshold', 'total_stock'],
-      ...products.flatMap((product) => product.sizes.length ? product.sizes.map((size) => [product.name, product.slug, product.sku, product.status, size.size, size.stock, size.lowStockThreshold, totalStock(product)]) : [[product.name, product.slug, product.sku, product.status, 'NO_SIZE_SETUP', 0, 0, 0]]),
+      ...products.flatMap((product) => stockRowsForProduct(product).length ? stockRowsForProduct(product).map((row) => [product.name, product.slug, row.sku || product.sku, row.status || product.status, `${row.size}${row.color ? ' / ' + row.color : ''}`, row.stock, row.lowStockThreshold, totalStock(product)]) : [[product.name, product.slug, product.sku, product.status, 'NO_SIZE_SETUP', 0, 0, 0]]),
     ];
     const blob = new Blob([rows.map((row) => row.map(csvEscape).join(',')).join('\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -144,7 +182,7 @@ export default function AdminInventory() {
       <div className="studio-card p-5">
         <h2 className="mb-2 text-sm font-semibold text-[#FFF0E1]">How Inventory works</h2>
         <div className="grid gap-3 text-xs leading-6 text-[#BCAEA0] md:grid-cols-3">
-          <p><b className="text-[#D2B48C]">Stock source:</b> product size stock from Products → Sizes and stock.</p>
+          <p><b className="text-[#D2B48C]">Stock source:</b> exact variant rows when available (size + color + SKU), otherwise legacy product size stock.</p>
           <p><b className="text-[#D2B48C]">+ / - buttons:</b> quick manual adjustments. Every adjustment is saved through Supabase Edge Function and logged.</p>
           <p><b className="text-[#D2B48C]">If empty:</b> confirm products exist in Products page, run latest migrations, and deploy studio-products function.</p>
         </div>
@@ -159,7 +197,7 @@ export default function AdminInventory() {
           <div className="grid gap-2 md:grid-cols-2">
             {products.filter((p) => stockStatus(p).label === 'Low stock').slice(0, 8).map((product) => (
               <p key={product.id} className="rounded-2xl border border-red-400/10 bg-[#0E0B0A] px-4 py-3 text-xs text-[#BCAEA0]">
-                <b className="text-[#FFF0E1]">{product.name}</b>: {product.sizes.filter((size) => Number(size.stock || 0) <= Number(size.lowStockThreshold ?? 3)).map((size) => `${size.size} (${size.stock})`).join(', ')}
+                <b className="text-[#FFF0E1]">{product.name}</b>: {stockRowsForProduct(product).filter((row) => Number(row.stock || 0) <= Number(row.lowStockThreshold ?? 3)).map((row) => `${row.size}${row.color ? ' / ' + row.color : ''} (${row.stock})`).join(', ')}
               </p>
             ))}
           </div>
@@ -207,19 +245,19 @@ export default function AdminInventory() {
                     <td className="p-4 text-xs text-[#BCAEA0]">{product.sku || '—'}</td>
                     <td className="p-4"><span className={`rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.16em] ${status.tone === 'danger' ? 'bg-red-500/10 text-red-300' : status.tone === 'warning' ? 'bg-amber-500/10 text-amber-200' : 'bg-emerald-500/10 text-emerald-200'}`}>{status.label}</span></td>
                     <td className="p-4">
-                      {product.sizes.length ? <div className="flex flex-wrap gap-2">
-                        {product.sizes.map((size) => {
-                          const isLow = Number(size.stock || 0) <= Number(size.lowStockThreshold ?? 3);
-                          const key = `${product.id}-${size.size}`;
+                      {stockRowsForProduct(product).length ? <div className="flex flex-wrap gap-2">
+                        {stockRowsForProduct(product).map((row) => {
+                          const isLow = Number(row.stock || 0) <= Number(row.lowStockThreshold ?? 3);
+                          const key = row.variantId || `${product.id}-${row.size}`;
                           return (
-                            <div key={size.size} className="flex items-center gap-1 rounded-2xl border border-[#332923] bg-[#0E0B0A] px-2 py-1">
-                              <span className={`text-[11px] ${isLow ? 'text-amber-200' : 'text-[#D2C0B0]'}`}>{size.size}: <b>{size.stock}</b></span>
-                              <button disabled={isAdjusting === key} onClick={() => adjustStock(product.id, size.size, -1)} className="rounded-full p-1 text-[#BCAEA0] hover:bg-red-500/10 hover:text-red-300"><Minus className="h-3 w-3" /></button>
-                              <button disabled={isAdjusting === key} onClick={() => adjustStock(product.id, size.size, 1)} className="rounded-full p-1 text-[#BCAEA0] hover:bg-emerald-500/10 hover:text-emerald-300"><Plus className="h-3 w-3" /></button>
+                            <div key={row.key} className="flex items-center gap-1 rounded-2xl border border-[#332923] bg-[#0E0B0A] px-2 py-1">
+                              <span className={`text-[11px] ${isLow ? 'text-amber-200' : 'text-[#D2C0B0]'}`}>{row.size}{row.color ? ` / ${row.color}` : ''}: <b>{row.stock}</b></span>
+                              <button disabled={isAdjusting === key} onClick={() => adjustStock(product.id, row.size, -1, row.variantId)} className="rounded-full p-1 text-[#BCAEA0] hover:bg-red-500/10 hover:text-red-300"><Minus className="h-3 w-3" /></button>
+                              <button disabled={isAdjusting === key} onClick={() => adjustStock(product.id, row.size, 1, row.variantId)} className="rounded-full p-1 text-[#BCAEA0] hover:bg-emerald-500/10 hover:text-emerald-300"><Plus className="h-3 w-3" /></button>
                             </div>
                           );
                         })}
-                      </div> : <p className="text-xs leading-6 text-amber-200">No size stock rows. Open Products → Edit product → Sizes and stock, then set quantities.</p>}
+                      </div> : <p className="text-xs leading-6 text-amber-200">No size/variant stock rows. Open Products → Variants & Stock, then set quantities.</p>}
                     </td>
                     <td className="p-4"><span className={`text-sm font-semibold ${total <= 0 ? 'text-red-300' : total <= 10 ? 'text-amber-200' : 'text-[#D2B48C]'}`}>{total}</span></td>
                     <td className="p-4 text-xs text-[#BCAEA0]">Quick edit stock here or full setup in Products.</td>

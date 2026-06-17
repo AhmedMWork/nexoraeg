@@ -191,6 +191,7 @@ function rowToOrder(row: Record<string, any>, items: any[] = []): Order {
     },
     items: items.map((item) => ({
       productId: item.product_id || item.productId,
+      variantId: item.variant_id || item.variantId,
       name: item.product_name || item.name,
       slug: item.slug || '',
       price: Number(item.unit_price || item.price || 0),
@@ -412,6 +413,27 @@ export async function deleteProductVariant(id: string): Promise<void> {
 }
 
 
+
+export async function getPublicProductVariants(productId: string): Promise<ProductVariant[]> {
+  const { data, error } = await supabase
+    .from('product_variants')
+    .select('*')
+    .eq('product_id', productId)
+    .in('status', ['active', 'sold_out'])
+    .order('sort_order', { ascending: true });
+  if (error) throw error;
+  return (data || []).map(rowToVariant);
+}
+
+export async function getAdminInventory(): Promise<{ products: Product[]; variants: ProductVariant[] }> {
+  const data = await invokeStudioFunction<Record<string, unknown>, { products: any[]; variants: any[] }>('studio-products', { action: 'inventory-list' });
+  return {
+    products: (data.products || []).map(rowToProduct),
+    variants: (data.variants || []).map(rowToVariant),
+  };
+}
+
+
 // Orders
 export async function createOrder(order: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
   const data = await invokeStudioFunction('studio-orders', studioHeadersPayload('create-manual', { order }));
@@ -595,6 +617,7 @@ export async function updateSiteSettings(data: Partial<SiteSettings>): Promise<v
 
 // Inventory/Audit/Dashboard
 export async function updateProductStock(productId: string, size: string, quantity: number, reason: InventoryLog['reason'] = 'manual_adjustment', note?: string): Promise<void> { await invokeStudioFunction('studio-products', studioHeadersPayload('adjust-stock', { productId, size, quantity, reason, note })); }
+export async function updateVariantStock(variantId: string, quantity: number, reason: InventoryLog['reason'] = 'manual_adjustment', note?: string): Promise<void> { await invokeStudioFunction('studio-products', studioHeadersPayload('adjust-variant-stock', { variantId, quantity, reason, note })); }
 export async function createInventoryLog(log: Omit<InventoryLog, 'id' | 'createdAt'>): Promise<string> { const data = await invokeStudioFunction('studio-products', studioHeadersPayload('inventory-log', { log })); return (data as any).id; }
 export async function getInventoryLogs(productId?: string): Promise<InventoryLog[]> {
   const data = await invokeStudioFunction<Record<string, unknown>, { logs: any[] }>('studio-products', { action: 'inventory-logs', productId });

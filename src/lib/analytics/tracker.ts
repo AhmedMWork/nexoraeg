@@ -190,27 +190,12 @@ export async function trackVisitorEvent(eventName: string, payload: Record<strin
     payload,
   };
 
+  if (!analyticsConsentGranted()) return;
   try {
-    if (analyticsConsentGranted()) {
-      const { error } = await supabase.functions.invoke('track-visitor-event', { body });
-      if (!error) return;
-    }
+    await supabase.functions.invoke('track-visitor-event', { body });
   } catch {
-    // fallback below
-  }
-
-  try {
-    await supabase.from('analytics_events').insert({
-      event_name: eventName,
-      session_id: attribution.sessionId,
-      path: window.location.pathname,
-      referrer: attribution.referrer,
-      language: deviceInfo.language,
-      device: deviceInfo.type,
-      payload: { ...payload, attribution, visitorId: attribution.visitorId, fallback: true },
-    });
-  } catch {
-    // Analytics must not break UX.
+    // Analytics must never break storefront UX. Public table fallback was removed in V5.3
+    // so visitor events stay service-role-only through Edge Functions.
   }
 }
 

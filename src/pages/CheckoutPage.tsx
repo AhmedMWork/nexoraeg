@@ -36,6 +36,16 @@ export default function CheckoutPage() {
   const [isCheckingCoupon, setIsCheckingCoupon] = useState(false);
   const [shippingFee, setShippingFee] = useState(0);
   const [freeShippingThreshold, setFreeShippingThreshold] = useState(0);
+  const [idempotencyKey, setIdempotencyKey] = useState(() => {
+    if (typeof window === 'undefined') return `nx-${Date.now()}`;
+    const existing = window.sessionStorage.getItem('nexora-checkout-idempotency-key-v5-3');
+    if (existing) return existing;
+    const key = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? `nx-${crypto.randomUUID()}`
+      : `nx-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    window.sessionStorage.setItem('nexora-checkout-idempotency-key-v5-3', key);
+    return key;
+  });
 
   const subtotal = getTotalPrice();
   const shipping = (freeShippingThreshold > 0 && subtotal >= freeShippingThreshold) || appliedCoupon?.freeShipping ? 0 : shippingFee;
@@ -103,7 +113,7 @@ export default function CheckoutPage() {
       const result = await validateCouponForCart({
         code: couponCode,
         subtotal,
-        items: items.map((item) => ({ productId: item.productId, size: item.size, color: item.color, quantity: item.quantity })),
+        items: items.map((item) => ({ productId: item.productId, variantId: item.variantId, size: item.size, color: item.color, quantity: item.quantity })),
       });
       if (!result.valid) {
         setAppliedCoupon(null);
@@ -136,7 +146,7 @@ export default function CheckoutPage() {
         attribution,
         visitorId: attribution.visitorId,
         sessionId: attribution.sessionId,
-        idempotencyKey: `nx-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        idempotencyKey,
         customer: {
           fullName: data.fullName,
           phone: data.phone,
@@ -147,6 +157,7 @@ export default function CheckoutPage() {
         },
         items: items.map((item) => ({
           productId: item.productId,
+          variantId: item.variantId,
           name: item.name,
           slug: item.slug,
           price: item.price,
@@ -179,6 +190,8 @@ export default function CheckoutPage() {
       setOrderNumber(createdOrder.orderNumber);
       setOrderComplete(true);
       clearCart();
+      if (typeof window !== 'undefined') window.sessionStorage.removeItem('nexora-checkout-idempotency-key-v5-3');
+      setIdempotencyKey(`nx-${Date.now()}-${Math.random().toString(16).slice(2)}`);
       toast.success(t('checkout.confirmed'));
     } catch (error) {
       const checkoutError = classifyCheckoutError(error);

@@ -17,7 +17,7 @@ export interface ProductVariant {
   lowStockThreshold: number;
   imageUrl?: string;
   barcode?: string;
-  status: 'active' | 'disabled' | 'sold_out';
+  status: 'active' | 'disabled' | 'hidden' | 'sold_out' | 'archived';
   sortOrder?: number;
   createdAt?: Date;
   updatedAt?: Date;
@@ -80,6 +80,7 @@ export interface SizeInventory {
 
 export interface CartItem {
   productId: string;
+  variantId?: string;
   slug: string;
   name: string;
   price: number;
@@ -124,6 +125,7 @@ export interface CustomerInfo {
 
 export interface OrderItem {
   productId: string;
+  variantId?: string;
   name: string;
   slug: string;
   price: number;

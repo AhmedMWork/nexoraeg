@@ -10,8 +10,8 @@ import { trackEvent } from '@/services/analytics.service';
 interface CartStore {
   items: CartItem[];
   addItem: (item: CartItem) => void;
-  removeItem: (productId: string, size: string, color?: string) => void;
-  updateQuantity: (productId: string, size: string, quantity: number, color?: string) => void;
+  removeItem: (productId: string, size: string, color?: string, variantId?: string) => void;
+  updateQuantity: (productId: string, size: string, quantity: number, color?: string, variantId?: string) => void;
   clearCart: () => void;
   getTotalItems: () => number;
   getTotalPrice: () => number;
@@ -25,14 +25,14 @@ export const useCartStore = create<CartStore>()(
       addItem: (item) => {
         const { items } = get();
         const existingItem = items.find(
-          (i) => i.productId === item.productId && i.size === item.size && (i.color || '') === (item.color || '')
+          (i) => i.productId === item.productId && i.size === item.size && (i.color || '') === (item.color || '') && (i.variantId || '') === (item.variantId || '')
         );
 
         void trackEvent('add_to_cart', { productId: item.productId, productName: item.name, size: item.size, color: item.color, quantity: item.quantity });
         if (existingItem) {
           set({
             items: items.map((i) =>
-              i.productId === item.productId && i.size === item.size && (i.color || '') === (item.color || '')
+              i.productId === item.productId && i.size === item.size && (i.color || '') === (item.color || '') && (i.variantId || '') === (item.variantId || '')
                 ? { ...i, quantity: i.quantity + item.quantity }
                 : i
             ),
@@ -42,26 +42,26 @@ export const useCartStore = create<CartStore>()(
         }
       },
 
-      removeItem: (productId, size, color) => {
-        const removed = get().items.find((i) => i.productId === productId && i.size === size && (i.color || '') === (color || ''));
+      removeItem: (productId, size, color, variantId) => {
+        const removed = get().items.find((i) => i.productId === productId && i.size === size && (i.color || '') === (color || '') && (i.variantId || '') === (variantId || ''));
         if (removed) void trackEvent('remove_from_cart', { productId, productName: removed.name, size, color: removed.color, quantity: removed.quantity });
         set({
           items: get().items.filter(
-            (i) => !(i.productId === productId && i.size === size && (i.color || '') === (color || ''))
+            (i) => !(i.productId === productId && i.size === size && (i.color || '') === (color || '') && (i.variantId || '') === (variantId || ''))
           ),
         });
       },
 
-      updateQuantity: (productId, size, quantity, color) => {
+      updateQuantity: (productId, size, quantity, color, variantId) => {
         if (quantity <= 0) {
-          get().removeItem(productId, size, color);
+          get().removeItem(productId, size, color, variantId);
           return;
         }
-        const item = get().items.find((i) => i.productId === productId && i.size === size && (i.color || '') === (color || ''));
+        const item = get().items.find((i) => i.productId === productId && i.size === size && (i.color || '') === (color || '') && (i.variantId || '') === (variantId || ''));
         if (item) void trackEvent('cart_quantity_changed', { productId, productName: item.name, size, color: item.color, quantity });
         set({
           items: get().items.map((i) =>
-            i.productId === productId && i.size === size && (i.color || '') === (color || '')
+            i.productId === productId && i.size === size && (i.color || '') === (color || '') && (i.variantId || '') === (variantId || '')
               ? { ...i, quantity }
               : i
           ),
@@ -82,7 +82,7 @@ export const useCartStore = create<CartStore>()(
       },
     }),
     {
-      name: 'nexora-cart-v5-1',
+      name: 'nexora-cart-v5-3',
       partialize: (state) => ({ items: state.items }),
     }
   )
