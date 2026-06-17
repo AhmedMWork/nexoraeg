@@ -45,11 +45,13 @@ export default function Navbar() {
     return t(keyMap[href] || fallback);
   };
 
-  const submitSearch = () => {
-    const q = searchTerm.trim();
+  const popularSearches = ['Black', 'Oversized', 'Limited', 'Essentials', 'Last Pieces'];
+
+  const submitSearch = (value = searchTerm) => {
+    const q = value.trim();
     if (!q) return;
     setIsSearchOpen(false);
-    navigate(`/shop?search=${encodeURIComponent(q)}`);
+    navigate(`/shop?search=${encodeURIComponent(q)}&utm_source=site&utm_medium=search&utm_campaign=popular_search`);
   };
 
   const isLinkActive = (href: string) => {
@@ -61,7 +63,7 @@ export default function Navbar() {
     <>
       <motion.header
         style={{ backgroundColor: 'color-mix(in srgb, var(--v33-card) 88%, transparent)', borderBottomColor: 'color-mix(in srgb, var(--v33-border) 82%, transparent)' }}
-        className={`fixed top-0 left-0 right-0 z-50 border-b backdrop-blur-2xl transition-shadow duration-300 ${isScrolled ? 'shadow-lg' : ''}`}
+        className={`fixed top-[33px] left-0 right-0 z-50 border-b backdrop-blur-2xl transition-shadow duration-300 ${isScrolled ? 'shadow-lg' : ''}`}
       >
         <nav className="w-full px-4 sm:px-6 lg:px-10">
           <div className="flex items-center justify-between h-16 lg:h-[4.35rem]">
@@ -138,7 +140,15 @@ export default function Navbar() {
                 <input type="text" placeholder={t('nav.searchPlaceholder')} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submitSearch(); if (e.key === 'Escape') setIsSearchOpen(false); }} autoFocus className="flex-1 bg-transparent text-xl font-light text-[#5C4A42] dark:text-[#E9DED3] placeholder:text-[#8A7A72] outline-none" />
                 <button onClick={() => setIsSearchOpen(false)} className="p-2 text-[#8A7A72] hover:text-[#5C4A42] dark:hover:text-[#E9DED3]" aria-label="Close search"><X className="w-5 h-5" /></button>
               </div>
-              <p className="mt-6 text-xs uppercase tracking-[0.2em] text-[#8A7A72]">{t('nav.pressEsc')}</p>
+              <div className="mt-6">
+                <p className="text-xs uppercase tracking-[0.2em] text-[#8A7A72]">Popular searches</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {popularSearches.map((term) => (
+                    <button key={term} onClick={() => submitSearch(term)} className="rounded-full border border-[#CFC3B7] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[#5C4A42] transition hover:border-[#A97868] hover:text-[#A97868] dark:border-[#4A3D37] dark:text-[#E9DED3]">{term}</button>
+                  ))}
+                </div>
+                <p className="mt-5 text-xs uppercase tracking-[0.2em] text-[#8A7A72]">{t('nav.pressEsc')}</p>
+              </div>
             </div>
           </motion.div>
         )}
