@@ -63,3 +63,15 @@ verify_jwt = false
 
 [functions.studio-reports]
 verify_jwt = false
+
+[functions.calculate-shipping]
+verify_jwt = false
+
+[functions.studio-shipping]
+verify_jwt = false
+
+[functions.create-shipment]
+verify_jwt = false
+
+[functions.track-shipment]
+verify_jwt = false

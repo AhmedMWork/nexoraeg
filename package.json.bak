@@ -1,7 +1,7 @@
 {
-  "name": "nexora-v5-4-operations-intelligence-production",
+  "name": "nexora-v5-2-1-ultimate-production",
   "private": true,
-  "version": "5.4.0",
+  "version": "5.2.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -94,6 +94,6 @@
     "node": "20.x",
     "npm": "10.x"
   },
-  "description": "NEXORA V5.4 Operations Intelligence, Product Analytics, Shipping Control, ShipBlu Integration Production Ready",
+  "description": "NEXORA V5.2.1 Ultimate — storefront image controls, fixed inventory visibility, clearer campaigns, richer reports, premium admin guidance.",
   "packageManager": "npm@10.9.2"
 }

@@ -5,6 +5,11 @@ function pick(value: unknown) {
   return text || null;
 }
 
+function uuidOrNull(value: unknown) {
+  const text = String(value || '').trim();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(text) ? text : null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   const limited = rateLimit(req, 'track-visitor-event', 120, 1000 * 60 * 10);
@@ -57,7 +62,7 @@ Deno.serve(async (req) => {
       session_id: sessionId,
       event_name: eventName,
       page_url: pick(body.pageUrl),
-      product_id: pick(body.payload?.productId),
+      product_id: uuidOrNull(body.payload?.productId),
       cart_value: Number(body.payload?.cartValue || body.payload?.total || 0),
       source: pick(attribution.source),
       medium: pick(attribution.medium),

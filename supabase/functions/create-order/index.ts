@@ -1,41 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { corsHeaders, json, serviceClient, rateLimit, auditLog } from '../_shared/studio.ts';
 
-type CartItem = { productId: string; size: string; quantity: number; slug?: string; image?: string; color?: string; colorHex?: string; colorPattern?: string };
-
-function orderNumber() {
-  const d = new Date();
-  const ymd = `${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
-  const entropy = crypto.getRandomValues(new Uint32Array(1))[0].toString(36).toUpperCase().slice(0, 5);
-  return `NXR-${ymd}-${entropy}`;
-}
-
-function normalizePhone(value: unknown) {
-  return String(value || '').replace(/\D/g, '').replace(/^20/, '0');
-}
-
-async function uniqueOrderNumber(supabase: ReturnType<typeof serviceClient>) {
-  for (let attempt = 0; attempt < 6; attempt += 1) {
-    const candidate = orderNumber();
-    const { data } = await supabase.from('orders').select('id').eq('order_number', candidate).maybeSingle();
-    if (!data) return candidate;
-  }
-  return orderNumber();
-}
-
-function normalizeCode(code: unknown) {
-  return String(code || '').trim().toUpperCase();
-}
-
-function couponDiscount(coupon: any, subtotal: number) {
-  let discount = 0;
-  let freeShipping = false;
-  if (coupon.type === 'percentage') discount = subtotal * (Number(coupon.value || 0) / 100);
-  if (coupon.type === 'fixed') discount = Number(coupon.value || 0);
-  if (coupon.type === 'free_shipping') freeShipping = true;
-  if (coupon.max_discount_amount) discount = Math.min(discount, Number(coupon.max_discount_amount));
-  discount = Math.max(0, Math.min(discount, subtotal));
-  return { discount, freeShipping };
+function publicCheckoutStatus(message: string) {
+  const normalized = message.toLowerCase();
+  if (
+    normalized.includes('cart is empty')
+    || normalized.includes('unavailable')
+    || normalized.includes('not available')
+    || normalized.includes('valid egyptian phone')
+    || normalized.includes('required')
+    || normalized.includes('coupon')
+    || normalized.includes('minimum order')
+    || normalized.includes('usage limit')
+  ) return 400;
+  return 500;
 }
 
 Deno.serve(async (req) => {
@@ -46,188 +24,27 @@ Deno.serve(async (req) => {
   const supabase = serviceClient();
 
   try {
-    const body = await req.json();
-    const idempotencyKey = String(body.idempotencyKey || '').trim();
-    if (idempotencyKey) {
-      const { data: existing } = await supabase.from('orders').select('id, order_number, total').eq('idempotency_key', idempotencyKey).maybeSingle();
-      if (existing) return json({ orderId: existing.id, orderNumber: existing.order_number, total: existing.total });
-    }
-    const items: CartItem[] = body.items || [];
-    if (!items.length) return json({ error: 'Cart is empty.' }, 400);
+    const body = await req.json().catch(() => ({}));
+    const { data, error } = await supabase.rpc('nexora_create_order_atomic_v5_4', { payload: { ...body, paymentMethod: 'cod' } });
 
-    const ids = [...new Set(items.map((i) => i.productId).filter(Boolean))];
-    const { data: products, error: productsError } = await supabase
-      .from('products')
-      .select('*')
-      .in('id', ids)
-      .eq('status', 'active');
-
-    if (productsError) throw productsError;
-    if (!products || products.length !== ids.length) return json({ error: 'Some items are unavailable.' }, 400);
-
-    let subtotal = 0;
-    const orderItems = [];
-    const stockUpdates: Array<{ id: string; stockBySize: Record<string, number>; stockTotal: number; size: string; before: number; after: number; quantity: number; sku?: string }> = [];
-
-    for (const item of items) {
-      const product = products.find((p) => p.id === item.productId);
-      if (!product) return json({ error: 'Product unavailable.' }, 400);
-
-      const qty = Math.max(1, Number(item.quantity || 1));
-      const size = String(item.size || '').trim().toUpperCase();
-      if (!size) return json({ error: 'Please select a size for every item.' }, 400);
-
-      const productColors = Array.isArray(product.colors) ? product.colors : [];
-      const selectedColor = String(item.color || '').trim();
-      if (productColors.length > 0) {
-        if (!selectedColor) return json({ error: `Please select a color for ${product.name_en}.` }, 400);
-        const colorAllowed = productColors.some((color: unknown) => {
-          if (typeof color === 'string') return color.toLowerCase() === selectedColor.toLowerCase();
-          if (color && typeof color === 'object') {
-            const c = color as { name?: string; nameEn?: string; nameAr?: string; id?: string; available?: boolean };
-            if (c.available === false) return false;
-            return [c.name, c.nameEn, c.nameAr, c.id].filter(Boolean).some((value) => String(value).toLowerCase() === selectedColor.toLowerCase());
-          }
-          return false;
-        });
-        if (!colorAllowed) return json({ error: `Selected color is not available for ${product.name_en}.` }, 400);
-      }
-
-      const stockBySize = { ...(product.stock_by_size || {}) };
-      const before = Number(stockBySize[size] ?? 0);
-      if (before < qty) return json({ error: `${product.name_en} is not available in the selected quantity.` }, 400);
-
-      const after = before - qty;
-      stockBySize[size] = after;
-      const stockTotal = Object.values(stockBySize).reduce((s: number, v: any) => s + Number(v || 0), 0);
-      const unitPrice = Number(product.price || 0);
-      subtotal += unitPrice * qty;
-
-      stockUpdates.push({ id: product.id, stockBySize, stockTotal, size, before, after, quantity: qty, sku: product.sku });
-      orderItems.push({
-        product_id: product.id,
-        product_name: product.name_en,
-        slug: product.slug,
-        size,
-        color: item.color || null,
-        color_hex: item.colorHex || null,
-        color_pattern: item.colorPattern || null,
-        quantity: qty,
-        unit_price: unitPrice,
-        total: unitPrice * qty,
-        image: product.images?.[0]?.public_url || product.images?.[0]?.url || product.images?.[0] || item.image || '',
-      });
+    if (error) {
+      const message = error.message || 'Could not create order.';
+      await auditLog('checkout_failed', 'order', 'create-order', { message, source: body?.attribution?.source, campaign: body?.attribution?.campaign });
+      return json({ error: message }, publicCheckoutStatus(message), req);
     }
 
-    const { data: settings } = await supabase.from('site_settings').select('*').eq('id', 'main').maybeSingle();
-    const baseShippingFee = Number(settings?.shipping_fee || 0);
-    const freeShippingThreshold = Number(settings?.free_shipping_threshold || 0);
-
-    let discountTotal = 0;
-    let freeShippingByCoupon = false;
-    let couponCode: string | null = null;
-
-    const requestedCoupon = normalizeCode(body.couponCode);
-    if (requestedCoupon) {
-      const { data: coupon } = await supabase
-        .from('coupons')
-        .select('*')
-        .eq('code', requestedCoupon)
-        .eq('status', 'active')
-        .maybeSingle();
-
-      if (!coupon) return json({ error: 'Coupon is not valid.' }, 400);
-      const now = Date.now();
-      if (new Date(coupon.start_date).getTime() > now || new Date(coupon.end_date).getTime() < now) return json({ error: 'Coupon is not active.' }, 400);
-      if (Number(subtotal || 0) < Number(coupon.min_order_amount || 0)) return json({ error: 'Minimum order amount has not been reached.' }, 400);
-      if (coupon.usage_limit && Number(coupon.used_count || 0) >= Number(coupon.usage_limit || 0)) return json({ error: 'Coupon usage limit reached.' }, 400);
-
-      const result = couponDiscount(coupon, subtotal);
-      discountTotal = result.discount;
-      freeShippingByCoupon = result.freeShipping;
-      couponCode = coupon.code;
-    }
-
-    const shippingFee = freeShippingByCoupon || (freeShippingThreshold > 0 && subtotal >= freeShippingThreshold) ? 0 : baseShippingFee;
-    const total = Math.max(0, subtotal - discountTotal + shippingFee);
-
-    const customerPhone = normalizePhone(body.customer?.phone);
-    if (!/^01[0-9]{9}$/.test(customerPhone)) return json({ error: 'Enter a valid Egyptian phone number.' }, 400);
-
-    const orderPayload = {
-      order_number: await uniqueOrderNumber(supabase),
-      customer_name: body.customer?.fullName || body.customer?.name || '',
-      customer_phone: customerPhone,
-      customer_email: body.customer?.email || null,
-      governorate: body.customer?.governorate || '',
-      city: body.customer?.city || '',
-      address: body.customer?.address || '',
-      notes: body.customer?.notes || body.notes || null,
-      subtotal,
-      discount_total: discountTotal,
-      shipping_fee: shippingFee,
-      total,
-      payment_method: 'cod',
-      payment_status: 'pending',
-      order_status: 'pending',
-      coupon_code: couponCode,
-      idempotency_key: idempotencyKey || null,
-      source: body.attribution?.source || 'web',
-      visitor_id: body.visitorId || body.attribution?.visitorId || null,
-      session_id: body.sessionId || body.attribution?.sessionId || null,
-      attribution: body.attribution || {},
-      source_platform: body.attribution?.source || null,
-      campaign: body.attribution?.campaign || null,
-      status_history: [{ status: 'pending', message: 'Order received.', timestamp: new Date().toISOString(), updatedBy: 'system' }],
-    };
-
-    if (!orderPayload.customer_name || !orderPayload.customer_phone || !orderPayload.governorate || !orderPayload.city || !orderPayload.address) {
-      return json({ error: 'Customer name, phone, governorate, city, and address are required.' }, 400);
-    }
-
-    const { data: order, error: orderError } = await supabase.from('orders').insert(orderPayload).select('*').single();
-    if (orderError) throw orderError;
-
-    const { error: itemsError } = await supabase.from('order_items').insert(orderItems.map((i) => ({ ...i, order_id: order.id })));
-    if (itemsError) throw itemsError;
-
-    for (const update of stockUpdates) {
-      await supabase.from('products').update({
-        stock_by_size: update.stockBySize,
-        stock_total: update.stockTotal,
-        status: update.stockTotal <= 0 ? 'sold_out' : 'active',
-      }).eq('id', update.id);
-
-      await supabase.from('inventory_logs').insert({
-        product_id: update.id,
-        sku: update.sku,
-        size: update.size,
-        change: -update.quantity,
-        reason: 'order_created',
-        previous_stock: update.before,
-        new_stock: update.after,
-        order_id: order.id,
-      });
-    }
-
-    if (couponCode) {
-      await supabase.rpc('increment_coupon_usage', { code_value: couponCode }).then(async ({ error }) => {
-        if (error) {
-          const { data: current } = await supabase.from('coupons').select('used_count').eq('code', couponCode).maybeSingle();
-          await supabase.from('coupons').update({ used_count: Number(current?.used_count || 0) + 1 }).eq('code', couponCode);
-        }
-      });
-    }
-
-    if (customerPhone) {
-      const { data: lead } = await supabase.from('lead_profiles').select('id').eq('phone', customerPhone).order('created_at', { ascending: false }).limit(1).maybeSingle();
-      if (lead?.id) await supabase.from('lead_profiles').update({ status: 'ordered', updated_at: new Date().toISOString() }).eq('id', lead.id);
-    }
-
-    await auditLog('order_created', 'order', order.id, { orderNumber: order.order_number, total: order.total, source: body.attribution?.source, campaign: body.attribution?.campaign });
-    return json({ orderId: order.id, orderNumber: order.order_number, total: order.total });
+    const result = data as { orderId: string; orderNumber: string; total: number; idempotent?: boolean };
+    await auditLog('order_created', 'order', result.orderId, {
+      orderNumber: result.orderNumber,
+      total: result.total,
+      idempotent: Boolean(result.idempotent),
+      source: body?.attribution?.source,
+      campaign: body?.attribution?.campaign,
+    });
+    return json(result, 200, req);
   } catch (error) {
-    await auditLog('checkout_failed', 'order', 'create-order', { message: error instanceof Error ? error.message : 'unknown' });
-    return json({ error: error instanceof Error ? error.message : 'Could not create order.' }, 500);
+    const message = error instanceof Error ? error.message : 'Could not create order.';
+    await auditLog('checkout_failed', 'order', 'create-order', { message });
+    return json({ error: message }, publicCheckoutStatus(message), req);
   }
 });

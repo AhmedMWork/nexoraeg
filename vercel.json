@@ -5,6 +5,10 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/nexora-admin/(.*)",
+      "destination": "/index.html"
+    },
+    {
       "source": "/((?!assets/|favicon.ico|site.webmanifest|robots.txt|sitemap.xml|browserconfig.xml|.*\\..*).*)",
       "destination": "/index.html"
     }
