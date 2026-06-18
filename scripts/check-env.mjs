@@ -4,7 +4,7 @@ const missing = required.filter((key) => !process.env[key] || !String(process.en
 
 if (missing.length) {
   console.error(`Missing required public env vars: ${missing.join(', ')}`);
-  console.error('Add them to Vercel Environment Variables before deploying NEXORA V5.');
+  console.error('Add them to Vercel Environment Variables before deploying NEXORA V5.5.');
   process.exit(1);
 }
 
@@ -13,9 +13,27 @@ try {
   if (!['http:', 'https:'].includes(siteUrl.protocol)) {
     throw new Error('VITE_SITE_URL must start with http:// or https://');
   }
-} catch (error) {
-  console.error('VITE_SITE_URL must be a valid absolute URL, for example https://yourdomain.com');
+} catch {
+  console.error('VITE_SITE_URL must be a valid absolute URL, for example https://nexoraeg.vercel.app');
   process.exit(1);
 }
 
-console.log('Required NEXORA public env vars are present.');
+try {
+  const supabaseUrl = String(process.env.VITE_SUPABASE_URL || '').trim();
+  const url = new URL(supabaseUrl);
+  const invalidSuffix = ['/rest/v1', '/functions/v1', '/auth/v1'].find((part) => supabaseUrl.includes(part));
+  if (invalidSuffix) {
+    console.error(`VITE_SUPABASE_URL is wrong: remove ${invalidSuffix}.`);
+    console.error('Correct format: https://ccmuazjkgzjqzybxwrfd.supabase.co');
+    process.exit(1);
+  }
+  if (url.protocol !== 'https:' || !url.hostname.endsWith('.supabase.co')) {
+    console.error('VITE_SUPABASE_URL must be the Supabase project root, for example https://ccmuazjkgzjqzybxwrfd.supabase.co');
+    process.exit(1);
+  }
+} catch {
+  console.error('VITE_SUPABASE_URL must be a valid absolute URL, for example https://ccmuazjkgzjqzybxwrfd.supabase.co');
+  process.exit(1);
+}
+
+console.log('Required NEXORA V5.5 public env vars are valid.');

@@ -1,4 +1,4 @@
-import { corsHeaders, createStudioToken, json, rateLimit, clientId, auditLog } from '../_shared/studio.ts';
+import { corsHeaders, createStudioToken, json, dbRateLimit, clientId, auditLog } from '../_shared/studio.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -6,7 +6,7 @@ Deno.serve(async (req) => {
 
   try {
     const requester = clientId(req);
-    const limited = rateLimit(req, 'studio-pin', 8, 1000 * 60 * 10);
+    const limited = await dbRateLimit(req, 'studio-pin', 8, 60 * 10);
     if (limited) {
       await auditLog('studio_login_rate_limited', 'studio_access', 'studio', { clientId: requester });
       return limited;

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { corsHeaders, json, serviceClient, rateLimit, auditLog } from '../_shared/studio.ts';
 
 function publicCheckoutStatus(message: string) {

@@ -168,3 +168,22 @@ export async function requireStudio(req: Request) {
 
   return null;
 }
+
+export async function dbRateLimit(req: Request, key: string, limit = 20, windowSeconds = 600) {
+  try {
+    const supabase = serviceClient();
+    const bucketKey = `${key}:${clientId(req)}`;
+    const { data, error } = await supabase.rpc('nexora_rate_limit_v5_5', {
+      bucket_key_value: bucketKey,
+      limit_value: limit,
+      window_seconds: windowSeconds,
+    });
+    if (error) throw error;
+    if (data && data.allowed === false) {
+      return json({ error: 'Too many attempts. Please wait and try again.', rateLimit: data }, 429, req);
+    }
+    return null;
+  } catch {
+    return rateLimit(req, key, limit, windowSeconds * 1000);
+  }
+}

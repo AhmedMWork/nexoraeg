@@ -1,43 +1,65 @@
-# NEXORA V4.9 — Global Luxury Commerce Final
+# NEXORA V5.5 — Admin OS & CRM Intelligence Production Ready
 
-NEXORA V4.9 is the final launch package for the Supabase-powered luxury fashion commerce platform.
+NEXORA V5.5 is the production-ready Admin OS release for the Supabase-powered luxury commerce platform.
 
 ## Included
+
 - React + Vite + TypeScript storefront.
 - Supabase Database / Storage / Edge Functions.
-- Hidden Studio admin at `/nexora-admin`.
-- Products, orders, customers, coupons, limited drops, reviews, inventory, analytics, SEO, and system health.
-- Arabic/English storefront experience.
-- COD-only checkout.
-- Google Search files and deployment docs.
+- Hidden NEXORA HQ admin at `/nexora-admin`.
+- Grouped Admin OS sidebar: Command, Catalog, Growth, Store.
+- Today action inbox for orders, shipping, stock, catalog gaps, leads, and setup status.
+- Controls / Launch Checklist page for diagnosing Edge Function and Supabase setup issues.
+- Products HQ with setup metrics and server-side validation.
+- Orders, inventory, shipping and ShipBlu framework from V5.4.
+- Customer CRM profiles with tags, notes, order value and source/campaign fields.
+- Leads CRM pipeline with follow-up tasks.
+- Visitors, campaigns, analytics and reports.
+- COD checkout with server-side shipping calculation.
+- Arabic/English storefront foundation.
 
 ## Quick start
 
 ```powershell
 npm config set registry https://registry.npmjs.org/
-npm install
+npm ci
 npm run build
 npm run dev
 ```
 
-## Required environment variables
+## Required Vercel environment variables
 
 ```env
+VITE_SITE_URL=https://nexoraeg.vercel.app
 VITE_SUPABASE_URL=https://ccmuazjkgzjqzybxwrfd.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=your_publishable_key
-VITE_STORE_WHATSAPP=01037141322
-VITE_SUPPORT_EMAIL=supportnexorastoree@gmail.com
+VITE_SUPABASE_PUBLISHABLE_KEY=your_anon_public_key
+VITE_STORE_WHATSAPP=201xxxxxxxxx
+VITE_SUPPORT_EMAIL=support@nexora.com
 ```
 
-## Server-only Supabase secrets
-Do not put these in Vercel frontend variables:
+Important: `VITE_SUPABASE_URL` must be the project root only. Do not add `/rest/v1` or `/functions/v1`.
 
-```txt
-SUPABASE_SERVICE_ROLE_KEY
-STUDIO_SESSION_SECRET
-REQUIRE_STUDIO_PIN
-STUDIO_ACCESS_PIN
+## Required Supabase secrets
+
+```powershell
+supabase secrets set REQUIRE_STUDIO_PIN=true
+supabase secrets set STUDIO_ACCESS_PIN=YOUR_PRIVATE_PIN
+supabase secrets set STUDIO_SESSION_SECRET=YOUR_LONG_RANDOM_SECRET
+supabase secrets set ALLOWED_ORIGIN=https://nexoraeg.vercel.app
 ```
 
-## Deployment
-Read `V4_9_DEPLOYMENT_STEPS.md` first.
+Optional ShipBlu:
+
+```powershell
+supabase secrets set SHIPBLU_API_KEY="YOUR_SHIPBLU_API_KEY"
+```
+
+Do not put Service Role Key in Vercel frontend variables.
+
+## Deploy
+
+Read:
+
+- `V5_5_DEPLOYMENT_GUIDE.md`
+- `V5_5_FINAL_RELEASE_REPORT.md`
+- `V5_5_ADMIN_OS_QA_CHECKLIST.md`

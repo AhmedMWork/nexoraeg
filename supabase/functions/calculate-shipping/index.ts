@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { corsHeaders, json, serviceClient, rateLimit } from '../_shared/studio.ts';
 
 Deno.serve(async (req) => {

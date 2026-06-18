@@ -1,6 +1,25 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { corsHeaders, json, requireStudio, serviceClient, auditLog } from '../_shared/studio.ts';
 
+
+function validateProductPayload(product: Record<string, any>, mode: 'create' | 'update') {
+  const errors: string[] = [];
+  if (mode === 'create' && !String(product?.name_en || product?.name || '').trim()) errors.push('Product name is required.');
+  if (product?.slug !== undefined && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(String(product.slug || ''))) errors.push('Slug must be lowercase words separated by hyphens.');
+  if (product?.price !== undefined && Number(product.price) <= 0) errors.push('Price must be greater than zero.');
+  if (product?.compare_at_price !== undefined && Number(product.compare_at_price || 0) > 0 && Number(product.compare_at_price) < Number(product.price || 0)) errors.push('Compare-at price cannot be lower than price.');
+  if (product?.status !== undefined && !['active','draft','archived','sold_out','hidden'].includes(String(product.status))) errors.push('Invalid product status.');
+  if (product?.images !== undefined && (!Array.isArray(product.images) || product.images.length === 0)) errors.push('At least one product image is recommended before publishing.');
+  if (Array.isArray(product?.sizes) && product.sizes.length === 0) errors.push('Add at least one size.');
+  if (product?.stock_by_size && typeof product.stock_by_size === 'object') {
+    for (const [size, stock] of Object.entries(product.stock_by_size)) {
+      if (!String(size).trim()) errors.push('Size labels cannot be empty.');
+      if (Number(stock) < 0) errors.push(`Stock for ${size} cannot be negative.`);
+    }
+  }
+  return errors;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   const blocked = await requireStudio(req); if (blocked) return blocked;
@@ -22,12 +41,24 @@ Deno.serve(async (req) => {
       return json({ products: products || [], variants: variants || [] });
     }
     if (body.action === 'create') {
+      const validationErrors = validateProductPayload(body.product || {}, 'create');
+      if (validationErrors.length) return json({ error: validationErrors.join(' ') }, 400, req);
+      if (body.product?.slug) {
+        const { data: existing } = await supabase.from('products').select('id').eq('slug', body.product.slug).maybeSingle();
+        if (existing?.id) return json({ error: 'A product with this slug already exists.' }, 409, req);
+      }
       const { data, error } = await supabase.from('products').insert(body.product).select('id').single();
       if (error) throw error;
       await auditLog('studio_product_created', 'product', data.id, { slug: body.product?.slug });
       return json({ id: data.id });
     }
     if (body.action === 'update') {
+      const validationErrors = validateProductPayload(body.product || {}, 'update');
+      if (validationErrors.length) return json({ error: validationErrors.join(' ') }, 400, req);
+      if (body.product?.slug) {
+        const { data: existing } = await supabase.from('products').select('id').eq('slug', body.product.slug).neq('id', body.id).maybeSingle();
+        if (existing?.id) return json({ error: 'Another product already uses this slug.' }, 409, req);
+      }
       const { error } = await supabase.from('products').update(body.product).eq('id', body.id);
       if (error) throw error;
       await auditLog('studio_product_updated', 'product', body.id, { fields: Object.keys(body.product || {}) });
@@ -60,6 +91,8 @@ Deno.serve(async (req) => {
     }
     if (body.action === 'variants-upsert') {
       const variants = Array.isArray(body.variants) ? body.variants : [];
+      const badVariant = variants.find((variant: any) => !String(variant.size || '').trim() || !String(variant.color || '').trim() || Number(variant.stock || 0) < 0);
+      if (badVariant) return json({ error: 'Every variant needs size, color, and non-negative stock.' }, 400, req);
       for (const variant of variants) {
         const row = { ...variant, product_id: body.productId };
         if (row.id) {
