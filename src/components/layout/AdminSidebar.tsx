@@ -1,6 +1,7 @@
 // ============================================================
-// NEXORA V5.5 — HQ Sidebar Navigation
-// Grouped command-center IA instead of crowded flat Studio links.
+// NEXORA V5.5.3 — Clean Light HQ Sidebar
+// Reduced daily navigation. Advanced tools remain reachable via search
+// and contextual links, so the owner-facing admin feels calmer.
 // ============================================================
 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -22,7 +23,6 @@ import {
   UserPlus,
   Target,
   FileBarChart,
-  ChevronLeft,
   Menu,
   X,
   ExternalLink,
@@ -30,7 +30,6 @@ import {
   ClipboardList,
   MonitorSmartphone,
   Truck,
-  Command,
 } from 'lucide-react';
 import { useState } from 'react';
 import { ADMIN_NAV_GROUPS } from '@/lib/constants';
@@ -60,23 +59,15 @@ const iconMap: Record<string, React.ElementType> = {
 };
 
 export default function AdminSidebar() {
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-
-  const sidebarClasses = `
-    fixed top-0 left-0 z-40 h-screen bg-[#FFFDF7] border-r border-[#D7C5B2] shadow-[12px_0_40px_rgba(43,33,29,.06)]
-    transition-all duration-300 flex flex-col
-    ${isCollapsed ? 'w-20' : 'w-72'}
-    ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-  `;
 
   return (
     <>
       <button
         onClick={() => setIsMobileOpen(!isMobileOpen)}
-        className="fixed top-4 left-4 z-50 rounded-2xl border border-[#D7C5B2] bg-[#FFFDF7] p-2 text-[#231916] lg:hidden"
+        className="fixed left-4 top-4 z-50 rounded-full border border-[#E4D6C5] bg-[#FFFDF8] p-2.5 text-[#231916] shadow-[0_14px_32px_rgba(43,33,29,.10)] lg:hidden"
         aria-label="Toggle NEXORA HQ navigation"
       >
         {isMobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -84,37 +75,29 @@ export default function AdminSidebar() {
 
       {isMobileOpen && (
         <div
-          className="fixed inset-0 z-30 bg-[#231916]/28 lg:hidden"
+          className="fixed inset-0 z-30 bg-[#231916]/20 backdrop-blur-[2px] lg:hidden"
           onClick={() => setIsMobileOpen(false)}
         />
       )}
 
-      <aside className={sidebarClasses}>
-        <div className="flex h-20 items-center justify-between border-b border-[#D7C5B2] p-4">
-          {!isCollapsed && (
-            <Link to="/nexora-admin/dashboard" className="flex items-center gap-3">
-              <img src="/assets/nexora-logo.png" alt="NEXORA" className="h-8 w-auto object-contain" />
-              <div>
-                <p className="text-[11px] font-black tracking-[0.22em] text-[#231916]">NEXORA HQ</p>
-                <p className="mt-1 text-[9px] uppercase tracking-[0.18em] text-[#735B4F]">Admin OS</p>
-              </div>
-            </Link>
-          )}
-          {isCollapsed && <Command className="mx-auto h-5 w-5 text-[#D6B58F]" />}
-          <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="hidden rounded-xl p-1.5 text-[#735B4F] transition hover:bg-[#F1E6D7] hover:text-[#231916] lg:flex"
-            aria-label="Collapse NEXORA HQ sidebar"
-          >
-            <ChevronLeft className={`h-4 w-4 transition-transform ${isCollapsed ? 'rotate-180' : ''}`} />
-          </button>
+      <aside
+        className={`fixed left-0 top-0 z-40 flex h-screen w-[268px] flex-col border-r border-[#E4D6C5] bg-[#FFFDF8]/96 shadow-[16px_0_45px_rgba(43,33,29,.06)] backdrop-blur-xl transition-transform duration-300 ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+      >
+        <div className="border-b border-[#E9DDCF] px-5 py-5">
+          <Link to="/nexora-admin/dashboard" onClick={() => setIsMobileOpen(false)} className="flex items-center gap-3">
+            <img src="/assets/nexora-logo.png" alt="NEXORA" className="h-9 w-auto object-contain" />
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#231916]">NEXORA</p>
+              <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8E7664]">Clean HQ</p>
+            </div>
+          </Link>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 py-4">
+        <nav className="flex-1 overflow-y-auto px-4 py-5">
           {ADMIN_NAV_GROUPS.map((group) => (
-            <div key={group.label} className="mb-5">
-              {!isCollapsed && <p className="mb-2 px-3 text-[9px] font-black uppercase tracking-[0.22em] text-[#A48F7E]">{group.label}</p>}
-              <div className="space-y-1">
+            <section key={group.label} className="mb-5">
+              <p className="mb-2 px-2 text-[10px] font-black uppercase tracking-[0.2em] text-[#B39D89]">{group.label}</p>
+              <div className="space-y-1.5">
                 {group.links.map((link) => {
                   const Icon = iconMap[link.icon] || LayoutDashboard;
                   const isActive = location.pathname === link.href || (link.href !== '/nexora-admin/dashboard' && location.pathname.startsWith(link.href));
@@ -123,43 +106,42 @@ export default function AdminSidebar() {
                       key={link.href}
                       to={link.href}
                       onClick={() => setIsMobileOpen(false)}
-                      title={isCollapsed ? `${link.label}: ${link.description}` : undefined}
-                      className={`group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-xs font-semibold transition-all duration-200 ${
+                      title={link.description}
+                      className={`group flex items-center gap-3 rounded-2xl border px-3 py-3 text-sm font-semibold transition-all duration-200 ${
                         isActive
-                          ? 'border border-[#D6B58F]/55 bg-[#F1E6D7] text-[#231916] shadow-[0_14px_34px_rgba(43,33,29,.08)]'
-                          : 'border border-transparent text-[#735B4F] hover:border-[#D7C5B2] hover:bg-[#FAF7F2] hover:text-[#231916]'
+                          ? 'border-[#D6B58F]/70 bg-[#F2E7D8] text-[#231916] shadow-[0_16px_32px_rgba(43,33,29,.08)]'
+                          : 'border-transparent text-[#6F5D50] hover:border-[#E4D6C5] hover:bg-[#FAF5EE] hover:text-[#231916]'
                       }`}
                     >
-                      <Icon className={`h-4 w-4 flex-shrink-0 ${isActive ? 'text-[#D6B58F]' : 'text-[#A48F7E] group-hover:text-[#D6B58F]'}`} />
-                      {!isCollapsed && (
-                        <span className="min-w-0">
-                          <span className="block truncate">{link.label}</span>
-                          <span className="mt-0.5 block truncate text-[10px] font-normal text-[#A48F7E]">{link.description}</span>
-                        </span>
-                      )}
+                      <span className={`grid h-8 w-8 place-items-center rounded-xl ${isActive ? 'bg-[#FFFDF8] text-[#9D7159]' : 'bg-[#F3E9DC] text-[#A28A74] group-hover:text-[#9D7159]'}`}>
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate">{link.label}</span>
+                      </span>
                     </Link>
                   );
                 })}
               </div>
-            </div>
+            </section>
           ))}
         </nav>
 
-        <div className="space-y-1 border-t border-[#D7C5B2] p-3">
+        <div className="space-y-2 border-t border-[#E9DDCF] p-4">
           <Link
-            to="/"
+            to="/nexora-admin/controls"
             onClick={() => setIsMobileOpen(false)}
-            className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-xs font-semibold text-[#735B4F] transition hover:bg-[#F1E6D7] hover:text-[#9D7159]"
+            className="flex items-center justify-between rounded-2xl border border-[#E4D6C5] bg-[#FAF5EE] px-4 py-3 text-xs font-semibold text-[#6F5D50] hover:border-[#D6B58F] hover:text-[#231916]"
           >
-            <ExternalLink className="h-4 w-4" />
-            {!isCollapsed && <span>View Store</span>}
+            <span>Setup & Recovery</span>
+            <Settings className="h-4 w-4" />
           </Link>
           <button
             onClick={() => navigate('/')}
-            className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-xs font-semibold text-[#735B4F] transition hover:bg-[#F1E6D7] hover:text-[#9D7159]"
+            className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-xs font-semibold text-[#6F5D50] transition hover:bg-[#FAF5EE] hover:text-[#9D7159]"
           >
+            <span>View storefront</span>
             <ExternalLink className="h-4 w-4" />
-            {!isCollapsed && <span>Close HQ</span>}
           </button>
         </div>
       </aside>
