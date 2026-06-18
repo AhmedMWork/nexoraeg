@@ -35,40 +35,40 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <StudioGate>
-      <div className="min-h-screen bg-[#0B0D12] text-[#F5F1EA]">
+      <div className="nexora-admin-light min-h-screen bg-[#F8F0E4] text-[#231916]">
         <AdminSidebar />
         <main className="min-h-screen lg:ml-72">
-          <div className="sticky top-0 z-20 border-b border-[#2E3442] bg-[#0B0D12]/85 px-4 py-3 backdrop-blur-xl lg:px-8">
+          <div className="sticky top-0 z-20 border-b border-[#D7C5B2] bg-[#FFFDF7]/90 px-4 py-3 shadow-[0_10px_35px_rgba(43,33,29,.06)] backdrop-blur-xl lg:px-8">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="relative max-w-xl flex-1">
-                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#697286]" />
+                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A48F7E]" />
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search HQ: orders, shipping, products, reports..."
-                  className="w-full rounded-2xl border border-[#2E3442] bg-[#11141A] py-3 pl-11 pr-4 text-sm text-[#F5F1EA] outline-none placeholder:text-[#697286] focus:border-[#D7B98E]"
+                  className="w-full rounded-2xl border border-[#D7C5B2] bg-[#FFFDF7] py-3 pl-11 pr-4 text-sm text-[#231916] outline-none placeholder:text-[#A48F7E] focus:border-[#D6B58F]"
                 />
                 {matches.length > 0 && (
-                  <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 overflow-hidden rounded-3xl border border-[#2E3442] bg-[#11141A] shadow-2xl">
+                  <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 overflow-hidden rounded-3xl border border-[#D7C5B2] bg-[#FFFDF7] shadow-[0_24px_70px_rgba(43,33,29,.12)]">
                     {matches.map((match) => (
-                      <Link key={match.href} to={match.href} onClick={() => setQuery('')} className="block border-b border-[#2E3442] p-4 last:border-b-0 hover:bg-[#1F2430]">
-                        <p className="text-sm font-semibold text-[#F5F1EA]">{match.label}</p>
-                        <p className="mt-1 text-xs text-[#A7AEBB]">{match.description}</p>
+                      <Link key={match.href} to={match.href} onClick={() => setQuery('')} className="block border-b border-[#2E3442] p-4 last:border-b-0 hover:bg-[#F1E6D7]">
+                        <p className="text-sm font-semibold text-[#231916]">{match.label}</p>
+                        <p className="mt-1 text-xs text-[#735B4F]">{match.description}</p>
                       </Link>
                     ))}
                   </div>
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <Link to="/nexora-admin/controls" className="inline-flex items-center gap-2 rounded-2xl border border-[#2E3442] bg-[#11141A] px-3 py-2 text-[#A7AEBB] hover:border-[#D7B98E]/50 hover:text-[#F5F1EA]">
+                <Link to="/nexora-admin/controls" className="inline-flex items-center gap-2 rounded-2xl border border-[#D7C5B2] bg-[#FFFDF7] px-3 py-2 text-[#735B4F] hover:border-[#D6B58F]/70 hover:text-[#231916]">
                   <ShieldCheck className="h-4 w-4 text-[#D7B98E]" />
                   Launch checklist
                 </Link>
-                <span className="inline-flex items-center gap-2 rounded-2xl border border-[#2E3442] bg-[#11141A] px-3 py-2 text-[#A7AEBB]">
-                  <RefreshCw className="h-3.5 w-3.5 text-emerald-300" />
+                <span className="inline-flex items-center gap-2 rounded-2xl border border-[#D7C5B2] bg-[#FFFDF7] px-3 py-2 text-[#735B4F]">
+                  <RefreshCw className="h-3.5 w-3.5 text-emerald-600" />
                   Session {session.isActive ? `${session.minutesLeft}m left` : 'locked'}
                 </span>
-                <button onClick={clearSession} className="inline-flex items-center gap-2 rounded-2xl border border-[#2E3442] bg-[#11141A] px-3 py-2 text-[#A7AEBB] hover:border-amber-300/40 hover:text-amber-200">
+                <button onClick={clearSession} className="inline-flex items-center gap-2 rounded-2xl border border-[#D7C5B2] bg-[#FFFDF7] px-3 py-2 text-[#735B4F] hover:border-amber-500/40 hover:text-amber-700">
                   <LogOut className="h-3.5 w-3.5" /> Clear session
                 </button>
               </div>
