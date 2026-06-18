@@ -1,46 +1,44 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, BarChart3, ImageUp, MousePointerClick, Package, ShoppingBag, Target, TrendingDown, TrendingUp, UserPlus, Users, Warehouse } from 'lucide-react';
-import { formatPrice, formatTimestamp, getStatusColor, getStatusLabel } from '@/lib/utils';
-import type { Coupon, Drop, Order, Product } from '@/types';
+import { ArrowRight, Package, ShoppingBag, Truck, UserPlus, AlertTriangle, RefreshCw, ShieldCheck } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { AdminInsight, AdminPageHeader, AdminStatCard, SetupBadge } from '@/components/admin/AdminPageHeader';
+import { formatPrice } from '@/lib/utils';
+import type { Order, Product } from '@/types';
 
-type DashboardData = {
+type TodayState = {
   orders: Order[];
   products: Product[];
-  coupons: Coupon[];
-  drops: Drop[];
-  analytics: { events: Array<{ event_name: string; session_id?: string; payload?: Record<string, unknown> }>; orders: Array<{ total?: number }> };
-  growth: { visitorsToday?: number; leadsToday?: number; whatsappClicksToday?: number; topSources?: Array<{ source: string; count: number }> };
+  growth: any;
+  productReport: any;
+  shipping: any;
+  health: any;
 };
 
-function Card({ label, value, helper, icon: Icon, tone = 'default' }: { label: string; value: string; helper: string; icon: React.ElementType; tone?: 'default' | 'warn' | 'good' }) {
-  const color = tone === 'warn' ? 'text-amber-300' : tone === 'good' ? 'text-emerald-300' : 'text-[#D2B48C]';
-  return (
-    <div className="studio-card p-5">
-      <div className="mb-3 flex items-center justify-between"><Icon className={`h-5 w-5 ${color}`} /><span className="text-[10px] uppercase tracking-[0.18em] text-[#BCAEA0]">{label}</span></div>
-      <p className="text-2xl font-bold text-[#FFF0E1]">{value}</p>
-      <p className="mt-2 text-xs leading-6 text-[#BCAEA0]">{helper}</p>
-    </div>
-  );
+function ActionButton({ to, children }: { to: string; children: React.ReactNode }) {
+  return <Link to={to} className="shrink-0 rounded-2xl border border-[#D7B98E]/30 px-3 py-2 text-xs font-bold text-[#D7B98E] hover:bg-[#D7B98E]/10">{children}</Link>;
 }
 
 export default function AdminDashboard() {
-  const [data, setData] = useState<DashboardData>({ orders: [], products: [], coupons: [], drops: [], analytics: { events: [], orders: [] }, growth: {} });
+  const [data, setData] = useState<TodayState>({ orders: [], products: [], growth: {}, productReport: {}, shipping: {}, health: null });
   const [isLoading, setIsLoading] = useState(true);
 
   const load = async () => {
     setIsLoading(true);
     try {
       const db = await import('@/lib/supabase/db');
-      const [orders, products, coupons, drops, analytics, growth] = await Promise.all([
+      const [orders, products, growth, productReport, shipping, health] = await Promise.all([
         db.getOrders().catch(() => []),
         db.getAdminProducts().catch(() => []),
-        db.getCoupons().catch(() => []),
-        db.getDrops().catch(() => []),
-        db.getAnalyticsSummary().catch(() => ({ events: [], orders: [] })),
         db.getGrowthDashboard().catch(() => ({})),
+        db.getProductAnalyticsReport({ days: 30 }).catch(() => ({})),
+        db.getShippingAdmin().catch(() => ({})),
+        db.getStudioHealthCheck().catch((error) => ({ error: error instanceof Error ? error.message : 'Health check failed', checks: [], failed: 1, warnings: 0, score: 0 })),
       ]);
-      setData({ orders, products, coupons, drops, analytics, growth });
+      setData({ orders, products, growth, productReport, shipping, health });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not load NEXORA HQ');
     } finally {
       setIsLoading(false);
     }
@@ -48,106 +46,111 @@ export default function AdminDashboard() {
 
   useEffect(() => { void load(); }, []);
 
-  const stats = useMemo(() => {
-    const validOrders = data.orders.filter((order) => !['cancelled', 'returned', 'failed'].includes(order.status));
-    const revenue = validOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
-    const customers = new Set(data.orders.map((order) => order.customer.phone || order.customer.email).filter(Boolean));
-    const lowStock = data.products.filter((product) => product.sizes.some((size) => Number(size.stock) <= Number(size.lowStockThreshold || 3))).length;
-    const pendingOrders = data.orders.filter((order) => ['pending', 'confirmed'].includes(order.status)).length;
-    const activeCoupons = data.coupons.filter((coupon) => coupon.isActive || coupon.status === 'active').length;
-    const liveDrops = data.drops.filter((drop) => drop.status === 'live').length;
-    const sessions = Number(data.growth.visitorsToday || 0) || new Set(data.analytics.events.map((event) => event.session_id).filter(Boolean)).size;
-    const count = (name: string) => data.analytics.events.filter((event) => event.event_name === name).length;
-    const productViews = count('product_view');
-    const addToCart = count('add_to_cart');
-    const checkoutStart = count('checkout_start');
-    const orderSignals = count('order_success') + data.orders.length;
-    const conversion = productViews ? Math.round((orderSignals / productViews) * 100) : 0;
-    const cartDrop = Math.max(0, addToCart - orderSignals);
-    return { revenue, customers: customers.size, lowStock, pendingOrders, activeCoupons, liveDrops, sessions, productViews, addToCart, checkoutStart, orderSignals, conversion, cartDrop, leadsToday: Number(data.growth.leadsToday || 0), whatsappClicksToday: Number(data.growth.whatsappClicksToday || 0), topSource: data.growth.topSources?.[0]?.source || 'No data' };
+  const metrics = useMemo(() => {
+    const activeOrders = data.orders.filter((o) => !['cancelled', 'returned', 'failed'].includes(o.status));
+    const revenue = activeOrders.reduce((sum, o) => sum + Number(o.total || 0), 0);
+    const pendingOrders = data.orders.filter((o) => ['pending', 'confirmed'].includes(o.status)).length;
+    const readyToShip = data.orders.filter((o) => ['confirmed', 'preparing'].includes(o.status) && (!o.shippingStatus || o.shippingStatus === 'not_created')).length;
+    const failedShipping = data.orders.filter((o) => ['failed','cancelled'].includes(String(o.shippingStatus || ''))).length;
+    const lowStockProducts = data.products.filter((p) => p.sizes.some((s) => Number(s.stock || 0) <= Number(s.lowStockThreshold || 3))).length;
+    const missingImages = data.products.filter((p) => !p.images?.length).length;
+    const missingSeo = data.products.filter((p) => !p.seoTitle || !p.seoDescription).length;
+    const soldOut = data.products.filter((p) => (p.sizes.reduce((sum, s) => sum + Number(s.stock || 0), 0)) <= 0).length;
+    const leads = Number(data.growth.leadsToday || 0);
+    const whatsapp = Number(data.growth.whatsappClicksToday || 0);
+    const healthScore = Number(data.health?.score || 0);
+    const healthFailed = Number(data.health?.failed || 0);
+    const healthWarnings = Number(data.health?.warnings || 0);
+    const productViews = Number(data.productReport?.summary?.views || 0);
+    const productOrders = Number(data.productReport?.summary?.orders || 0);
+    const conversion = productViews ? Math.round((productOrders / productViews) * 1000) / 10 : 0;
+    return { revenue, pendingOrders, readyToShip, failedShipping, lowStockProducts, missingImages, missingSeo, soldOut, leads, whatsapp, healthScore, healthFailed, healthWarnings, productViews, productOrders, conversion };
   }, [data]);
 
-  const recentOrders = data.orders.slice(0, 6);
-  const quickActions = [
-    { label: 'Add Product', desc: 'Create product with price, compare price, colors, sizes, stock, and multiple images.', href: '/nexora-admin/products', icon: Package },
-    { label: 'Storefront Images', desc: 'Change the four home collection images/cards without editing code.', href: '/nexora-admin/storefront', icon: ImageUp },
-    { label: 'Review Orders', desc: 'Confirm COD orders, update statuses, and open WhatsApp templates.', href: '/nexora-admin/orders', icon: ShoppingBag },
-    { label: 'Customers', desc: 'See customer contact data, locations, purchase totals, and last order.', href: '/nexora-admin/customers', icon: Users },
-    { label: 'Visitors', desc: 'See who opened links, source, campaign, device, last page, and known lead linkage.', href: '/nexora-admin/visitors', icon: MousePointerClick },
-    { label: 'Leads', desc: 'Contact private-list, WhatsApp, notify-me, and checkout abandoned leads.', href: '/nexora-admin/leads', icon: UserPlus },
-    { label: 'Campaigns', desc: 'Build Facebook/Instagram UTM links and compare campaign performance.', href: '/nexora-admin/campaigns', icon: Target },
-    { label: 'Analytics', desc: 'Track visits, cart adds, checkout starts, orders, and product interest.', href: '/nexora-admin/analytics', icon: BarChart3 },
-  ];
+  const actionInbox = [
+    { title: `${metrics.pendingOrders} orders need confirmation`, description: 'Pending/confirmed orders are the first daily priority. Confirm, prepare, then create shipment.', status: metrics.pendingOrders ? 'warn' : 'good', to: '/nexora-admin/orders' },
+    { title: `${metrics.readyToShip} orders ready for shipment`, description: 'Orders prepared without shipment should be sent to ShipBlu or handled manually from Orders.', status: metrics.readyToShip ? 'warn' : 'good', to: '/nexora-admin/orders' },
+    { title: `${metrics.lowStockProducts} low-stock products`, description: 'Review size/color stock before campaigns so ads do not push sold-out variants.', status: metrics.lowStockProducts ? 'warn' : 'good', to: '/nexora-admin/inventory' },
+    { title: `${metrics.missingImages + metrics.missingSeo} catalog setup gaps`, description: 'Products missing images or SEO reduce trust and performance.', status: metrics.missingImages + metrics.missingSeo ? 'warn' : 'good', to: '/nexora-admin/products' },
+    { title: `${metrics.healthFailed} failed setup checks`, description: 'Run Launch Checklist whenever Edge Functions return non-2xx. It explains the exact setup issue.', status: metrics.healthFailed ? 'danger' : metrics.healthWarnings ? 'warn' : 'good', to: '/nexora-admin/controls' },
+  ] as const;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-[#FFF0E1]">NEXORA Operations Overview</h1>
-          <p className="mt-1 text-sm text-[#BCAEA0]">A launch-ready control center for sales, customers, products, stock, coupons, drops, and conversion signals.</p>
-        </div>
-        <button onClick={load} className="nexora-button">Refresh</button>
+      <AdminPageHeader
+        title="Today command center"
+        description="Daily action inbox for orders, shipping, stock, leads, catalog quality, and launch readiness. Built to reduce admin noise and show exactly what needs action."
+        actions={<button onClick={load} className="nexora-button flex items-center gap-2"><RefreshCw className="h-4 w-4" /> Refresh HQ</button>}
+      />
+
+      {isLoading && <div className="studio-card p-4 text-sm text-[#A7AEBB]">Loading NEXORA HQ...</div>}
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <AdminStatCard label="Revenue" value={formatPrice(metrics.revenue)} helper="Non-cancelled order value currently loaded in HQ." tone="good" />
+        <AdminStatCard label="Needs action" value={metrics.pendingOrders + metrics.readyToShip + metrics.lowStockProducts} helper="Orders, shipments, and stock alerts that need attention today." tone={metrics.pendingOrders || metrics.readyToShip || metrics.lowStockProducts ? 'warn' : 'good'} />
+        <AdminStatCard label="Product funnel" value={`${metrics.conversion}%`} helper={`${metrics.productViews} product views → ${metrics.productOrders} orders in the report window.`} />
+        <AdminStatCard label="Setup score" value={`${metrics.healthScore}%`} helper={`${metrics.healthFailed} failed / ${metrics.healthWarnings} warnings from health check.`} tone={metrics.healthFailed ? 'danger' : metrics.healthWarnings ? 'warn' : 'good'} />
       </div>
 
-      {isLoading && <div className="studio-card p-4 text-sm text-[#BCAEA0]">Loading operation data...</div>}
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card label="Revenue" value={formatPrice(stats.revenue)} helper="COD order value excluding cancelled/returned/failed orders." icon={TrendingUp} tone="good" />
-        <Card label="Orders" value={String(data.orders.length)} helper={`${stats.pendingOrders} orders need review or confirmation.`} icon={ShoppingBag} tone={stats.pendingOrders ? 'warn' : 'default'} />
-        <Card label="Customers" value={String(stats.customers)} helper="Unique customer identities from phone/email in orders." icon={Users} />
-        <Card label="Low Stock" value={String(stats.lowStock)} helper="Products with one or more sizes at or below threshold." icon={Warehouse} tone={stats.lowStock ? 'warn' : 'default'} />
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card label="Visitors Today" value={String(stats.sessions)} helper={`Top source: ${stats.topSource}.`} icon={MousePointerClick} />
-        <Card label="Cart Adds" value={String(stats.addToCart)} helper={`${stats.cartDrop} cart additions did not become orders yet.`} icon={TrendingDown} tone={stats.cartDrop ? 'warn' : 'default'} />
-        <Card label="Conversion" value={`${stats.conversion}%`} helper="Orders compared with product-view signals." icon={BarChart3} />
-        <Card label="Leads / WhatsApp" value={`${stats.leadsToday}/${stats.whatsappClicksToday}`} helper="Leads captured / WhatsApp clicks today." icon={UserPlus} />
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
-        <div className="studio-card overflow-hidden">
-          <div className="flex items-center justify-between border-b border-[#332923] p-5">
-            <h2 className="text-sm font-semibold text-[#FFF0E1]">Recent Orders</h2>
-            <Link to="/nexora-admin/orders" className="flex items-center gap-1 text-xs font-semibold text-[#D2B48C]">View All <ArrowRight className="h-3.5 w-3.5" /></Link>
+      <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="studio-card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-[#F5F1EA]">Action Inbox</h2>
+              <p className="mt-1 text-xs text-[#A7AEBB]">No fake alerts. Every item links to the exact page needed to resolve it.</p>
+            </div>
+            <AlertTriangle className="h-5 w-5 text-[#D7B98E]" />
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left">
-              <thead className="bg-[#17110F]"><tr>{['Order','Customer','Total','Status','Date'].map((h) => <th key={h} className="p-4 text-[10px] uppercase tracking-[0.18em] text-[#BCAEA0]">{h}</th>)}</tr></thead>
-              <tbody>
-                {recentOrders.length ? recentOrders.map((order) => (
-                  <tr key={order.id} className="border-t border-[#332923]/70">
-                    <td className="p-4 text-xs font-semibold text-[#D2B48C]">{order.orderNumber}</td>
-                    <td className="p-4 text-xs text-[#FFF0E1]">{order.customer.fullName}<br /><span className="text-[#BCAEA0]">{order.customer.phone}</span></td>
-                    <td className="p-4 text-xs text-[#FFF0E1]">{formatPrice(order.total)}</td>
-                    <td className="p-4"><span className={`status-badge ${getStatusColor(order.status)} text-[9px]`}>{getStatusLabel(order.status)}</span></td>
-                    <td className="p-4 text-xs text-[#BCAEA0]">{formatTimestamp(order.createdAt)}</td>
-                  </tr>
-                )) : <tr><td colSpan={5} className="p-8 text-center text-sm text-[#BCAEA0]">No orders yet. Test checkout after products are published.</td></tr>}
-              </tbody>
-            </table>
+          <div className="space-y-3">
+            {actionInbox.map((item) => (
+              <AdminInsight key={item.title} title={item.title} description={item.description} status={item.status as any} action={<ActionButton to={item.to}>Open <ArrowRight className="ml-1 inline h-3 w-3" /></ActionButton>} />
+            ))}
           </div>
         </div>
 
         <div className="studio-card p-5">
-          <h2 className="text-sm font-semibold text-[#FFF0E1]">Launch Alerts</h2>
-          <div className="mt-4 space-y-3 text-sm">
-            {stats.lowStock > 0 && <Link to="/nexora-admin/inventory" className="block rounded-2xl border border-amber-400/30 bg-amber-400/10 p-3 text-amber-100">{stats.lowStock} products need stock review.</Link>}
-            {stats.pendingOrders > 0 && <Link to="/nexora-admin/orders" className="block rounded-2xl border border-[#D2B48C]/30 bg-[#D2B48C]/10 p-3 text-[#F4E8DA]">{stats.pendingOrders} orders need confirmation.</Link>}
-            {stats.activeCoupons === 0 && <Link to="/nexora-admin/coupons" className="block rounded-2xl border border-[#332923] bg-[#17110F] p-3 text-[#BCAEA0]">No active coupon. Add one only when you need a campaign.</Link>}
-            {stats.liveDrops === 0 && <Link to="/nexora-admin/drops" className="block rounded-2xl border border-[#332923] bg-[#17110F] p-3 text-[#BCAEA0]">No live limited drop. Limited page will show an empty brand state.</Link>}
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-[#F5F1EA]">Launch Checklist snapshot</h2>
+              <p className="mt-1 text-xs text-[#A7AEBB]">Use this when anything says Edge Function non-2xx.</p>
+            </div>
+            <ShieldCheck className="h-5 w-5 text-emerald-300" />
+          </div>
+          <div className="space-y-2">
+            {(data.health?.checks || []).slice(0, 8).map((check: any) => (
+              <div key={check.key} className="flex items-start justify-between gap-3 rounded-2xl border border-[#2E3442] bg-[#11141A] p-3">
+                <div>
+                  <p className="text-sm font-semibold text-[#F5F1EA]">{check.label}</p>
+                  <p className="mt-1 text-xs leading-5 text-[#A7AEBB]">{check.message}</p>
+                </div>
+                <SetupBadge ok={check.status === 'ok'} label={check.status} />
+              </div>
+            ))}
+            <Link to="/nexora-admin/controls" className="mt-3 flex items-center justify-center gap-2 rounded-2xl border border-[#D7B98E]/30 p-3 text-xs font-bold text-[#D7B98E] hover:bg-[#D7B98E]/10">Open full checklist <ArrowRight className="h-3.5 w-3.5" /></Link>
           </div>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {quickActions.map((action) => (
-          <Link key={action.href} to={action.href} className="studio-card p-5 transition hover:border-[#D2B48C]">
-            <action.icon className="mb-3 h-5 w-5 text-[#D2B48C]" />
-            <h3 className="text-sm font-semibold text-[#FFF0E1]">{action.label}</h3>
-            <p className="mt-2 text-xs leading-6 text-[#BCAEA0]">{action.desc}</p>
-          </Link>
-        ))}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <Link to="/nexora-admin/orders" className="studio-card p-5 hover:border-[#D7B98E]">
+          <ShoppingBag className="mb-3 h-5 w-5 text-[#D7B98E]" /><h3 className="font-semibold">Orders OS</h3><p className="mt-2 text-xs leading-6 text-[#A7AEBB]">Confirm orders, open customer drawer, create shipment, copy WhatsApp messages.</p>
+        </Link>
+        <Link to="/nexora-admin/products" className="studio-card p-5 hover:border-[#D7B98E]">
+          <Package className="mb-3 h-5 w-5 text-[#D7B98E]" /><h3 className="font-semibold">Products HQ</h3><p className="mt-2 text-xs leading-6 text-[#A7AEBB]">Catalog setup, images, colors, sizes, SEO, and product analytics.</p>
+        </Link>
+        <Link to="/nexora-admin/leads" className="studio-card p-5 hover:border-[#D7B98E]">
+          <UserPlus className="mb-3 h-5 w-5 text-[#D7B98E]" /><h3 className="font-semibold">Leads CRM</h3><p className="mt-2 text-xs leading-6 text-[#A7AEBB]">Pipeline, statuses, follow-up tasks and WhatsApp-ready actions.</p>
+        </Link>
+        <Link to="/nexora-admin/shipping" className="studio-card p-5 hover:border-[#D7B98E]">
+          <Truck className="mb-3 h-5 w-5 text-[#D7B98E]" /><h3 className="font-semibold">Shipping Ops</h3><p className="mt-2 text-xs leading-6 text-[#A7AEBB]">Fees, ShipBlu zones, manual mode, provider setup and tracking.</p>
+        </Link>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <AdminStatCard label="Leads today" value={metrics.leads} helper="New CRM leads captured from private list, WhatsApp or checkout." />
+        <AdminStatCard label="WhatsApp clicks" value={metrics.whatsapp} helper="High-intent customer actions that need follow up." />
+        <AdminStatCard label="Sold out products" value={metrics.soldOut} helper="Products with zero visible stock across sizes." tone={metrics.soldOut ? 'warn' : 'good'} />
+        <AdminStatCard label="Shipping failures" value={metrics.failedShipping} helper="Failed/cancelled shipment statuses that need manual review." tone={metrics.failedShipping ? 'danger' : 'good'} />
       </div>
     </div>
   );

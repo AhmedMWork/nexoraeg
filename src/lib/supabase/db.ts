@@ -895,3 +895,30 @@ export async function getProductAnalyticsReport(filters: { days?: number; source
   return invokeStudioFunction<Record<string, unknown>, any>('studio-reports', { action: 'product-analytics', ...filters });
 }
 
+
+// Admin OS / CRM V5.5
+export async function getStudioHealthCheck(): Promise<any> {
+  return invokeStudioFunction<Record<string, unknown>, any>('studio-health-check', { action: 'check' });
+}
+
+export async function getCustomerProfiles(): Promise<any[]> {
+  const data = await invokeStudioFunction<Record<string, unknown>, { customers: any[] }>('studio-customers', { action: 'list' });
+  return data.customers || [];
+}
+
+export async function updateCustomerProfile(id: string, updates: Record<string, unknown>): Promise<void> {
+  await invokeStudioFunction('studio-customers', { action: 'update', id, updates });
+}
+
+export async function addCustomerNote(customerId: string, note: string): Promise<void> {
+  await invokeStudioFunction('studio-customers', { action: 'add-note', customerId, note });
+}
+
+export async function createLeadTask(leadId: string, title: string, dueAt?: string): Promise<string> {
+  const data = await invokeStudioFunction<Record<string, unknown>, { id: string }>('studio-leads', { action: 'create-task', leadId, title, dueAt });
+  return data.id;
+}
+
+export async function completeLeadTask(taskId: string): Promise<void> {
+  await invokeStudioFunction('studio-leads', { action: 'complete-task', taskId });
+}

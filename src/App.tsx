@@ -49,6 +49,7 @@ const AdminSEO = lazy(() => import('@/pages/admin/AdminSEO'));
 const AdminPromotions = lazy(() => import('@/pages/admin/AdminPromotions'));
 const AdminStorefront = lazy(() => import('@/pages/admin/AdminStorefront'));
 const AdminShipping = lazy(() => import('@/pages/admin/AdminShipping'));
+const AdminControls = lazy(() => import('@/pages/admin/AdminControls'));
 
 // ─── Scroll to top on route change ───
 function ScrollToTop() {
@@ -108,6 +109,7 @@ function AdminRoutes() {
           <Route path="/orders" element={<PageTransition><AdminOrders /></PageTransition>} />
           <Route path="/inventory" element={<PageTransition><AdminInventory /></PageTransition>} />
           <Route path="/shipping" element={<PageTransition><AdminShipping /></PageTransition>} />
+          <Route path="/controls" element={<PageTransition><AdminControls /></PageTransition>} />
           <Route path="/reviews" element={<PageTransition><AdminReviews /></PageTransition>} />
           <Route path="/coupons" element={<PageTransition><AdminCoupons /></PageTransition>} />
           <Route path="/drops" element={<PageTransition><AdminDrops /></PageTransition>} />
@@ -118,8 +120,8 @@ function AdminRoutes() {
           <Route path="/campaigns" element={<PageTransition><AdminCampaigns /></PageTransition>} />
           <Route path="/reports" element={<PageTransition><AdminReports /></PageTransition>} />
           <Route path="/seo" element={<PageTransition><AdminSEO /></PageTransition>} />
-          <Route path="/settings" element={<Navigate to="/nexora-admin/dashboard" replace />} />
-          <Route path="/system-health" element={<Navigate to="/nexora-admin/dashboard" replace />} />
+          <Route path="/settings" element={<Navigate to="/nexora-admin/controls" replace />} />
+          <Route path="/system-health" element={<Navigate to="/nexora-admin/controls" replace />} />
           <Route path="/audit-logs" element={<Navigate to="/nexora-admin/dashboard" replace />} />
           <Route path="/promotions" element={<PageTransition><AdminPromotions /></PageTransition>} />
         </Routes>

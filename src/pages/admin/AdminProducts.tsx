@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Edit, Eye, GripVertical, Plus, RefreshCw, Trash2, Upload, X, Star as StarIcon, Download } from 'lucide-react';
+import { Edit, Eye, GripVertical, Plus, RefreshCw, Trash2, Upload, X, Star as StarIcon, Download, Layers3 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PRODUCT_COLORS, PRODUCT_SIZES } from '@/lib/constants';
 import { colorToStorage, normalizeColors } from '@/lib/productOptions';
@@ -282,8 +282,9 @@ export default function AdminProducts() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-[#FFF0E1]">Products</h1>
-          <p className="mt-1 text-sm text-[#BCAEA0]">Create, edit, publish, and manage images for NEXORA products.</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#D7B98E]">Catalog OS</p>
+          <h1 className="mt-1 flex items-center gap-2 text-xl font-bold tracking-tight text-[#FFF0E1]"><Layers3 className="h-5 w-5 text-[#D7B98E]" />Products HQ</h1>
+          <p className="mt-1 text-sm text-[#BCAEA0]">Create, edit, publish, and manage product basics, media, color/size stock, setup quality and SEO-ready copy.</p>
         </div>
         <div className="flex gap-2">
           <button onClick={exportProductsCsv} className="nexora-button"><Download className="h-4 w-4" />Export</button>
@@ -309,6 +310,12 @@ export default function AdminProducts() {
               <option value="women">Women</option>
               <option value="unisex">Unisex</option>
             </select>
+          </div>
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="studio-card p-4"><p className="text-[10px] uppercase tracking-[0.18em] text-[#A7AEBB]">Published</p><p className="mt-2 text-2xl font-semibold text-[#F5F1EA]">{products.filter((p) => p.status === 'active').length}</p></div>
+            <div className="studio-card p-4"><p className="text-[10px] uppercase tracking-[0.18em] text-[#A7AEBB]">Low stock</p><p className="mt-2 text-2xl font-semibold text-amber-300">{products.filter((p) => p.sizes.some((s) => s.stock <= s.lowStockThreshold)).length}</p></div>
+            <div className="studio-card p-4"><p className="text-[10px] uppercase tracking-[0.18em] text-[#A7AEBB]">Missing images</p><p className="mt-2 text-2xl font-semibold text-[#F5F1EA]">{products.filter((p) => !p.images?.length).length}</p></div>
+            <div className="studio-card p-4"><p className="text-[10px] uppercase tracking-[0.18em] text-[#A7AEBB]">Needs SEO</p><p className="mt-2 text-2xl font-semibold text-[#F5F1EA]">{products.filter((p) => !p.seoDescription).length}</p></div>
           </div>
           <div className="studio-card overflow-x-auto">
             <table className="w-full min-w-[820px] text-left">
@@ -339,7 +346,7 @@ export default function AdminProducts() {
           <div className="mb-7 flex items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold text-[#FFF0E1]">{mode === 'create' ? 'Add New Product' : 'Edit Product'}</h2>
-              <p className="mt-1 text-sm text-[#BCAEA0]">Fields include helper notes so you can manage the store without studying the code.</p>
+              <p className="mt-1 text-sm text-[#BCAEA0]">Product HQ is organized like the customer journey: basics → pricing → variants → media → publishing. Server-side validation blocks invalid saves.</p>
             </div>
             <button onClick={() => setMode('list')} className="text-[#BCAEA0] hover:text-[#FFF0E1]"><X className="h-5 w-5" /></button>
           </div>

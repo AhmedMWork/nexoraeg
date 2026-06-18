@@ -79,23 +79,49 @@ export const ORDER_STATUS_FLOW = [
   'delivered',
 ] as const;
 
-export const ADMIN_NAV_LINKS = [
-  { label: 'Overview', href: '/nexora-admin/dashboard', icon: 'LayoutDashboard' },
-  { label: 'Orders', href: '/nexora-admin/orders', icon: 'ShoppingBag' },
-  { label: 'Products', href: '/nexora-admin/products', icon: 'Package' },
-  { label: 'Storefront', href: '/nexora-admin/storefront', icon: 'MonitorSmartphone' },
-  { label: 'Coupons', href: '/nexora-admin/coupons', icon: 'Tag' },
-  { label: 'Promotions', href: '/nexora-admin/promotions', icon: 'BadgePercent' },
-  { label: 'Reviews', href: '/nexora-admin/reviews', icon: 'Star' },
-  { label: 'Inventory', href: '/nexora-admin/inventory', icon: 'Warehouse' },
-  { label: 'Shipping', href: '/nexora-admin/shipping', icon: 'Truck' },
-  { label: 'Customers', href: '/nexora-admin/customers', icon: 'UserRound' },
-  { label: 'Visitors', href: '/nexora-admin/visitors', icon: 'MousePointerClick' },
-  { label: 'Leads', href: '/nexora-admin/leads', icon: 'UserPlus' },
-  { label: 'Campaigns', href: '/nexora-admin/campaigns', icon: 'Target' },
-  { label: 'Analytics', href: '/nexora-admin/analytics', icon: 'BarChart3' },
-  { label: 'Reports', href: '/nexora-admin/reports', icon: 'FileBarChart' },
+export type AdminNavLink = { label: string; href: string; icon: string; description: string };
+export type AdminNavGroup = { label: string; links: AdminNavLink[] };
+
+export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
+  {
+    label: 'Command',
+    links: [
+      { label: 'Today', href: '/nexora-admin/dashboard', icon: 'LayoutDashboard', description: 'Daily action inbox and launch readiness' },
+      { label: 'Orders', href: '/nexora-admin/orders', icon: 'ShoppingBag', description: 'Orders, payment, WhatsApp, shipment actions' },
+      { label: 'Shipping', href: '/nexora-admin/shipping', icon: 'Truck', description: 'Delivery fees, ShipBlu zones, shipment logs' },
+    ],
+  },
+  {
+    label: 'Catalog',
+    links: [
+      { label: 'Products HQ', href: '/nexora-admin/products', icon: 'Package', description: 'Product tabs, media, variants, SEO and analytics' },
+      { label: 'Inventory', href: '/nexora-admin/inventory', icon: 'Warehouse', description: 'Variant stock, low stock and adjustments' },
+      { label: 'Reviews', href: '/nexora-admin/reviews', icon: 'Star', description: 'Social proof and publishing' },
+    ],
+  },
+  {
+    label: 'Growth',
+    links: [
+      { label: 'Customers', href: '/nexora-admin/customers', icon: 'UserRound', description: 'Profiles, order value, tags and notes' },
+      { label: 'Leads CRM', href: '/nexora-admin/leads', icon: 'UserPlus', description: 'Pipeline and follow-up actions' },
+      { label: 'Visitors', href: '/nexora-admin/visitors', icon: 'MousePointerClick', description: 'Visitor journeys and action explanations' },
+      { label: 'Campaigns', href: '/nexora-admin/campaigns', icon: 'Target', description: 'UTM links and campaign attribution' },
+      { label: 'Reports', href: '/nexora-admin/reports', icon: 'FileBarChart', description: 'Decision-grade product and campaign reports' },
+    ],
+  },
+  {
+    label: 'Store',
+    links: [
+      { label: 'Storefront', href: '/nexora-admin/storefront', icon: 'MonitorSmartphone', description: 'Hero, tiles, private list and home controls' },
+      { label: 'Promotions', href: '/nexora-admin/promotions', icon: 'BadgePercent', description: 'Promo strip and merch messages' },
+      { label: 'Coupons', href: '/nexora-admin/coupons', icon: 'Tag', description: 'Discount codes and campaign offers' },
+      { label: 'Drops', href: '/nexora-admin/drops', icon: 'CalendarClock', description: 'Limited releases' },
+      { label: 'Controls', href: '/nexora-admin/controls', icon: 'Settings', description: 'Launch checklist, integrations, env and privacy' },
+    ],
+  },
 ];
+
+export const ADMIN_NAV_LINKS: AdminNavLink[] = ADMIN_NAV_GROUPS.flatMap((group) => group.links);
 
 export const BRAND_VALUES = [
   {
