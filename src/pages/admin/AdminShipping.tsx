@@ -130,6 +130,12 @@ export default function AdminShipping() {
           <Field label="Free threshold" help="Only applies when Free Shipping is enabled." example="2500">
             <input className="studio-input" type="number" min="0" value={settings?.freeShippingThreshold || 0} onChange={(e) => setSettings({ ...settings, freeShippingThreshold: Number(e.target.value) })} />
           </Field>
+          <Field label="Show free shipping message" help="Controls the storefront message like Add EGP more. OFF keeps checkout clean.">
+            <select className="studio-input" value={String(settings?.showFreeShippingProgress || false)} onChange={(e) => setSettings({ ...settings, showFreeShippingProgress: e.target.value === 'true' })}><option value="false">Hidden</option><option value="true">Visible</option></select>
+          </Field>
+          <Field label="Progress message" help="Use {amount} where the remaining value should appear." example="Add {amount} more for free shipping.">
+            <input className="studio-input" value={settings?.freeShippingProgressMessage || ''} onChange={(e) => setSettings({ ...settings, freeShippingProgressMessage: e.target.value })} />
+          </Field>
         </div>
         <button onClick={saveSettings} disabled={isSaving} className="nexora-button-primary mt-5"><Save className="h-4 w-4" />{isSaving ? 'Saving...' : 'Save settings'}</button>
       </div>

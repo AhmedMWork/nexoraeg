@@ -488,3 +488,133 @@ html.dark .v34-logo-img { filter: brightness(1.14) contrast(1.08) drop-shadow(0 
   .studio-chip { border-color: #3A4152 !important; background: #171A21 !important; color: #D6DCE7 !important; }
   .studio-chip[data-active="true"] { border-color: #D7B98E !important; background: rgba(215,185,142,.14) !important; color: #F5F1EA !important; }
 }
+
+/* NEXORA V5.5.1 — Light Admin Polish + visual noise cleanup */
+@layer components {
+  .nexora-admin-light {
+    --admin-bg: #F8F0E4;
+    --admin-bg-soft: #F1E6D7;
+    --admin-card: #FFFDF7;
+    --admin-card-muted: #FAF7F2;
+    --admin-text: #231916;
+    --admin-muted: #735B4F;
+    --admin-subtle: #A48F7E;
+    --admin-border: #D7C5B2;
+    --admin-accent: #D6B58F;
+    --admin-accent-strong: #9D7159;
+    background:
+      radial-gradient(circle at 12% 0%, rgba(214,181,143,.28), transparent 28rem),
+      linear-gradient(180deg, #FFFDF7 0%, #F8F0E4 46%, #EFE0CD 100%);
+    color: var(--admin-text);
+  }
+
+  .nexora-admin-light .studio-card,
+  .nexora-admin-light .luxury-surface,
+  .nexora-admin-light .glass-panel {
+    border-color: var(--admin-border) !important;
+    background: linear-gradient(145deg, rgba(255,253,247,.98), rgba(250,247,242,.94)) !important;
+    color: var(--admin-text) !important;
+    box-shadow: 0 22px 55px rgba(43, 33, 29, .08) !important;
+  }
+
+  .nexora-admin-light .studio-input,
+  .nexora-admin-light .admin-input,
+  .nexora-admin-light input,
+  .nexora-admin-light textarea,
+  .nexora-admin-light select {
+    border-color: var(--admin-border) !important;
+    background: #FFFDF7 !important;
+    color: var(--admin-text) !important;
+  }
+
+  .nexora-admin-light .studio-input::placeholder,
+  .nexora-admin-light .admin-input::placeholder,
+  .nexora-admin-light input::placeholder,
+  .nexora-admin-light textarea::placeholder {
+    color: var(--admin-subtle) !important;
+  }
+
+  .nexora-admin-light .studio-field label,
+  .nexora-admin-light label,
+  .nexora-admin-light h1,
+  .nexora-admin-light h2,
+  .nexora-admin-light h3,
+  .nexora-admin-light h4,
+  .nexora-admin-light [class*="text-[#FFF0E1]"],
+  .nexora-admin-light [class*="text-[#F5F1EA]"],
+  .nexora-admin-light [class*="text-[#f4f0e8]"] {
+    color: var(--admin-text) !important;
+  }
+
+  .nexora-admin-light [class*="text-[#BCAEA0]"],
+  .nexora-admin-light [class*="text-[#A7AEBB]"],
+  .nexora-admin-light [class*="text-[#D2C0B0]"],
+  .nexora-admin-light [class*="text-[#b8b0a3]"],
+  .nexora-admin-light [class*="text-[#8a8175]"],
+  .nexora-admin-light .studio-help {
+    color: var(--admin-muted) !important;
+  }
+
+  .nexora-admin-light [class*="text-[#D2B48C]"],
+  .nexora-admin-light [class*="text-[#D7B98E]"],
+  .nexora-admin-light [class*="text-[#c8a96a]"] {
+    color: var(--admin-accent-strong) !important;
+  }
+
+  .nexora-admin-light [class*="border-[#332923]"],
+  .nexora-admin-light [class*="border-[#2E3442]"],
+  .nexora-admin-light [class*="border-[#202024]"],
+  .nexora-admin-light [class*="border-[#17171a]"],
+  .nexora-admin-light [class*="border-[#4A3D37]"],
+  .nexora-admin-light [class*="border-[#5B473C]"] {
+    border-color: var(--admin-border) !important;
+  }
+
+  .nexora-admin-light [class*="bg-[#17110F]"],
+  .nexora-admin-light [class*="bg-[#171A21]"],
+  .nexora-admin-light [class*="bg-[#12151B]"],
+  .nexora-admin-light [class*="bg-[#11141A]"],
+  .nexora-admin-light [class*="bg-[#0E0B0A]"],
+  .nexora-admin-light [class*="bg-[#0b0b0d]"],
+  .nexora-admin-light [class*="bg-[#050505]"] {
+    background: var(--admin-card-muted) !important;
+  }
+
+  .nexora-admin-light table thead,
+  .nexora-admin-light thead[class*="bg-"] {
+    background: #F1E6D7 !important;
+  }
+
+  .nexora-admin-light .studio-chip {
+    border-color: var(--admin-border) !important;
+    background: #FAF7F2 !important;
+    color: var(--admin-muted) !important;
+  }
+  .nexora-admin-light .studio-chip[data-active="true"] {
+    border-color: var(--admin-accent) !important;
+    background: rgba(214,181,143,.22) !important;
+    color: var(--admin-text) !important;
+  }
+
+  .nexora-admin-light .nexora-button,
+  .nexora-admin-light .v3-btn-secondary {
+    border-color: var(--admin-border) !important;
+    background: #FFFDF7 !important;
+    color: var(--admin-text) !important;
+    box-shadow: 0 12px 32px rgba(43, 33, 29, .06) !important;
+  }
+  .nexora-admin-light .nexora-button-primary,
+  .nexora-admin-light .v3-btn-primary {
+    border-color: #231916 !important;
+    background: #231916 !important;
+    color: #FFFDF7 !important;
+    box-shadow: 0 18px 44px rgba(43, 33, 29, .14) !important;
+  }
+
+  .nexora-admin-light .setup-action,
+  .nexora-admin-light .needs-setup {
+    border-color: rgba(214,181,143,.55) !important;
+    background: rgba(214,181,143,.16) !important;
+    color: var(--admin-text) !important;
+  }
+}

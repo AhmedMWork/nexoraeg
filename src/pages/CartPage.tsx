@@ -11,17 +11,16 @@ import { useCartStore } from '@/stores/cartStore';
 import { formatPrice } from '@/lib/utils';
 import EmptyState from '@/components/ui/EmptyState';
 import SectionReveal from '@/components/ui/SectionReveal';
-import FreeShippingProgress from '@/components/ui/FreeShippingProgress';
 import TrustStrip from '@/components/ui/TrustStrip';
-import { SHIPPING_FEE, FREE_SHIPPING_THRESHOLD } from '@/lib/constants';
+import { SHIPPING_FEE } from '@/lib/constants';
 import { trackEvent } from '@/services/analytics.service';
 
 export default function CartPage() {
   const { items, removeItem, updateQuantity, getTotalPrice, clearCart } = useCartStore();
   const navigate = useNavigate();
   const subtotal = getTotalPrice();
-  const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
-  const total = subtotal + shipping;
+  const estimatedShipping = SHIPPING_FEE;
+  const total = subtotal;
 
   useEffect(() => {
     void trackEvent('cart_view', { itemsCount: items.length, subtotal });
@@ -113,21 +112,16 @@ export default function CartPage() {
                 <h2 className="text-sm font-bold tracking-wider uppercase text-[#f4f0e8] mb-6">
                   Order Summary
                 </h2>
-                <div className="mb-5"><FreeShippingProgress subtotal={subtotal} /></div>
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between text-sm">
                     <span className="text-[#b8b0a3]">Subtotal</span>
                     <span className="text-[#f4f0e8]">{formatPrice(subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-[#b8b0a3]">Shipping</span>
-                    <span className={shipping === 0 ? 'text-green-400' : 'text-[#f4f0e8]'}>
-                      {shipping === 0 ? 'Free' : formatPrice(shipping)}
-                    </span>
+                    <span className="text-[#b8b0a3]">Estimated delivery</span>
+                    <span className="text-[#f4f0e8]">Calculated at checkout</span>
                   </div>
-                  {subtotal < FREE_SHIPPING_THRESHOLD && (
-                    <p className="text-[10px] text-[#8a8175]">Live stock is rechecked at checkout before the order is created.</p>
-                  )}
+                  <p className="text-[10px] leading-5 text-[#8a8175]">Delivery is controlled from admin shipping rules. Current default estimate starts from {formatPrice(estimatedShipping)} and is confirmed at checkout.</p>
                   <div className="h-px bg-[#17171a]" />
                   <div className="flex justify-between">
                     <span className="text-sm font-bold">Total</span>

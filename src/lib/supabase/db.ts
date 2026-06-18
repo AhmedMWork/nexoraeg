@@ -136,6 +136,26 @@ function rowToVariant(row: Record<string, any>): ProductVariant {
   };
 }
 
+
+async function edgeErrorMessage(functionName: string, error: unknown, fallback: string): Promise<string> {
+  const anyError = error as any;
+  const response = anyError?.context;
+  try {
+    if (response && typeof response.clone === 'function') {
+      const payload = await response.clone().json().catch(() => null);
+      if (payload?.error) return String(payload.error);
+      if (payload?.message) return String(payload.message);
+      if (payload?.reason) return String(payload.reason);
+    }
+  } catch {
+    // keep fallback
+  }
+  const raw = String(anyError?.message || fallback || '');
+  if (/non-2xx/i.test(raw)) return `${functionName} failed. Check product stock, shipping rules, and Supabase migrations from NEXORA HQ → Controls.`;
+  if (/failed to fetch|network|timeout/i.test(raw)) return 'Connection failed while placing the order. Please check your connection and try again once.';
+  return raw || fallback;
+}
+
 function variantToRow(variant: Partial<ProductVariant>): Record<string, any> {
   const row: Record<string, any> = {
     id: variant.id,
@@ -448,7 +468,8 @@ export async function createOrder(order: Omit<Order, 'id' | 'createdAt' | 'updat
 
 export async function createOrderWithStockTransaction(payload: { customer: Order['customer']; items: Order['items']; couponCode?: string; notes?: string; [key: string]: unknown }): Promise<{ orderId: string; orderNumber: string; total: number }> {
   const { data, error } = await supabase.functions.invoke<{ orderId: string; orderNumber: string; total: number }>('create-order', { body: { ...payload, paymentMethod: 'cod' } });
-  if (error) throw new Error(error.message || 'Could not create order.');
+  if (error) throw new Error(await edgeErrorMessage('create-order', error, 'Could not create order.'));
+  if (!data?.orderNumber) throw new Error('Order was not created. Please try again once, or contact NEXORA with your cart screenshot.');
   return data as { orderId: string; orderNumber: string; total: number };
 }
 
@@ -782,6 +803,8 @@ export type ShippingQuote = {
   freeShippingApplied?: boolean;
   freeShippingEnabled?: boolean;
   freeShippingThreshold?: number;
+  showFreeShippingProgress?: boolean;
+  freeShippingProgressMessage?: string;
   deliveryEstimate?: string;
   zoneId?: string;
   shipbluZoneId?: number;
@@ -798,6 +821,8 @@ function rowToShippingSettings(row: Record<string, any> = {}) {
     codFee: Number(row.cod_fee ?? 0),
     freeShippingEnabled: Boolean(row.free_shipping_enabled ?? false),
     freeShippingThreshold: Number(row.free_shipping_threshold ?? 0),
+    showFreeShippingProgress: Boolean(row.show_free_shipping_progress ?? false),
+    freeShippingProgressMessage: row.free_shipping_progress_message || 'Add {amount} more for free shipping.',
     fallbackDeliveryEstimate: row.fallback_delivery_estimate || '2-5 business days',
     provider: row.provider || 'shipblu',
     providerEnabled: Boolean(row.provider_enabled ?? false),
@@ -849,7 +874,7 @@ function rowToShipment(row: Record<string, any>) {
 
 export async function calculateShippingQuote(payload: { governorate: string; city: string; subtotal: number; couponFreeShipping?: boolean }): Promise<ShippingQuote> {
   const { data, error } = await supabase.functions.invoke<ShippingQuote>('calculate-shipping', { body: payload });
-  if (error) return { available: false, reason: error.message || 'Could not calculate delivery.', shippingFee: 0, codFee: 0, totalDeliveryFee: 0 };
+  if (error) return { available: false, reason: await edgeErrorMessage('calculate-shipping', error, 'Could not calculate delivery.'), shippingFee: 0, codFee: 0, totalDeliveryFee: 0 };
   return data as ShippingQuote;
 }
 

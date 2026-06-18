@@ -51,7 +51,9 @@ export default function CheckoutPage() {
   const shipping = shippingQuote?.available ? Number(shippingQuote.totalDeliveryFee || 0) : 0;
   const discount = appliedCoupon?.discount || 0;
   const total = Math.max(0, subtotal - discount + shipping);
-  const freeShippingThreshold = shippingQuote?.freeShippingEnabled ? Number(shippingQuote.freeShippingThreshold || 0) : 0;
+  const showFreeShippingProgress = Boolean(shippingQuote?.showFreeShippingProgress);
+  const freeShippingThreshold = showFreeShippingProgress ? Number(shippingQuote?.freeShippingThreshold || 0) : 0;
+  const freeShippingMessage = shippingQuote?.freeShippingProgressMessage || 'Add {amount} more for free shipping.';
 
   const {
     register,
@@ -387,7 +389,7 @@ export default function CheckoutPage() {
             <div className="lg:col-span-1">
               <div className="p-6 bg-[#0b0b0d] border border-[#17171a] sticky top-24">
                 <h3 className="text-xs font-bold tracking-[0.2em] uppercase text-[#f4f0e8] mb-5">{t('checkout.orderSummary')}</h3>
-                {freeShippingThreshold > 0 && <div className="mb-5"><FreeShippingProgress subtotal={subtotal} threshold={freeShippingThreshold} /></div>}
+                {freeShippingThreshold > 0 && <div className="mb-5"><FreeShippingProgress subtotal={subtotal} threshold={freeShippingThreshold} enabled={showFreeShippingProgress} messageTemplate={freeShippingMessage} /></div>}
                 <div className="mb-5 rounded-2xl border border-[#202024] bg-[#050505] p-4">
                   <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#c8a96a]"><Truck className="h-4 w-4" /> Delivery quote</div>
                   <p className="text-xs leading-6 text-[#8a8175]">{isCalculatingShipping ? 'Calculating delivery...' : shippingQuote?.available ? `${shippingQuote.deliveryEstimate || '2-5 business days'}${shippingQuote.freeShippingApplied ? ' · Free shipping applied' : ''}` : (shippingQuote?.reason || 'Choose governorate and city to calculate delivery.')}</p>
