@@ -2,7 +2,7 @@
 // NEXORA — Admin Inventory Page V5.2.1
 // ============================================================
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Download, Minus, PackageCheck, PackageX, Plus, RefreshCw, Search, Warehouse } from 'lucide-react';
 import type { InventoryLog, Product, ProductVariant } from '@/types';
 import toast from 'react-hot-toast';
@@ -10,6 +10,18 @@ import toast from 'react-hot-toast';
 function csvEscape(value: unknown) {
   return `"${String(value ?? '').replace(/"/g, '""')}"`;
 }
+
+type StockRow = {
+  key: string;
+  variantId?: string;
+  size: string;
+  color: string;
+  sku?: string;
+  stock: number;
+  rawStock: number;
+  lowStockThreshold: number;
+  status?: string;
+};
 
 
 function Metric({ label, value, helper, icon: Icon }: { label: string; value: string; helper: string; icon: React.ElementType }) {
@@ -63,7 +75,7 @@ export default function AdminInventory() {
     return map;
   }, [variants]);
 
-  const stockRowsForProduct = (product: Product) => {
+  const stockRowsForProduct = useCallback((product: Product): StockRow[] => {
     const rows = variantRowsByProduct.get(product.id) || [];
     if (rows.length) {
       return rows.map((variant) => ({
@@ -89,18 +101,18 @@ export default function AdminInventory() {
       lowStockThreshold: Number(size.lowStockThreshold ?? 3),
       status: product.status || 'active',
     }));
-  };
+  }, [variantRowsByProduct]);
 
-  const totalStock = (product: Product) => stockRowsForProduct(product).reduce((sum, row) => sum + Number(row.stock || 0), 0);
+  const totalStock = useCallback((product: Product) => stockRowsForProduct(product).reduce((sum, row) => sum + Number(row.stock || 0), 0), [stockRowsForProduct]);
 
-  const stockStatus = (product: Product) => {
+  const stockStatus = useCallback((product: Product) => {
     const rows = stockRowsForProduct(product);
     const total = totalStock(product);
     if (!rows.length) return { label: 'Missing stock setup', tone: 'warning' as const };
     if (total <= 0 || product.status === 'sold_out') return { label: 'Sold out', tone: 'danger' as const };
     if (rows.some((row) => Number(row.stock || 0) <= Number(row.lowStockThreshold ?? 3))) return { label: 'Low stock', tone: 'warning' as const };
     return { label: 'In stock', tone: 'success' as const };
-  };
+  }, [stockRowsForProduct, totalStock]);
 
   const filteredProducts = useMemo(() => products.filter((product) => {
     const q = searchQuery.trim().toLowerCase();
@@ -111,7 +123,7 @@ export default function AdminInventory() {
       || (stockFilter === 'sold_out' && status.label === 'Sold out')
       || (stockFilter === 'missing' && status.label === 'Missing stock setup');
     return matchesSearch && matchesFilter;
-  }), [products, searchQuery, stockFilter]);
+  }), [products, searchQuery, stockFilter, stockStatus]);
 
   const metrics = useMemo(() => {
     const totalUnits = products.reduce((sum, product) => sum + totalStock(product), 0);
@@ -119,7 +131,7 @@ export default function AdminInventory() {
     const soldOut = products.filter((product) => stockStatus(product).label === 'Sold out').length;
     const missing = products.filter((product) => stockStatus(product).label === 'Missing stock setup').length;
     return { totalUnits, low, soldOut, missing };
-  }, [products]);
+  }, [products, stockStatus, totalStock]);
 
   const adjustStock = async (productId: string, size: string, delta: number, variantId?: string) => {
     const product = products.find((p) => p.id === productId);

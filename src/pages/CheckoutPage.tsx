@@ -38,12 +38,12 @@ export default function CheckoutPage() {
   const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
   const [idempotencyKey, setIdempotencyKey] = useState(() => {
     if (typeof window === 'undefined') return `nx-${Date.now()}`;
-    const existing = window.sessionStorage.getItem('nexora-checkout-idempotency-key-v5-3');
+    const existing = window.sessionStorage.getItem('nexora-checkout-idempotency-key-v5-5-3');
     if (existing) return existing;
     const key = typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? `nx-${crypto.randomUUID()}`
       : `nx-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    window.sessionStorage.setItem('nexora-checkout-idempotency-key-v5-3', key);
+    window.sessionStorage.setItem('nexora-checkout-idempotency-key-v5-5-3', key);
     return key;
   });
 
@@ -217,7 +217,7 @@ export default function CheckoutPage() {
       setOrderNumber(createdOrder.orderNumber);
       setOrderComplete(true);
       clearCart();
-      if (typeof window !== 'undefined') window.sessionStorage.removeItem('nexora-checkout-idempotency-key-v5-3');
+      if (typeof window !== 'undefined') window.sessionStorage.removeItem('nexora-checkout-idempotency-key-v5-5-3');
       setIdempotencyKey(`nx-${Date.now()}-${Math.random().toString(16).slice(2)}`);
       toast.success(t('checkout.confirmed'));
     } catch (error) {

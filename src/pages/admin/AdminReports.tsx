@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BarChart3, Download, HelpCircle, MessageCircle, MousePointerClick, Package, RefreshCw, ShoppingBag, TrendingUp, Users } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 
@@ -28,7 +28,7 @@ export default function AdminReports() {
   const [sortBy, setSortBy] = useState<'revenue' | 'orders' | 'leads' | 'visitors'>('revenue');
   const [productQuery, setProductQuery] = useState('');
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setIsLoading(true);
     try {
       const db = await import('@/lib/supabase/db');
@@ -39,8 +39,8 @@ export default function AdminReports() {
       setCampaignData(campaigns);
       setProductData(products);
     } finally { setIsLoading(false); }
-  };
-  useEffect(() => { void load(); }, [days]);
+  }, [days, productQuery]);
+  useEffect(() => { void load(); }, [load]);
 
   const campaigns = useMemo(() => [...(campaignData.campaigns || [])].sort((a, b) => Number(b[sortBy] || 0) - Number(a[sortBy] || 0)), [campaignData.campaigns, sortBy]);
   const products = productData.products || [];

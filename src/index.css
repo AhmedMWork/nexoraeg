@@ -618,3 +618,177 @@ html.dark .v34-logo-img { filter: brightness(1.14) contrast(1.08) drop-shadow(0 
     color: var(--admin-text) !important;
   }
 }
+
+/* NEXORA V5.5.3 — Clean Light Admin Reset
+   Strong owner-facing light UI pass. Existing technical pages remain available,
+   but dark command-center colors are neutralized inside the admin shell. */
+@layer components {
+  .admin-ux-reset {
+    --admin-bg: #F8F3EA;
+    --admin-bg-soft: #F2E7D8;
+    --admin-card: #FFFDF8;
+    --admin-card-muted: #FAF5EE;
+    --admin-text: #231916;
+    --admin-muted: #6F5D50;
+    --admin-subtle: #A48F7E;
+    --admin-border: #E4D6C5;
+    --admin-accent: #D6B58F;
+    --admin-accent-strong: #8C634B;
+    background:
+      radial-gradient(circle at 8% 0%, rgba(214,181,143,.20), transparent 26rem),
+      radial-gradient(circle at 92% 4%, rgba(157,113,89,.08), transparent 26rem),
+      linear-gradient(180deg, #FFFDF8 0%, #F8F3EA 52%, #F1E5D6 100%) !important;
+  }
+
+  .admin-ux-reset .studio-card,
+  .admin-ux-reset .luxury-surface,
+  .admin-ux-reset .glass-panel,
+  .admin-ux-reset .nexora-card {
+    border: 1px solid var(--admin-border) !important;
+    background: var(--admin-card) !important;
+    color: var(--admin-text) !important;
+    border-radius: 26px !important;
+    box-shadow: 0 18px 45px rgba(43,33,29,.055) !important;
+  }
+
+  .admin-ux-reset .studio-card:hover,
+  .admin-ux-reset .luxury-surface:hover,
+  .admin-ux-reset .glass-panel:hover {
+    box-shadow: 0 24px 55px rgba(43,33,29,.075) !important;
+  }
+
+  .admin-ux-reset .studio-input,
+  .admin-ux-reset .admin-input,
+  .admin-ux-reset input,
+  .admin-ux-reset textarea,
+  .admin-ux-reset select {
+    border: 1px solid var(--admin-border) !important;
+    background: var(--admin-card) !important;
+    color: var(--admin-text) !important;
+    border-radius: 18px !important;
+    box-shadow: none !important;
+  }
+
+  .admin-ux-reset input::placeholder,
+  .admin-ux-reset textarea::placeholder,
+  .admin-ux-reset .studio-input::placeholder,
+  .admin-ux-reset .admin-input::placeholder { color: var(--admin-subtle) !important; }
+
+  .admin-ux-reset input:focus,
+  .admin-ux-reset textarea:focus,
+  .admin-ux-reset select:focus,
+  .admin-ux-reset .studio-input:focus,
+  .admin-ux-reset .admin-input:focus {
+    border-color: var(--admin-accent) !important;
+    box-shadow: 0 0 0 3px rgba(214,181,143,.18) !important;
+  }
+
+  .admin-ux-reset h1,
+  .admin-ux-reset h2,
+  .admin-ux-reset h3,
+  .admin-ux-reset h4,
+  .admin-ux-reset h5,
+  .admin-ux-reset h6,
+  .admin-ux-reset label,
+  .admin-ux-reset [class*="text-[#F"],
+  .admin-ux-reset [class*="text-[#f"],
+  .admin-ux-reset [class*="text-[#FFF"],
+  .admin-ux-reset [class*="text-[#fff"] {
+    color: var(--admin-text) !important;
+  }
+
+  .admin-ux-reset p,
+  .admin-ux-reset small,
+  .admin-ux-reset [class*="text-[#A"],
+  .admin-ux-reset [class*="text-[#B"],
+  .admin-ux-reset [class*="text-[#D2C"],
+  .admin-ux-reset [class*="text-[#8"],
+  .admin-ux-reset [class*="text-[#7"],
+  .admin-ux-reset [class*="text-[#6"],
+  .admin-ux-reset .studio-help {
+    color: var(--admin-muted) !important;
+  }
+
+  .admin-ux-reset [class*="text-[#D2B"],
+  .admin-ux-reset [class*="text-[#D7B"],
+  .admin-ux-reset [class*="text-[#c8a"],
+  .admin-ux-reset [class*="text-[#9D"],
+  .admin-ux-reset [class*="text-[#8C"] {
+    color: var(--admin-accent-strong) !important;
+  }
+
+  .admin-ux-reset [class*="border-[#0"],
+  .admin-ux-reset [class*="border-[#1"],
+  .admin-ux-reset [class*="border-[#2"],
+  .admin-ux-reset [class*="border-[#3"],
+  .admin-ux-reset [class*="border-[#4"],
+  .admin-ux-reset [class*="border-[#5"],
+  .admin-ux-reset [class*="border-[#D7C"],
+  .admin-ux-reset [class*="border-[#E4"] {
+    border-color: var(--admin-border) !important;
+  }
+
+  .admin-ux-reset [class*="bg-[#0"],
+  .admin-ux-reset [class*="bg-[#1"],
+  .admin-ux-reset [class*="bg-[#2"],
+  .admin-ux-reset [class*="bg-[#F1"],
+  .admin-ux-reset [class*="bg-[#FA"],
+  .admin-ux-reset [class*="bg-[#FFF"] {
+    background: var(--admin-card-muted) !important;
+  }
+
+  .admin-ux-reset .studio-card,
+  .admin-ux-reset .studio-card[class*="bg-"],
+  .admin-ux-reset section.studio-card,
+  .admin-ux-reset a.studio-card {
+    background: var(--admin-card) !important;
+  }
+
+  .admin-ux-reset table,
+  .admin-ux-reset .overflow-x-auto {
+    border-radius: 24px !important;
+  }
+
+  .admin-ux-reset thead,
+  .admin-ux-reset table thead,
+  .admin-ux-reset thead tr {
+    background: var(--admin-card-muted) !important;
+  }
+
+  .admin-ux-reset tbody tr {
+    border-color: var(--admin-border) !important;
+  }
+
+  .admin-ux-reset .studio-chip {
+    border-color: var(--admin-border) !important;
+    background: var(--admin-card-muted) !important;
+    color: var(--admin-muted) !important;
+  }
+
+  .admin-ux-reset .studio-chip[data-active="true"] {
+    border-color: var(--admin-accent) !important;
+    background: rgba(214,181,143,.22) !important;
+    color: var(--admin-text) !important;
+  }
+
+  .admin-ux-reset .nexora-button,
+  .admin-ux-reset .v3-btn-secondary,
+  .admin-ux-reset button[class*="border"] {
+    border-color: var(--admin-border) !important;
+  }
+
+  .admin-ux-reset .nexora-button-primary,
+  .admin-ux-reset .v3-btn-primary {
+    border-color: var(--admin-text) !important;
+    background: var(--admin-text) !important;
+    color: var(--admin-card) !important;
+  }
+
+  .admin-ux-reset pre,
+  .admin-ux-reset code {
+    border: 1px solid var(--admin-border) !important;
+    background: #F6EFE6 !important;
+    color: #3B2A22 !important;
+    border-radius: 18px !important;
+  }
+}
