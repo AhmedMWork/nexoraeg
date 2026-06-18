@@ -4,7 +4,7 @@ const missing = required.filter((key) => !process.env[key] || !String(process.en
 
 if (missing.length) {
   console.error(`Missing required public env vars: ${missing.join(', ')}`);
-  console.error('Add them to Vercel Environment Variables before deploying NEXORA V5.5.');
+  console.error('Add them to Vercel Environment Variables before deploying Nexora.');
   process.exit(1);
 }
 
@@ -36,4 +36,4 @@ try {
   process.exit(1);
 }
 
-console.log('Required NEXORA V5.5 public env vars are valid.');
+console.log('Required Nexora public env vars are valid.');

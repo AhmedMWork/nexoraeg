@@ -11,7 +11,7 @@ npm install
 ## 2. Create `.env`
 
 ```env
-VITE_SUPABASE_URL=https://ccmuazjkgzjqzybxwrfd.supabase.co
+VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=your_publishable_or_anon_key
 VITE_STORE_WHATSAPP=01037141322
 VITE_SUPPORT_EMAIL=supportnexorastoree@gmail.com

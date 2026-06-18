@@ -5,13 +5,13 @@
 Project ID:
 
 ```txt
-ccmuazjkgzjqzybxwrfd
+YOUR_PROJECT_REF
 ```
 
 Frontend URL:
 
 ```env
-VITE_SUPABASE_URL=https://ccmuazjkgzjqzybxwrfd.supabase.co
+VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 ```
 
 Use your Supabase publishable/anon key as:

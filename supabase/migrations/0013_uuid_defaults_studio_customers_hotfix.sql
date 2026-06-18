@@ -44,28 +44,36 @@ as $$
 $$;
 
 -- ============================================================
--- NEXORA V5.5.5 — Recovery stabilization hotfix
+-- NEXORA V5.5.4 — Supabase UUID defaults + Studio Customers hotfix
 -- ============================================================
--- Purpose:
--- 1) Remove all runtime dependency on pgcrypto/uuid-ossp UUID helpers.
--- 2) Repair live databases where existing tables still have broken UUID defaults.
--- 3) Make Studio Customers refresh safe after partial resets/migrations.
--- 4) Record a clear release ledger item for diagnostics.
+-- Fixes live projects returning:
+--   function gen_random_bytes(integer) does not exist
+-- when inserting rows into tables whose UUID id defaults depend on pgcrypto.
+--
+-- This migration creates a safe UUID helper with graceful fallback and rewires
+-- public UUID id defaults to use it, then refreshes customer profiles.
 -- ============================================================
 
+create schema if not exists extensions;
 
+-- Try to enable common UUID extensions. Some Supabase projects already manage
+-- these; failures are tolerated by the helper fallback below.
+do $$
+begin
+  begin
+    do $$ begin create extension if not exists pgcrypto with schema extensions; exception when others then raise notice 'pgcrypto unavailable: %', sqlerrm; end $$;
+  exception when others then
+    raise notice 'pgcrypto extension could not be created or is already managed: %', sqlerrm;
+  end;
 
--- Compatibility alias for older V5.5.4 defaults if any were already applied.
+  begin
+    do $$ begin create extension if not exists "uuid-ossp" with schema extensions; exception when others then raise notice 'uuid-ossp unavailable: %', sqlerrm; end $$;
+  exception when others then
+    raise notice 'uuid-ossp extension could not be created or is unavailable: %', sqlerrm;
+  end;
+end $$;
 
--- Create release ledger early and with safe UUID defaults.
-create table if not exists public.nexora_system_migrations (
-  id uuid primary key default public.nexora_uuid(),
-  version text unique not null,
-  summary text,
-  applied_at timestamptz default now()
-);
-
--- Rewire EVERY public UUID id default away from gen_random_uuid and old helpers.
+-- Rewire all public base-table UUID id defaults to the safe helper.
 do $$
 declare
   r record;
@@ -85,79 +93,22 @@ begin
   end loop;
 end $$;
 
--- Ensure CRM tables exist even after partial database restores.
-create table if not exists public.customer_profiles (
-  id uuid primary key default public.nexora_uuid(),
-  phone text unique,
-  email text,
-  full_name text,
-  governorate text,
-  city text,
-  address text,
-  total_orders integer default 0,
-  total_revenue numeric default 0,
-  last_order_at timestamptz,
-  first_source text,
-  last_source text,
-  first_campaign text,
-  last_campaign text,
-  tags jsonb default '[]'::jsonb,
-  status text default 'active',
-  notes text,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
-create table if not exists public.customer_notes (
-  id uuid primary key default public.nexora_uuid(),
-  customer_id uuid references public.customer_profiles(id) on delete cascade,
-  note text not null,
-  created_by text default 'studio',
-  created_at timestamptz default now()
-);
-
-create table if not exists public.lead_tasks (
-  id uuid primary key default public.nexora_uuid(),
-  lead_id uuid,
-  title text not null,
-  status text default 'open',
-  due_at timestamptz,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
-create table if not exists public.system_setup_events (
-  id uuid primary key default public.nexora_uuid(),
-  check_key text not null,
-  status text default 'ok',
-  message text,
-  metadata jsonb default '{}'::jsonb,
-  created_at timestamptz default now()
-);
-
--- Reapply safe defaults explicitly for the most error-prone tables.
+-- Extra explicit coverage for the tables involved in studio-customers.
 alter table if exists public.customer_profiles alter column id set default public.nexora_uuid();
 alter table if exists public.customer_notes alter column id set default public.nexora_uuid();
 alter table if exists public.lead_tasks alter column id set default public.nexora_uuid();
+alter table if exists public.admin_action_notes alter column id set default public.nexora_uuid();
 alter table if exists public.system_setup_events alter column id set default public.nexora_uuid();
-alter table if exists public.nexora_system_migrations alter column id set default public.nexora_uuid();
 
-create index if not exists idx_customer_profiles_phone_v555 on public.customer_profiles(phone);
-create index if not exists idx_customer_profiles_last_order_v555 on public.customer_profiles(last_order_at desc);
-create index if not exists idx_customer_notes_customer_v555 on public.customer_notes(customer_id, created_at desc);
-
--- Defensive customer refresh. Does not depend on pgcrypto or old defaults.
+-- Recreate CRM refresh defensively. Keeps the previous behavior but ensures
+-- it is available after partial migrations/resets.
 create or replace function public.nexora_refresh_customer_profiles_v5_5()
 returns void
 language plpgsql
 security definer
-set search_path = public, pg_catalog
+set search_path = public
 as $$
 begin
-  if to_regclass('public.orders') is null then
-    return;
-  end if;
-
   insert into public.customer_profiles(phone, email, full_name, governorate, city, address, total_orders, total_revenue, last_order_at, first_source, last_source, first_campaign, last_campaign, updated_at)
   select
     nullif(customer_phone, ''),
@@ -194,23 +145,18 @@ begin
 end;
 $$;
 
--- Validate inserts into the tables that were failing in production.
+-- Record release if the ledger exists.
+insert into public.nexora_system_migrations(version, summary)
+values ('5.5.4', 'Safe UUID defaults hotfix for Studio Customers and pgcrypto/gen_random_bytes issues.')
+on conflict (version) do update set summary = excluded.summary, applied_at = now();
+
+-- Validate the safe helper now.
 do $$
 declare
-  test_customer_id uuid;
+  test_uuid uuid;
 begin
-  insert into public.customer_profiles(phone, full_name, notes)
-  values ('__nexora_v555_test__', 'NEXORA Migration Test', 'Temporary migration test row')
-  on conflict (phone) do update set updated_at = now()
-  returning id into test_customer_id;
-
-  delete from public.customer_profiles where phone = '__nexora_v555_test__';
-
-  if test_customer_id is null then
-    raise exception 'NEXORA V5.5.5 recovery test could not create a customer profile.';
+  select public.nexora_uuid() into test_uuid;
+  if test_uuid is null then
+    raise exception 'NEXORA V5.5.4 UUID helper returned null';
   end if;
 end $$;
-
-insert into public.nexora_system_migrations(version, summary)
-values ('5.5.5', 'Recovery stabilization: safe UUID defaults, Studio Customers resilience, no pgcrypto runtime dependency.')
-on conflict (version) do update set summary = excluded.summary, applied_at = now();

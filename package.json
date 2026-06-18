@@ -1,7 +1,7 @@
 {
-  "name": "nexora-v5-5-5-recovery-stable-production",
+  "name": "nexora",
   "private": true,
-  "version": "5.5.5",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -94,6 +94,6 @@
     "node": "20.x",
     "npm": "10.x"
   },
-  "description": "NEXORA V5.5.5 Recovery Stable Production Ready — Supabase UUID, Studio Customers, Edge Function resilience hotfix.",
+  "description": "Nexora production-ready storefront and admin system.",
   "packageManager": "npm@10.9.2"
 }

@@ -22,17 +22,11 @@ const required = [
   'supabase/functions/studio-leads/index.ts',
   'supabase/functions/studio-campaigns/index.ts',
   'supabase/functions/studio-reports/index.ts',
-  'supabase/migrations/0005_nexora_v5_2_growth_intelligence.sql',
-  'supabase/migrations/0006_nexora_v5_2_1_storefront_inventory_reports.sql',
-  'supabase/migrations/0007_nexora_v5_3_commerce_correctness.sql',
-  'V5_3_FINAL_RELEASE_REPORT.md',
-  'V5_3_DEPLOYMENT_GUIDE.md',
-  'V5_3_QA_CHECKLIST.md',
-  'V5_5_ADMIN_OS_QA_CHECKLIST.md',
-  'V5_5_DEPLOYMENT_GUIDE.md',
-  'V5_5_FINAL_RELEASE_REPORT.md',
-  'supabase/migrations/0009_nexora_v5_5_admin_os_crm_diagnostics.sql',
-  'supabase/migrations/0008_nexora_v5_4_shipping_analytics_ops.sql',
+  'supabase/migrations/0005_growth_intelligence.sql',
+  'supabase/migrations/0006_storefront_inventory_reports.sql',
+  'supabase/migrations/0007_commerce_correctness.sql',
+  'supabase/migrations/0009_admin_crm_diagnostics.sql',
+  'supabase/migrations/0008_shipping_analytics_ops.sql',
   'supabase/functions/studio-customers/index.ts',
   'supabase/functions/studio-health-check/index.ts',
   'src/pages/admin/AdminControls.tsx',
@@ -41,7 +35,7 @@ const required = [
 let failed = false;
 for (const file of required) {
   if (!fs.existsSync(file)) {
-    console.error(`Missing required V5.5 file: ${file}`);
+    console.error(`Missing required Nexora file: ${file}`);
     failed = true;
   }
 }
@@ -77,4 +71,4 @@ if (secrets.includes('SUPABASE_SERVICE_ROLE_KEY') && secrets.includes('secrets s
 }
 
 if (failed) process.exit(1);
-console.log('NEXORA V5.5 smoke check passed.');
+console.log('Nexora smoke check passed.');

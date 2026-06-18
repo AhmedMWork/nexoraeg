@@ -1,61 +1,27 @@
-# NEXORA V4.1 — Deployment Checklist
+# Nexora Deployment Checklist
 
-## Before Deploy
+## Vercel
 
-- [ ] `.env` is created locally.
-- [ ] Vercel environment variables are set.
-- [ ] Supabase schema is applied.
-- [ ] V4.1 migration SQL is applied if upgrading from V4/V4_Fix.
-- [ ] Supabase Storage bucket `products` exists and is public.
-- [ ] Supabase Edge Function secrets are set.
-- [ ] Supabase Edge Functions are deployed.
-- [ ] `npm run lint` passes.
-- [ ] `npm run build` passes.
-
-## Vercel Variables
-
-```txt
-VITE_SUPABASE_URL
-VITE_SUPABASE_PUBLISHABLE_KEY
-VITE_STORE_WHATSAPP
-VITE_SUPPORT_EMAIL
-```
-
-Do not add service role key to Vercel frontend variables.
+- `VITE_SITE_URL` = production domain
+- `VITE_SUPABASE_URL` = `https://PROJECT_REF.supabase.co` with no `/rest/v1` or `/functions/v1`
+- `VITE_SUPABASE_PUBLISHABLE_KEY` = public anon/publishable key
+- `VITE_STORE_WHATSAPP` = store WhatsApp number
+- `VITE_SUPPORT_EMAIL` = support email
 
 ## Supabase Secrets
 
-```txt
-SUPABASE_SERVICE_ROLE_KEY
-STUDIO_SESSION_SECRET
-ALLOWED_ORIGIN
+- `REQUIRE_STUDIO_PIN=true`
+- `STUDIO_ACCESS_PIN=YOUR_PRIVATE_PIN`
+- `STUDIO_SESSION_SECRET=LONG_RANDOM_SECRET`
+- `ALLOWED_ORIGIN=https://your-production-domain.com`
+- Optional: `SHIPBLU_API_KEY`
+
+## Commands
+
+```powershell
+supabase link --project-ref ccmuazjkgzjqzybxwrfd
+supabase db push
+powershell -ExecutionPolicy Bypass -File .\scripts\deploy-supabase-functions.ps1 -ProjectRef ccmuazjkgzjqzybxwrfd
 ```
 
-Optional:
-
-```txt
-REQUIRE_STUDIO_PIN
-STUDIO_ACCESS_PIN
-```
-
-## After Deploy
-
-- [ ] Homepage opens.
-- [ ] No blank page on route changes.
-- [ ] `/studio` opens.
-- [ ] `/nexora-admin` opens.
-- [ ] Product creation works.
-- [ ] Product image upload works.
-- [ ] Coupon creation works.
-- [ ] Checkout creates an order.
-- [ ] Analytics page receives events.
-- [ ] Arabic/English switch works.
-- [ ] `/sitemap.xml` opens.
-- [ ] `/robots.txt` opens.
-
-## Google
-
-- [ ] Replace Google verification placeholder.
-- [ ] Submit sitemap in Google Search Console.
-- [ ] Inspect homepage URL.
-- [ ] Inspect product URLs after adding real products.
+Then redeploy Vercel with Clear Build Cache.

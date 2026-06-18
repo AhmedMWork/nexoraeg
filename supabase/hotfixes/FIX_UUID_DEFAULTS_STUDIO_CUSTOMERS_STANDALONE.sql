@@ -1,14 +1,11 @@
 -- ============================================================
--- NEXORA V5.5.5 — Recovery stabilization hotfix
--- ============================================================
--- Purpose:
--- 1) Remove all runtime dependency on pgcrypto/uuid-ossp UUID helpers.
--- 2) Repair live databases where existing tables still have broken UUID defaults.
--- 3) Make Studio Customers refresh safe after partial resets/migrations.
--- 4) Record a clear release ledger item for diagnostics.
+-- NEXORA UUID BOOTSTRAP
+-- Safe on fresh and already-live Supabase databases.
+-- No dependency on pgcrypto, uuid-ossp, gen_random_uuid, or gen_random_bytes.
+-- Compatibility aliases are kept so older partially-applied databases do not fail.
 -- ============================================================
 
-create or replace function public.nexora_uuid_v5_5_5()
+create or replace function public.nexora_uuid()
 returns uuid
 language plpgsql
 volatile
@@ -17,7 +14,7 @@ as $$
 declare
   value text;
 begin
-  value := md5(clock_timestamp()::text || random()::text || txid_current()::text);
+  value := md5(concat(clock_timestamp()::text, random()::text, txid_current()::text, coalesce(inet_client_addr()::text, ''), coalesce(inet_client_port()::text, '')));
   return (
     substr(value, 1, 8) || '-' ||
     substr(value, 9, 4) || '-4' ||
@@ -28,21 +25,41 @@ begin
 end;
 $$;
 
-comment on function public.nexora_uuid_v5_5_5() is 'NEXORA safe UUID generator with no pgcrypto or uuid-ossp dependency.';
+create or replace function public.nexora_uuid_v5_5_5()
+returns uuid
+language sql
+volatile
+set search_path = public, pg_catalog
+as $$
+  select public.nexora_uuid();
+$$;
 
--- Compatibility alias for older V5.5.4 defaults if any were already applied.
 create or replace function public.nexora_uuid_v5_5_4()
 returns uuid
 language sql
 volatile
 set search_path = public, pg_catalog
 as $$
-  select public.nexora_uuid_v5_5_5();
+  select public.nexora_uuid();
 $$;
+
+-- ============================================================
+-- NEXORA V5.5.5 — Recovery stabilization hotfix
+-- ============================================================
+-- Purpose:
+-- 1) Remove all runtime dependency on pgcrypto/uuid-ossp UUID helpers.
+-- 2) Repair live databases where existing tables still have broken UUID defaults.
+-- 3) Make Studio Customers refresh safe after partial resets/migrations.
+-- 4) Record a clear release ledger item for diagnostics.
+-- ============================================================
+
+
+
+-- Compatibility alias for older V5.5.4 defaults if any were already applied.
 
 -- Create release ledger early and with safe UUID defaults.
 create table if not exists public.nexora_system_migrations (
-  id uuid primary key default public.nexora_uuid_v5_5_5(),
+  id uuid primary key default public.nexora_uuid(),
   version text unique not null,
   summary text,
   applied_at timestamptz default now()
@@ -64,13 +81,13 @@ begin
       and c.column_name = 'id'
       and c.udt_name = 'uuid'
   loop
-    execute format('alter table %I.%I alter column id set default public.nexora_uuid_v5_5_5()', r.table_schema, r.table_name);
+    execute format('alter table %I.%I alter column id set default public.nexora_uuid()', r.table_schema, r.table_name);
   end loop;
 end $$;
 
 -- Ensure CRM tables exist even after partial database restores.
 create table if not exists public.customer_profiles (
-  id uuid primary key default public.nexora_uuid_v5_5_5(),
+  id uuid primary key default public.nexora_uuid(),
   phone text unique,
   email text,
   full_name text,
@@ -92,7 +109,7 @@ create table if not exists public.customer_profiles (
 );
 
 create table if not exists public.customer_notes (
-  id uuid primary key default public.nexora_uuid_v5_5_5(),
+  id uuid primary key default public.nexora_uuid(),
   customer_id uuid references public.customer_profiles(id) on delete cascade,
   note text not null,
   created_by text default 'studio',
@@ -100,7 +117,7 @@ create table if not exists public.customer_notes (
 );
 
 create table if not exists public.lead_tasks (
-  id uuid primary key default public.nexora_uuid_v5_5_5(),
+  id uuid primary key default public.nexora_uuid(),
   lead_id uuid,
   title text not null,
   status text default 'open',
@@ -110,7 +127,7 @@ create table if not exists public.lead_tasks (
 );
 
 create table if not exists public.system_setup_events (
-  id uuid primary key default public.nexora_uuid_v5_5_5(),
+  id uuid primary key default public.nexora_uuid(),
   check_key text not null,
   status text default 'ok',
   message text,
@@ -119,11 +136,11 @@ create table if not exists public.system_setup_events (
 );
 
 -- Reapply safe defaults explicitly for the most error-prone tables.
-alter table if exists public.customer_profiles alter column id set default public.nexora_uuid_v5_5_5();
-alter table if exists public.customer_notes alter column id set default public.nexora_uuid_v5_5_5();
-alter table if exists public.lead_tasks alter column id set default public.nexora_uuid_v5_5_5();
-alter table if exists public.system_setup_events alter column id set default public.nexora_uuid_v5_5_5();
-alter table if exists public.nexora_system_migrations alter column id set default public.nexora_uuid_v5_5_5();
+alter table if exists public.customer_profiles alter column id set default public.nexora_uuid();
+alter table if exists public.customer_notes alter column id set default public.nexora_uuid();
+alter table if exists public.lead_tasks alter column id set default public.nexora_uuid();
+alter table if exists public.system_setup_events alter column id set default public.nexora_uuid();
+alter table if exists public.nexora_system_migrations alter column id set default public.nexora_uuid();
 
 create index if not exists idx_customer_profiles_phone_v555 on public.customer_profiles(phone);
 create index if not exists idx_customer_profiles_last_order_v555 on public.customer_profiles(last_order_at desc);
