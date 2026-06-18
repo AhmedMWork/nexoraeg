@@ -1,0 +1,77 @@
+project_id = "ccmuazjkgzjqzybxwrfd"
+
+[functions.verify-studio-access]
+verify_jwt = false
+
+[functions.create-order]
+verify_jwt = false
+
+[functions.validate-coupon]
+verify_jwt = false
+
+[functions.studio-products]
+verify_jwt = false
+
+[functions.studio-orders]
+verify_jwt = false
+
+[functions.studio-reviews]
+verify_jwt = false
+
+[functions.studio-drops]
+verify_jwt = false
+
+[functions.studio-coupons]
+verify_jwt = false
+
+[functions.studio-promotions]
+verify_jwt = false
+
+[functions.studio-settings]
+verify_jwt = false
+
+[functions.studio-dashboard]
+verify_jwt = false
+
+[functions.track-order]
+verify_jwt = false
+[functions.studio-media-upload]
+verify_jwt = false
+[functions.studio-media-delete]
+verify_jwt = false
+
+[functions.studio-audit-logs]
+verify_jwt = false
+
+[functions.track-visitor-event]
+verify_jwt = false
+
+[functions.capture-lead]
+verify_jwt = false
+
+[functions.track-whatsapp-click]
+verify_jwt = false
+
+[functions.studio-visitors]
+verify_jwt = false
+
+[functions.studio-leads]
+verify_jwt = false
+
+[functions.studio-campaigns]
+verify_jwt = false
+
+[functions.studio-reports]
+verify_jwt = false
+
+[functions.calculate-shipping]
+verify_jwt = false
+
+[functions.studio-shipping]
+verify_jwt = false
+
+[functions.create-shipment]
+verify_jwt = false
+
+[functions.track-shipment]
+verify_jwt = false
