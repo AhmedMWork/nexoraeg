@@ -213,6 +213,12 @@ function rowToOrder(row: Record<string, any>, items: any[] = []): Order {
     adminNotes: row.admin_notes || row.adminNotes,
     customerNotes: row.notes || row.customerNotes,
     source: row.source || 'web',
+    shippingStatus: row.shipping_status || row.shippingStatus || 'not_created',
+    shippingProvider: row.shipping_provider || row.shippingProvider,
+    trackingNumber: row.tracking_number || row.trackingNumber,
+    deliveryEstimate: row.delivery_estimate || row.deliveryEstimate,
+    codFee: Number(row.cod_fee || row.codFee || 0),
+    shipmentId: row.shipment_id || row.shipmentId,
     createdAt: toDate(row.created_at || row.createdAt),
     updatedAt: toDate(row.updated_at || row.updatedAt),
   };
@@ -470,7 +476,7 @@ export async function getCoupons(): Promise<Coupon[]> {
   return (data.coupons || []).map(rowToCoupon);
 }
 
-export async function validateCouponForCart(payload: { code: string; items: Array<{ productId: string; size: string; color?: string; quantity: number }>; subtotal: number }): Promise<{ valid: boolean; code?: string; discount: number; freeShipping?: boolean; message: string }> {
+export async function validateCouponForCart(payload: { code: string; items: Array<{ productId: string; variantId?: string; size: string; color?: string; quantity: number }>; subtotal: number }): Promise<{ valid: boolean; code?: string; discount: number; freeShipping?: boolean; message: string }> {
   const { data, error } = await supabase.functions.invoke('validate-coupon', { body: payload });
   if (error) {
     void supabase.from('analytics_events').insert({ event_name: 'edge_function_error', metadata: { function: 'validate-coupon', message: error.message } });
@@ -763,6 +769,129 @@ export async function createCampaignLink(payload: { name: string; platform: stri
   return data.id;
 }
 
-export async function getCampaignReports(): Promise<any> {
-  return invokeStudioFunction<Record<string, unknown>, any>('studio-reports', { action: 'campaigns' });
+export async function getCampaignReports(filters: { days?: number } = {}): Promise<any> {
+  return invokeStudioFunction<Record<string, unknown>, any>('studio-reports', { action: 'campaigns', ...filters });
 }
+// Shipping / Delivery Operations V5.4
+export type ShippingQuote = {
+  available: boolean;
+  reason?: string;
+  shippingFee: number;
+  codFee: number;
+  totalDeliveryFee: number;
+  freeShippingApplied?: boolean;
+  freeShippingEnabled?: boolean;
+  freeShippingThreshold?: number;
+  deliveryEstimate?: string;
+  zoneId?: string;
+  shipbluZoneId?: number;
+  remoteArea?: boolean;
+  provider?: string;
+  providerEnabled?: boolean;
+};
+
+function rowToShippingSettings(row: Record<string, any> = {}) {
+  return {
+    id: row.id || 'main',
+    shippingEnabled: Boolean(row.shipping_enabled ?? true),
+    defaultShippingFee: Number(row.default_shipping_fee ?? 80),
+    codFee: Number(row.cod_fee ?? 0),
+    freeShippingEnabled: Boolean(row.free_shipping_enabled ?? false),
+    freeShippingThreshold: Number(row.free_shipping_threshold ?? 0),
+    fallbackDeliveryEstimate: row.fallback_delivery_estimate || '2-5 business days',
+    provider: row.provider || 'shipblu',
+    providerEnabled: Boolean(row.provider_enabled ?? false),
+    providerEnvironment: row.provider_environment || 'production',
+    autoCreateShipments: Boolean(row.auto_create_shipments ?? false),
+    defaultPackageSize: Number(row.default_package_size || 1),
+    defaultPickupZoneId: row.default_pickup_zone_id || undefined,
+    notes: row.notes || '',
+    updatedAt: row.updated_at ? toDate(row.updated_at) : undefined,
+  };
+}
+
+function rowToShippingZone(row: Record<string, any>) {
+  return {
+    id: row.id,
+    governorate: row.governorate || '',
+    city: row.city || '*',
+    shippingFee: Number(row.shipping_fee || 0),
+    codFee: Number(row.cod_fee || 0),
+    deliveryEstimate: row.delivery_estimate || '2-5 business days',
+    enabled: Boolean(row.enabled ?? true),
+    remoteArea: Boolean(row.remote_area ?? false),
+    shipbluGovernorateId: row.shipblu_governorate_id || undefined,
+    shipbluCityId: row.shipblu_city_id || undefined,
+    shipbluZoneId: row.shipblu_zone_id || undefined,
+    notes: row.notes || '',
+    createdAt: row.created_at ? toDate(row.created_at) : undefined,
+    updatedAt: row.updated_at ? toDate(row.updated_at) : undefined,
+  };
+}
+
+function rowToShipment(row: Record<string, any>) {
+  return {
+    id: row.id,
+    orderId: row.order_id,
+    provider: row.provider || 'shipblu',
+    providerOrderId: row.provider_order_id || undefined,
+    trackingNumber: row.tracking_number || undefined,
+    status: row.status || 'not_created',
+    labelUrl: row.label_url || undefined,
+    shippingFee: Number(row.shipping_fee || 0),
+    codAmount: Number(row.cod_amount || 0),
+    deliveryEstimate: row.delivery_estimate || undefined,
+    rawResponse: row.raw_response || {},
+    createdAt: row.created_at ? toDate(row.created_at) : undefined,
+    updatedAt: row.updated_at ? toDate(row.updated_at) : undefined,
+  };
+}
+
+export async function calculateShippingQuote(payload: { governorate: string; city: string; subtotal: number; couponFreeShipping?: boolean }): Promise<ShippingQuote> {
+  const { data, error } = await supabase.functions.invoke<ShippingQuote>('calculate-shipping', { body: payload });
+  if (error) return { available: false, reason: error.message || 'Could not calculate delivery.', shippingFee: 0, codFee: 0, totalDeliveryFee: 0 };
+  return data as ShippingQuote;
+}
+
+export async function getShippingAdmin(): Promise<any> {
+  const data = await invokeStudioFunction<Record<string, unknown>, any>('studio-shipping', { action: 'get' });
+  return {
+    settings: rowToShippingSettings(data.settings || {}),
+    zones: (data.zones || []).map(rowToShippingZone),
+    shipments: (data.shipments || []).map(rowToShipment),
+    providerConnected: Boolean(data.providerConnected),
+  };
+}
+
+export async function saveShippingSettings(settings: Record<string, unknown>): Promise<any> {
+  const data = await invokeStudioFunction<Record<string, unknown>, any>('studio-shipping', { action: 'save-settings', settings });
+  return rowToShippingSettings(data.settings || {});
+}
+
+export async function upsertShippingZone(zone: Record<string, unknown>): Promise<any> {
+  const data = await invokeStudioFunction<Record<string, unknown>, any>('studio-shipping', { action: 'upsert-zone', zone });
+  return rowToShippingZone(data.zone || {});
+}
+
+export async function deleteShippingZone(id: string): Promise<void> {
+  await invokeStudioFunction('studio-shipping', { action: 'delete-zone', id });
+}
+
+export async function testShippingProvider(): Promise<any> {
+  return invokeStudioFunction<Record<string, unknown>, any>('studio-shipping', { action: 'test-provider' });
+}
+
+export async function createOrderShipment(orderId: string): Promise<any> {
+  const data = await invokeStudioFunction<Record<string, unknown>, any>('create-shipment', { orderId });
+  return data.shipment ? rowToShipment(data.shipment) : data;
+}
+
+export async function refreshOrderShipment(orderId: string): Promise<any> {
+  const data = await invokeStudioFunction<Record<string, unknown>, any>('track-shipment', { orderId });
+  return data.shipment ? { ...data, shipment: rowToShipment(data.shipment) } : data;
+}
+
+export async function getProductAnalyticsReport(filters: { days?: number; source?: string; campaign?: string; product?: string } = {}): Promise<any> {
+  return invokeStudioFunction<Record<string, unknown>, any>('studio-reports', { action: 'product-analytics', ...filters });
+}
+

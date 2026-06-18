@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // ============================================================
 // NEXORA — Admin Orders Page
 // ============================================================
 
 import { useEffect, useMemo, useState } from 'react';
-import { Eye, Package, ChevronDown, RefreshCw, Search, MessageCircle, Copy, CheckCircle, Download } from 'lucide-react';
+import { Eye, Package, ChevronDown, RefreshCw, Search, MessageCircle, Copy, CheckCircle, Download, Ship, Truck } from 'lucide-react';
 import { formatPrice, formatTimestamp, getStatusColor, getStatusLabel, getNextStatus } from '@/lib/utils';
 import { generateWhatsAppLink } from '@/lib/egyptData';
 import type { Order, OrderStatus } from '@/types';
@@ -63,6 +64,29 @@ export default function AdminOrders() {
   const copyOrderMessage = async (order: Order) => {
     await navigator.clipboard.writeText(buildWhatsAppMessage(order));
     toast.success('WhatsApp message copied');
+  };
+
+
+  const createShipment = async (orderId: string) => {
+    try {
+      const { createOrderShipment } = await import('@/lib/supabase/db');
+      const shipment = await createOrderShipment(orderId);
+      toast.success(`Shipment created${shipment?.trackingNumber ? `: ${shipment.trackingNumber}` : ''}`);
+      await loadOrders();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not create shipment. Check Shipping settings and ShipBlu zone id.');
+    }
+  };
+
+  const refreshShipment = async (orderId: string) => {
+    try {
+      const { refreshOrderShipment } = await import('@/lib/supabase/db');
+      await refreshOrderShipment(orderId);
+      toast.success('Shipment status refreshed.');
+      await loadOrders();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not refresh shipment.');
+    }
   };
 
   const updateStatus = async (orderId: string, newStatus: OrderStatus) => {
@@ -206,12 +230,17 @@ export default function AdminOrders() {
               <p className="text-[#b8b0a3]">Date: {formatTimestamp(selectedOrder.createdAt)}</p>
               <p className="text-[#c8a96a] font-bold mt-1">Total: {formatPrice(selectedOrder.total)}</p>
               <p className="text-[#b8b0a3] mt-1">COD: {selectedOrder.paymentStatus === 'collected' ? 'Collected' : 'Pending collection'}</p>
+              <p className="text-[#b8b0a3] mt-1">Delivery estimate: {(selectedOrder as any).deliveryEstimate || '—'}</p>
+              <p className="text-[#b8b0a3] mt-1">Shipping: {(selectedOrder as any).shippingProvider || 'manual'} · {(selectedOrder as any).shippingStatus || 'not_created'}</p>
+              {(selectedOrder as any).trackingNumber && <p className="text-[#c8a96a] mt-1">Tracking: {(selectedOrder as any).trackingNumber}</p>}
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <a href={generateWhatsAppLink(selectedOrder.customer.phone, buildWhatsAppMessage(selectedOrder))} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-3 py-1.5 border border-[#202024] text-[9px] uppercase tracking-wider text-[#c8a96a] hover:border-[#c8a96a]"><MessageCircle className="w-3 h-3" /> WhatsApp</a>
             <button onClick={() => copyOrderMessage(selectedOrder)} className="inline-flex items-center gap-2 px-3 py-1.5 border border-[#202024] text-[9px] uppercase tracking-wider text-[#8a8175] hover:border-[#c8a96a] hover:text-[#c8a96a]"><Copy className="w-3 h-3" /> Copy Message</button>
             <button onClick={() => markCollected(selectedOrder.id)} disabled={selectedOrder.paymentStatus === 'collected'} className="inline-flex items-center gap-2 px-3 py-1.5 border border-[#202024] text-[9px] uppercase tracking-wider text-[#8a8175] hover:border-green-400 hover:text-green-400 disabled:opacity-50"><CheckCircle className="w-3 h-3" /> Mark Collected</button>
+            <button onClick={() => createShipment(selectedOrder.id)} disabled={Boolean((selectedOrder as any).trackingNumber)} className="inline-flex items-center gap-2 px-3 py-1.5 border border-[#202024] text-[9px] uppercase tracking-wider text-[#8a8175] hover:border-[#c8a96a] hover:text-[#c8a96a] disabled:opacity-50"><Ship className="w-3 h-3" /> Create Shipment</button>
+            <button onClick={() => refreshShipment(selectedOrder.id)} className="inline-flex items-center gap-2 px-3 py-1.5 border border-[#202024] text-[9px] uppercase tracking-wider text-[#8a8175] hover:border-[#c8a96a] hover:text-[#c8a96a]"><Truck className="w-3 h-3" /> Refresh Shipping</button>
           </div>
           <div className="flex flex-wrap gap-2">
             {ORDER_STATUSES.map((status) => (

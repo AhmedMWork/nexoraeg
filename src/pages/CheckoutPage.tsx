@@ -8,7 +8,7 @@ import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Banknote, Shield, CheckCircle, Copy, Smartphone } from 'lucide-react';
+import { ArrowLeft, Banknote, Shield, CheckCircle, Copy, Smartphone, Truck } from 'lucide-react';
 import { useCartStore } from '@/stores/cartStore';
 import { checkoutSchema, type CheckoutFormData } from '@/lib/validators';
 import { getGovernorateNames, getCitiesForGovernorate, generateWhatsAppLink } from '@/lib/egyptData';
@@ -34,8 +34,8 @@ export default function CheckoutPage() {
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number; freeShipping?: boolean } | null>(null);
   const [isCheckingCoupon, setIsCheckingCoupon] = useState(false);
-  const [shippingFee, setShippingFee] = useState(0);
-  const [freeShippingThreshold, setFreeShippingThreshold] = useState(0);
+  const [shippingQuote, setShippingQuote] = useState<import('@/lib/supabase/db').ShippingQuote | null>(null);
+  const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
   const [idempotencyKey, setIdempotencyKey] = useState(() => {
     if (typeof window === 'undefined') return `nx-${Date.now()}`;
     const existing = window.sessionStorage.getItem('nexora-checkout-idempotency-key-v5-3');
@@ -48,9 +48,10 @@ export default function CheckoutPage() {
   });
 
   const subtotal = getTotalPrice();
-  const shipping = (freeShippingThreshold > 0 && subtotal >= freeShippingThreshold) || appliedCoupon?.freeShipping ? 0 : shippingFee;
+  const shipping = shippingQuote?.available ? Number(shippingQuote.totalDeliveryFee || 0) : 0;
   const discount = appliedCoupon?.discount || 0;
   const total = Math.max(0, subtotal - discount + shipping);
+  const freeShippingThreshold = shippingQuote?.freeShippingEnabled ? Number(shippingQuote.freeShippingThreshold || 0) : 0;
 
   const {
     register,
@@ -66,6 +67,7 @@ export default function CheckoutPage() {
   const watchedGovernorate = watch('governorate');
   const watchedName = watch('fullName');
   const watchedPhone = watch('phone');
+  const watchedCity = watch('city');
   const cities = selectedGovernorate ? getCitiesForGovernorate(selectedGovernorate) : [];
 
   useEffect(() => {
@@ -76,14 +78,32 @@ export default function CheckoutPage() {
       .then(({ getSiteSettings }) => getSiteSettings())
       .then((settings) => {
         if (mounted && settings?.whatsappNumber) setWhatsAppNumber(settings.whatsappNumber);
-        if (mounted && settings) {
-          setShippingFee(Number(settings.shippingFee || 0));
-          setFreeShippingThreshold(Number(settings.freeShippingThreshold || 0));
-        }
+
       })
       .catch(() => undefined);
     return () => { mounted = false; };
   }, [items.length, subtotal]);
+
+
+  useEffect(() => {
+    if (!watchedGovernorate || !watchedCity) {
+      setShippingQuote(null);
+      return;
+    }
+    let cancelled = false;
+    setIsCalculatingShipping(true);
+    import('@/lib/supabase/db')
+      .then(({ calculateShippingQuote }) => calculateShippingQuote({
+        governorate: watchedGovernorate,
+        city: watchedCity,
+        subtotal,
+        couponFreeShipping: Boolean(appliedCoupon?.freeShipping),
+      }))
+      .then((quote) => { if (!cancelled) setShippingQuote(quote); })
+      .catch(() => { if (!cancelled) setShippingQuote({ available: false, reason: 'Could not calculate delivery.', shippingFee: 0, codFee: 0, totalDeliveryFee: 0 }); })
+      .finally(() => { if (!cancelled) setIsCalculatingShipping(false); });
+    return () => { cancelled = true; };
+  }, [watchedGovernorate, watchedCity, subtotal, appliedCoupon?.freeShipping]);
 
 
 
@@ -137,6 +157,10 @@ export default function CheckoutPage() {
       toast.error('Your cart is empty');
       return;
     }
+    if (!shippingQuote?.available) {
+      toast.error(shippingQuote?.reason || 'Choose a supported delivery area before placing the order.');
+      return;
+    }
 
     try {
       void trackEvent('order_submit', { itemsCount: items.length, subtotal, total });
@@ -147,6 +171,7 @@ export default function CheckoutPage() {
         visitorId: attribution.visitorId,
         sessionId: attribution.sessionId,
         idempotencyKey,
+        shippingQuote,
         customer: {
           fullName: data.fullName,
           phone: data.phone,
@@ -362,7 +387,11 @@ export default function CheckoutPage() {
             <div className="lg:col-span-1">
               <div className="p-6 bg-[#0b0b0d] border border-[#17171a] sticky top-24">
                 <h3 className="text-xs font-bold tracking-[0.2em] uppercase text-[#f4f0e8] mb-5">{t('checkout.orderSummary')}</h3>
-                <div className="mb-5"><FreeShippingProgress subtotal={subtotal} threshold={freeShippingThreshold} /></div>
+                {freeShippingThreshold > 0 && <div className="mb-5"><FreeShippingProgress subtotal={subtotal} threshold={freeShippingThreshold} /></div>}
+                <div className="mb-5 rounded-2xl border border-[#202024] bg-[#050505] p-4">
+                  <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#c8a96a]"><Truck className="h-4 w-4" /> Delivery quote</div>
+                  <p className="text-xs leading-6 text-[#8a8175]">{isCalculatingShipping ? 'Calculating delivery...' : shippingQuote?.available ? `${shippingQuote.deliveryEstimate || '2-5 business days'}${shippingQuote.freeShippingApplied ? ' · Free shipping applied' : ''}` : (shippingQuote?.reason || 'Choose governorate and city to calculate delivery.')}</p>
+                </div>
                 <div className="space-y-3 mb-5 max-h-60 overflow-y-auto">
                   {items.map((item) => (
                     <div key={`${item.productId}-${item.size}-${item.color || 'default'}`} className="flex gap-3">
@@ -386,7 +415,8 @@ export default function CheckoutPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm"><span className="text-[#b8b0a3]">{t('checkout.subtotal')}</span><span className="text-[#f4f0e8]">{formatPrice(subtotal)}</span></div>
                   {appliedCoupon && <div className="flex justify-between text-sm"><span className="text-[#b8b0a3]">Discount ({appliedCoupon.code})</span><span className="text-green-400">-{formatPrice(discount)}</span></div>}
-                  <div className="flex justify-between text-sm"><span className="text-[#b8b0a3]">{t('checkout.shipping')}</span><span className={shipping === 0 ? 'text-green-400' : 'text-[#f4f0e8]'}>{shipping === 0 ? t('checkout.free') : formatPrice(shipping)}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-[#b8b0a3]">Delivery</span><span className={shippingQuote?.shippingFee === 0 ? 'text-green-400' : 'text-[#f4f0e8]'}>{shippingQuote?.shippingFee === 0 ? t('checkout.free') : formatPrice(Number(shippingQuote?.shippingFee || 0))}</span></div>
+                  {Number(shippingQuote?.codFee || 0) > 0 && <div className="flex justify-between text-sm"><span className="text-[#b8b0a3]">COD fee</span><span className="text-[#f4f0e8]">{formatPrice(Number(shippingQuote?.codFee || 0))}</span></div>}
                   <div className="h-px bg-[#17171a] my-2" />
                   <div className="flex justify-between"><span className="text-sm font-bold">{t('checkout.total')}</span><span className="text-lg font-bold text-[#c8a96a]">{formatPrice(total)}</span></div>
                 </div>

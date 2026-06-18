@@ -109,6 +109,13 @@ export interface Order {
   adminNotes?: string;
   customerNotes?: string;
   source?: string;
+  codFee?: number;
+  deliveryEstimate?: string;
+  shippingProvider?: string;
+  shippingStatus?: string;
+  trackingNumber?: string;
+  shipmentId?: string;
+  shippingQuote?: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -88,6 +88,7 @@ export const ADMIN_NAV_LINKS = [
   { label: 'Promotions', href: '/nexora-admin/promotions', icon: 'BadgePercent' },
   { label: 'Reviews', href: '/nexora-admin/reviews', icon: 'Star' },
   { label: 'Inventory', href: '/nexora-admin/inventory', icon: 'Warehouse' },
+  { label: 'Shipping', href: '/nexora-admin/shipping', icon: 'Truck' },
   { label: 'Customers', href: '/nexora-admin/customers', icon: 'UserRound' },
   { label: 'Visitors', href: '/nexora-admin/visitors', icon: 'MousePointerClick' },
   { label: 'Leads', href: '/nexora-admin/leads', icon: 'UserPlus' },
