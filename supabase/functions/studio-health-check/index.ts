@@ -84,6 +84,18 @@ Deno.serve(async (req) => {
     const { data: orderRpc, error: rpcError } = await supabase.rpc('nexora_rate_limit_v5_5', { bucket_key_value: 'health-check', limit_value: 99999, window_seconds: 60 });
     checks.push(rpcError ? { key: 'rpc:rate_limit', label: 'DB rate-limit RPC', status: 'fail', message: rpcError.message, fix: 'Run supabase db push for V5.5 migration.' } : { key: 'rpc:rate_limit', label: 'DB rate-limit RPC', status: 'ok', message: `Rate limiter is ready (${orderRpc?.remaining ?? 'ok'} remaining in health bucket).` });
 
+    const { data: diagnostics, error: diagnosticsError } = await supabase.rpc('nexora_diagnostics_v5_5_1');
+    const diag: any = diagnostics || {};
+    if (diagnosticsError) {
+      checks.push({ key: 'checkout:diagnostics', label: 'Checkout diagnostics RPC', status: 'fail', message: diagnosticsError.message, fix: 'Run supabase db push for V5.5.1 migration.' });
+    } else {
+      checks.push({ key: 'checkout:order-rpc', label: 'Atomic order RPC', status: diag.orderRpcReady ? 'ok' : 'fail', message: diag.orderRpcReady ? 'create-order can call the atomic order transaction.' : 'Atomic order RPC is missing.', fix: diag.orderRpcReady ? undefined : 'Run supabase db push then redeploy create-order.' });
+      checks.push({ key: 'checkout:shipping-rpc', label: 'Shipping RPC', status: diag.shippingRpcReady ? 'ok' : 'fail', message: diag.shippingRpcReady ? 'Delivery calculation RPC is ready.' : 'Shipping calculation RPC is missing.', fix: diag.shippingRpcReady ? undefined : 'Run supabase db push for V5.4/V5.5.1 migrations.' });
+      checks.push({ key: 'checkout:products', label: 'Checkout sellable products', status: diag.activeProductsCount > 0 ? 'ok' : 'warn', message: `${diag.activeProductsCount || 0} active products out of ${diag.productsCount || 0} products.`, fix: diag.activeProductsCount > 0 ? undefined : 'Open Catalog → Products and publish at least one active product.' });
+      checks.push({ key: 'checkout:variants-stock', label: 'Variant stock available', status: diag.activeVariantsWithStock > 0 ? 'ok' : 'warn', message: `${diag.activeVariantsWithStock || 0} active variants have stock available.`, fix: diag.activeVariantsWithStock > 0 ? undefined : 'Open Inventory and add stock to size/color variants.' });
+      checks.push({ key: 'checkout:shipping-zones', label: 'Shipping zones ready', status: diag.shippingZonesCount > 0 && diag.shippingEnabled ? 'ok' : 'warn', message: `${diag.shippingZonesCount || 0} active shipping zones. Shipping is ${diag.shippingEnabled ? 'enabled' : 'disabled'}.`, fix: diag.shippingZonesCount > 0 && diag.shippingEnabled ? undefined : 'Open Shipping and enable delivery zones before testing checkout.' });
+    }
+
     const failed = checks.filter((check) => check.status === 'fail').length;
     const warnings = checks.filter((check) => check.status === 'warn').length;
     const score = Math.max(0, Math.round(((checks.length - failed - warnings * 0.5) / checks.length) * 100));

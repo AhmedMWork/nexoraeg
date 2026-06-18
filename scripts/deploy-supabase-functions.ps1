@@ -14,6 +14,7 @@ $Functions = @(
   "track-order",
   "studio-dashboard",
   "studio-health-check",
+  "checkout-health-check",
   "studio-products",
   "studio-orders",
   "studio-reviews",
@@ -43,4 +44,4 @@ foreach ($Function in $Functions) {
   supabase functions deploy $Function --project-ref $ProjectRef
 }
 
-Write-Host "NEXORA V5.5 Admin OS functions deployed." -ForegroundColor Green
+Write-Host "NEXORA V5.5.1 Light Admin Stability functions deployed." -ForegroundColor Green

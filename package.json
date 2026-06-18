@@ -1,7 +1,7 @@
 {
-  "name": "nexora-v5-5-admin-os-crm-intelligence-production",
+  "name": "nexora-v5-5-1-light-admin-stability-production",
   "private": true,
-  "version": "5.5.0",
+  "version": "5.5.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -94,6 +94,6 @@
     "node": "20.x",
     "npm": "10.x"
   },
-  "description": "NEXORA V5.5 Admin OS, CRM Intelligence, Diagnostics, Product HQ, Shipping Ops Production Ready",
+  "description": "NEXORA V5.5.1 Light Admin, Checkout Stability, Supabase Recovery, Free Shipping Controls Production Ready",
   "packageManager": "npm@10.9.2"
 }

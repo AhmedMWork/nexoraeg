@@ -1,5 +1,5 @@
  
-import { corsHeaders, json, serviceClient, rateLimit, auditLog } from '../_shared/studio.ts';
+import { corsHeaders, json, serviceClient, dbRateLimit, auditLog } from '../_shared/studio.ts';
 
 function publicCheckoutStatus(message: string) {
   const normalized = message.toLowerCase();
@@ -12,13 +12,17 @@ function publicCheckoutStatus(message: string) {
     || normalized.includes('coupon')
     || normalized.includes('minimum order')
     || normalized.includes('usage limit')
+    || normalized.includes('size')
+    || normalized.includes('variant')
+    || normalized.includes('shipping is disabled')
+    || normalized.includes('shipping is not available')
   ) return 400;
   return 500;
 }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  const limited = rateLimit(req, 'create-order', 12, 1000 * 60 * 10);
+  const limited = await dbRateLimit(req, 'create-order', 12, 600);
   if (limited) return limited;
 
   const supabase = serviceClient();

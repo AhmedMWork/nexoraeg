@@ -43,6 +43,8 @@ Deno.serve(async (req) => {
         cod_fee: Number(settings.cod_fee ?? settings.codFee ?? 0),
         free_shipping_enabled: Boolean(settings.free_shipping_enabled ?? settings.freeShippingEnabled ?? false),
         free_shipping_threshold: Number(settings.free_shipping_threshold ?? settings.freeShippingThreshold ?? 0),
+        show_free_shipping_progress: Boolean(settings.show_free_shipping_progress ?? settings.showFreeShippingProgress ?? false),
+        free_shipping_progress_message: String(settings.free_shipping_progress_message ?? settings.freeShippingProgressMessage ?? 'Add {amount} more for free shipping.'),
         fallback_delivery_estimate: String(settings.fallback_delivery_estimate ?? settings.fallbackDeliveryEstimate ?? '2-5 business days'),
         provider: String(settings.provider || 'shipblu'),
         provider_enabled: Boolean(settings.provider_enabled ?? settings.providerEnabled ?? false),
