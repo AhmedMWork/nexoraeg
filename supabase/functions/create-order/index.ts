@@ -16,6 +16,7 @@ function publicCheckoutStatus(message: string) {
     || normalized.includes('variant')
     || normalized.includes('shipping is disabled')
     || normalized.includes('shipping is not available')
+    || normalized.includes('unsupported payment')
   ) return 400;
   return 500;
 }
@@ -29,7 +30,12 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { data, error } = await supabase.rpc('nexora_create_order_atomic_v5_4', { payload: { ...body, paymentMethod: 'cod' } });
+    const paymentMethod = ['cod', 'instapay', 'vodafone_cash'].includes(String(body?.paymentMethod || '').toLowerCase())
+      ? String(body.paymentMethod).toLowerCase()
+      : 'cod';
+    const { data, error } = await supabase.rpc('nexora_create_order_atomic_v5_4', {
+      payload: { ...body, paymentMethod, paymentConfirmationPhone: body?.paymentConfirmationPhone || '01037141322' },
+    });
 
     if (error) {
       const message = error.message || 'Could not create order.';
@@ -37,13 +43,14 @@ Deno.serve(async (req) => {
       return json({ error: message }, publicCheckoutStatus(message), req);
     }
 
-    const result = data as { orderId: string; orderNumber: string; total: number; idempotent?: boolean };
+    const result = data as { orderId: string; orderNumber: string; total: number; idempotent?: boolean; paymentMethod?: string; paymentStatus?: string }; 
     await auditLog('order_created', 'order', result.orderId, {
       orderNumber: result.orderNumber,
       total: result.total,
       idempotent: Boolean(result.idempotent),
       source: body?.attribution?.source,
       campaign: body?.attribution?.campaign,
+      paymentMethod: result.paymentMethod || paymentMethod,
     });
     return json(result, 200, req);
   } catch (error) {

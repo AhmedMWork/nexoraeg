@@ -201,7 +201,7 @@ begin
     max(nullif(city, '')),
     max(nullif(address, '')),
     count(*),
-    coalesce(sum(case when coalesce(order_status, status) not in ('cancelled','returned','failed') then total else 0 end), 0),
+    coalesce(sum(case when order_status not in ('cancelled','returned','failed') then total else 0 end), 0),
     max(created_at),
     min(source_platform),
     max(source_platform),

@@ -30,62 +30,46 @@ returns uuid
 language sql
 volatile
 set search_path = public, pg_catalog
-as $$
-  select public.nexora_uuid();
-$$;
+as $$ select public.nexora_uuid(); $$;
 
 create or replace function public.nexora_uuid_v5_5_4()
 returns uuid
 language sql
 volatile
 set search_path = public, pg_catalog
-as $$
-  select public.nexora_uuid();
-$$;
+as $$ select public.nexora_uuid(); $$;
 
 -- ============================================================
--- NEXORA V5.5.5 — Recovery stabilization hotfix
--- ============================================================
--- Purpose:
--- 1) Remove all runtime dependency on pgcrypto/uuid-ossp UUID helpers.
--- 2) Repair live databases where existing tables still have broken UUID defaults.
--- 3) Make Studio Customers refresh safe after partial resets/migrations.
--- 4) Record a clear release ledger item for diagnostics.
+-- NEXORA — Recovery stabilization hotfix
 -- ============================================================
 
-
-
--- Compatibility alias for older V5.5.4 defaults if any were already applied.
-
--- Create release ledger early and with safe UUID defaults.
 create table if not exists public.nexora_system_migrations (
-  id uuid primary key default public.nexora_uuid(),
-  version text unique not null,
-  summary text,
+  version text primary key,
+  title text,
+  notes text,
   applied_at timestamptz default now()
 );
 
--- Rewire EVERY public UUID id default away from gen_random_uuid and old helpers.
-do $$
+alter table if exists public.nexora_system_migrations
+  add column if not exists title text,
+  add column if not exists notes text,
+  add column if not exists applied_at timestamptz default now();
+
+do $nexora_rewire_uuid_defaults$
 declare
   r record;
 begin
   for r in
     select c.table_schema, c.table_name
     from information_schema.columns c
-    join information_schema.tables t
-      on t.table_schema = c.table_schema
-     and t.table_name = c.table_name
-    where c.table_schema = 'public'
-      and t.table_type = 'BASE TABLE'
-      and c.column_name = 'id'
-      and c.udt_name = 'uuid'
+    join information_schema.tables t on t.table_schema = c.table_schema and t.table_name = c.table_name
+    where c.table_schema = 'public' and t.table_type = 'BASE TABLE' and c.column_name = 'id' and c.udt_name = 'uuid'
   loop
     execute format('alter table %I.%I alter column id set default public.nexora_uuid()', r.table_schema, r.table_name);
   end loop;
-end $$;
+end
+$nexora_rewire_uuid_defaults$;
 
--- Ensure CRM tables exist even after partial database restores.
 create table if not exists public.customer_profiles (
   id uuid primary key default public.nexora_uuid(),
   phone text unique,
@@ -135,18 +119,51 @@ create table if not exists public.system_setup_events (
   created_at timestamptz default now()
 );
 
--- Reapply safe defaults explicitly for the most error-prone tables.
-alter table if exists public.customer_profiles alter column id set default public.nexora_uuid();
-alter table if exists public.customer_notes alter column id set default public.nexora_uuid();
-alter table if exists public.lead_tasks alter column id set default public.nexora_uuid();
-alter table if exists public.system_setup_events alter column id set default public.nexora_uuid();
-alter table if exists public.nexora_system_migrations alter column id set default public.nexora_uuid();
+alter table if exists public.customer_profiles
+  add column if not exists phone text,
+  add column if not exists email text,
+  add column if not exists full_name text,
+  add column if not exists governorate text,
+  add column if not exists city text,
+  add column if not exists address text,
+  add column if not exists total_orders integer default 0,
+  add column if not exists total_revenue numeric default 0,
+  add column if not exists last_order_at timestamptz,
+  add column if not exists first_source text,
+  add column if not exists last_source text,
+  add column if not exists first_campaign text,
+  add column if not exists last_campaign text,
+  add column if not exists tags jsonb default '[]'::jsonb,
+  add column if not exists status text default 'active',
+  add column if not exists notes text,
+  add column if not exists created_at timestamptz default now(),
+  add column if not exists updated_at timestamptz default now();
 
-create index if not exists idx_customer_profiles_phone_v555 on public.customer_profiles(phone);
-create index if not exists idx_customer_profiles_last_order_v555 on public.customer_profiles(last_order_at desc);
-create index if not exists idx_customer_notes_customer_v555 on public.customer_notes(customer_id, created_at desc);
+alter table if exists public.customer_notes
+  add column if not exists customer_id uuid,
+  add column if not exists note text,
+  add column if not exists created_by text default 'studio',
+  add column if not exists created_at timestamptz default now();
 
--- Defensive customer refresh. Does not depend on pgcrypto or old defaults.
+alter table if exists public.lead_tasks
+  add column if not exists lead_id uuid,
+  add column if not exists title text,
+  add column if not exists status text default 'open',
+  add column if not exists due_at timestamptz,
+  add column if not exists created_at timestamptz default now(),
+  add column if not exists updated_at timestamptz default now();
+
+alter table if exists public.system_setup_events
+  add column if not exists check_key text,
+  add column if not exists status text default 'ok',
+  add column if not exists message text,
+  add column if not exists metadata jsonb default '{}'::jsonb,
+  add column if not exists created_at timestamptz default now();
+
+create index if not exists idx_customer_profiles_phone_recovery on public.customer_profiles(phone);
+create index if not exists idx_customer_profiles_last_order_recovery on public.customer_profiles(last_order_at desc);
+create index if not exists idx_customer_notes_customer_recovery on public.customer_notes(customer_id, created_at desc);
+
 create or replace function public.nexora_refresh_customer_profiles_v5_5()
 returns void
 language plpgsql
@@ -154,7 +171,7 @@ security definer
 set search_path = public, pg_catalog
 as $$
 begin
-  if to_regclass('public.orders') is null then
+  if to_regclass('public.orders') is null or to_regclass('public.customer_profiles') is null then
     return;
   end if;
 
@@ -167,7 +184,7 @@ begin
     max(nullif(city, '')),
     max(nullif(address, '')),
     count(*),
-    coalesce(sum(case when coalesce(order_status, status) not in ('cancelled','returned','failed') then total else 0 end), 0),
+    coalesce(sum(case when order_status not in ('cancelled','returned','failed') then total else 0 end), 0),
     max(created_at),
     min(source_platform),
     max(source_platform),
@@ -194,23 +211,37 @@ begin
 end;
 $$;
 
--- Validate inserts into the tables that were failing in production.
-do $$
+do $nexora_validate_customer_profiles$
 declare
   test_customer_id uuid;
 begin
   insert into public.customer_profiles(phone, full_name, notes)
-  values ('__nexora_v555_test__', 'NEXORA Migration Test', 'Temporary migration test row')
+  values ('__nexora_recovery_test__', 'NEXORA Migration Test', 'Temporary migration test row')
   on conflict (phone) do update set updated_at = now()
   returning id into test_customer_id;
-
-  delete from public.customer_profiles where phone = '__nexora_v555_test__';
-
+  delete from public.customer_profiles where phone = '__nexora_recovery_test__';
   if test_customer_id is null then
-    raise exception 'NEXORA V5.5.5 recovery test could not create a customer profile.';
+    raise exception 'NEXORA recovery test could not create a customer profile.';
   end if;
-end $$;
+end
+$nexora_validate_customer_profiles$;
 
-insert into public.nexora_system_migrations(version, summary)
-values ('5.5.5', 'Recovery stabilization: safe UUID defaults, Studio Customers resilience, no pgcrypto runtime dependency.')
-on conflict (version) do update set summary = excluded.summary, applied_at = now();
+do $nexora_record_recovery_release$
+begin
+  if to_regclass('public.nexora_system_migrations') is not null then
+    if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'nexora_system_migrations' and column_name = 'summary') then
+      insert into public.nexora_system_migrations(version, summary)
+      values ('recovery-stabilization', 'Recovery stabilization: safe UUID defaults, Studio Customers resilience, no pgcrypto runtime dependency.')
+      on conflict (version) do update set summary = excluded.summary, applied_at = now();
+    elsif exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'nexora_system_migrations' and column_name = 'notes') then
+      insert into public.nexora_system_migrations(version, title, notes)
+      values ('recovery-stabilization', 'Recovery Stabilization', 'Safe UUID defaults, Studio Customers resilience, no pgcrypto runtime dependency.')
+      on conflict (version) do update set title = excluded.title, notes = excluded.notes, applied_at = now();
+    else
+      insert into public.nexora_system_migrations(version)
+      values ('recovery-stabilization')
+      on conflict (version) do nothing;
+    end if;
+  end if;
+end
+$nexora_record_recovery_release$;

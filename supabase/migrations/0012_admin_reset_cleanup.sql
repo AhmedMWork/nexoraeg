@@ -44,14 +44,19 @@ as $$
 $$;
 
 -- ============================================================
--- NEXORA V5.5.3 — Clean Light Admin Reset + Supabase Cleanup
+-- NEXORA — Clean Light Admin Reset + Supabase Cleanup
 -- Safe, additive migration. No destructive changes.
 -- ============================================================
 
--- Keep pgcrypto explicitly enabled for older projects even though checkout no longer relies on gen_random_bytes.
-do $$ begin create extension if not exists pgcrypto with schema extensions; exception when others then raise notice 'pgcrypto unavailable: %', sqlerrm; end $$;
+do $nexora_pgcrypto$
+begin
+  create extension if not exists pgcrypto with schema extensions;
+exception
+  when others then
+    raise notice 'pgcrypto unavailable: %', sqlerrm;
+end
+$nexora_pgcrypto$;
 
--- Lightweight migration ledger for owner/support diagnostics.
 create table if not exists public.nexora_system_migrations (
   version text primary key,
   title text not null,
@@ -61,7 +66,7 @@ create table if not exists public.nexora_system_migrations (
 
 insert into public.nexora_system_migrations (version, title, notes)
 values (
-  '5.5.3',
+  'admin-reset-cleanup',
   'Clean Light Admin Reset + Checkout Confidence',
   'Owner-facing admin navigation reduced; technical diagnostics kept under Setup & Recovery; checkout cart storage bumped to avoid stale reset carts.'
 )
@@ -70,7 +75,6 @@ set title = excluded.title,
     notes = excluded.notes,
     applied_at = now();
 
--- Make free shipping messaging opt-in and explicit forever.
 alter table if exists public.shipping_settings
   add column if not exists show_free_shipping_progress boolean not null default false,
   add column if not exists free_shipping_progress_message text not null default 'Add {amount} more for free shipping.';
@@ -79,12 +83,70 @@ update public.shipping_settings
 set show_free_shipping_progress = false
 where show_free_shipping_progress is null;
 
--- Indexes for admin daily dashboard and checkout diagnostics.
-create index if not exists idx_orders_status_created_at on public.orders (status, created_at desc);
-create index if not exists idx_orders_shipping_status_created_at on public.orders (shipping_status, created_at desc);
-create index if not exists idx_product_variants_product_status_stock on public.product_variants (product_id, status, stock);
-create index if not exists idx_visitor_events_created_event on public.visitor_events (created_at desc, event_name);
-create index if not exists idx_leads_status_created_at on public.leads (status, created_at desc);
+do $idx_orders_status$
+begin
+  if to_regclass('public.orders') is not null
+     and exists (select 1 from information_schema.columns where table_schema='public' and table_name='orders' and column_name='order_status')
+     and exists (select 1 from information_schema.columns where table_schema='public' and table_name='orders' and column_name='created_at') then
+    create index if not exists idx_orders_order_status_created_at on public.orders (order_status, created_at desc);
+  end if;
+end
+$idx_orders_status$;
 
-comment on table public.nexora_system_migrations is 'NEXORA additive release ledger used by Setup & Recovery to explain deployed release state.';
-comment on column public.shipping_settings.show_free_shipping_progress is 'Owner-controlled toggle. Checkout must not show free shipping progress unless this is true.';
+do $idx_orders_shipping$
+begin
+  if to_regclass('public.orders') is not null
+     and exists (select 1 from information_schema.columns where table_schema='public' and table_name='orders' and column_name='shipping_status')
+     and exists (select 1 from information_schema.columns where table_schema='public' and table_name='orders' and column_name='created_at') then
+    create index if not exists idx_orders_shipping_status_created_at on public.orders (shipping_status, created_at desc);
+  end if;
+end
+$idx_orders_shipping$;
+
+do $idx_variants$
+begin
+  if to_regclass('public.product_variants') is not null
+     and exists (select 1 from information_schema.columns where table_schema='public' and table_name='product_variants' and column_name='product_id')
+     and exists (select 1 from information_schema.columns where table_schema='public' and table_name='product_variants' and column_name='status')
+     and exists (select 1 from information_schema.columns where table_schema='public' and table_name='product_variants' and column_name='stock') then
+    create index if not exists idx_product_variants_product_status_stock on public.product_variants (product_id, status, stock);
+  end if;
+end
+$idx_variants$;
+
+do $idx_visitor_events$
+begin
+  if to_regclass('public.visitor_events') is not null
+     and exists (select 1 from information_schema.columns where table_schema='public' and table_name='visitor_events' and column_name='created_at')
+     and exists (select 1 from information_schema.columns where table_schema='public' and table_name='visitor_events' and column_name='event_name') then
+    create index if not exists idx_visitor_events_created_event on public.visitor_events (created_at desc, event_name);
+  end if;
+end
+$idx_visitor_events$;
+
+do $idx_leads$
+begin
+  if to_regclass('public.leads') is not null
+     and exists (select 1 from information_schema.columns where table_schema='public' and table_name='leads' and column_name='status')
+     and exists (select 1 from information_schema.columns where table_schema='public' and table_name='leads' and column_name='created_at') then
+    create index if not exists idx_leads_status_created_at on public.leads (status, created_at desc);
+  end if;
+end
+$idx_leads$;
+
+do $comment_ledger$
+begin
+  if to_regclass('public.nexora_system_migrations') is not null then
+    comment on table public.nexora_system_migrations is 'NEXORA additive release ledger used by Setup & Recovery to explain deployed release state.';
+  end if;
+end
+$comment_ledger$;
+
+do $comment_shipping$
+begin
+  if to_regclass('public.shipping_settings') is not null
+     and exists (select 1 from information_schema.columns where table_schema='public' and table_name='shipping_settings' and column_name='show_free_shipping_progress') then
+    comment on column public.shipping_settings.show_free_shipping_progress is 'Owner-controlled toggle. Checkout must not show free shipping progress unless this is true.';
+  end if;
+end
+$comment_shipping$;

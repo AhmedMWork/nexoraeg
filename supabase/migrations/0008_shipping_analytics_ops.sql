@@ -49,7 +49,14 @@ $$;
 -- Safe additive migration intended to run after V5.3.
 -- ============================================================
 
-do $$ begin create extension if not exists pgcrypto; exception when others then raise notice 'pgcrypto unavailable: %', sqlerrm; end $$;
+do $nexora_pgcrypto$
+begin
+  create extension if not exists pgcrypto;
+exception
+  when others then
+    raise notice 'pgcrypto unavailable: %', sqlerrm;
+end
+$nexora_pgcrypto$;
 
 -- Shipping control center -----------------------------------------------------
 create table if not exists public.shipping_settings (
@@ -241,7 +248,7 @@ set search_path = public
 as $$
 declare
   result jsonb;
-  shipping_quote jsonb;
+  v_shipping_quote jsonb;
   order_id_value uuid;
   customer_value jsonb := coalesce(payload->'customer', '{}'::jsonb);
   coupon_free boolean := false;
@@ -262,22 +269,22 @@ begin
     coupon_free := (coupon_row.type = 'free_shipping');
   end if;
 
-  shipping_quote := public.nexora_calculate_shipping_v5_4(customer_value->>'governorate', customer_value->>'city', subtotal_estimate, coupon_free);
-  if coalesce((shipping_quote->>'available')::boolean, false) is false then
-    raise exception '%', coalesce(shipping_quote->>'reason', 'Shipping is not available.');
+  v_shipping_quote := public.nexora_calculate_shipping_v5_4(customer_value->>'governorate', customer_value->>'city', subtotal_estimate, coupon_free);
+  if coalesce((v_shipping_quote->>'available')::boolean, false) is false then
+    raise exception '%', coalesce(v_shipping_quote->>'reason', 'Shipping is not available.');
   end if;
 
   -- Reuse V5.3 transaction then correct shipping totals inside the same wrapper transaction.
-  result := public.nexora_create_order_atomic_v5_3(payload || jsonb_build_object('shippingQuote', shipping_quote));
+  result := public.nexora_create_order_atomic_v5_3(payload || jsonb_build_object('shippingQuote', v_shipping_quote));
   order_id_value := (result->>'orderId')::uuid;
 
   update public.orders
-  set shipping_fee = coalesce((shipping_quote->>'shippingFee')::numeric, shipping_fee),
-      cod_fee = coalesce((shipping_quote->>'codFee')::numeric, 0),
-      total = greatest(0, subtotal - discount_total + coalesce((shipping_quote->>'shippingFee')::numeric, shipping_fee) + coalesce((shipping_quote->>'codFee')::numeric, 0)),
-      delivery_estimate = shipping_quote->>'deliveryEstimate',
-      shipping_provider = shipping_quote->>'provider',
-      shipping_quote = shipping_quote,
+  set shipping_fee = coalesce((v_shipping_quote->>'shippingFee')::numeric, shipping_fee),
+      cod_fee = coalesce((v_shipping_quote->>'codFee')::numeric, 0),
+      total = greatest(0, subtotal - discount_total + coalesce((v_shipping_quote->>'shippingFee')::numeric, shipping_fee) + coalesce((v_shipping_quote->>'codFee')::numeric, 0)),
+      delivery_estimate = v_shipping_quote->>'deliveryEstimate',
+      shipping_provider = v_shipping_quote->>'provider',
+      shipping_quote = v_shipping_quote,
       updated_at = now()
   where id = order_id_value;
 
