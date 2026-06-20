@@ -15,6 +15,7 @@ interface StoreSettings {
   whatsappNumber: string;
   instagram: string;
   facebook: string;
+  paymentConfirmationPhone: string;
   primaryColor: string;
   accentColor: string;
 }
@@ -25,8 +26,9 @@ const initialSettings: StoreSettings = {
   shippingFee: SHIPPING_FEE,
   freeShippingThreshold: FREE_SHIPPING_THRESHOLD,
   whatsappNumber: '201020304050',
-  instagram: '@nexora.eg',
-  facebook: 'NEXORA Egypt',
+  instagram: 'https://www.instagram.com/nexora.eg_wear?igsh=Zm9zN2ZjZ3Q3Zmlw&utm_source=qr',
+  facebook: 'https://www.facebook.com/share/18k2uTBtYu/?mibextid=wwXIfr',
+  paymentConfirmationPhone: '01037141322',
   primaryColor: '#050505',
   accentColor: '#c8a96a',
 };
@@ -55,6 +57,7 @@ export default function AdminSettings() {
           whatsappNumber: currentSettings.whatsappNumber || initialSettings.whatsappNumber,
           instagram: currentSettings.socialLinks?.instagram || initialSettings.instagram,
           facebook: currentSettings.socialLinks?.facebook || initialSettings.facebook,
+          paymentConfirmationPhone: currentSettings.paymentSettings?.confirmationPhone || initialSettings.paymentConfirmationPhone,
           primaryColor: currentSettings.primaryColor || initialSettings.primaryColor,
           accentColor: currentSettings.accentColor || initialSettings.accentColor,
         });
@@ -90,6 +93,13 @@ export default function AdminSettings() {
         socialLinks: {
           instagram: settings.instagram,
           facebook: settings.facebook,
+          whatsapp: `https://wa.me/2${settings.paymentConfirmationPhone.replace(/\D/g, '')}`,
+        },
+        paymentSettings: {
+          instapayEnabled: true,
+          vodafoneCashEnabled: true,
+          confirmationPhone: settings.paymentConfirmationPhone,
+          instructions: 'Manual payment is confirmed with NEXORA on WhatsApp.',
         },
         seo: {
           title: 'NEXORA | Defined by intention',
@@ -166,6 +176,16 @@ export default function AdminSettings() {
               onChange={(e) => setSettings({ ...settings, whatsappNumber: e.target.value })}
               className="w-full bg-[#050505] border border-[#202024] px-4 py-3 text-sm text-[#f4f0e8] focus:outline-none focus:border-[#c8a96a]"
             />
+          </div>
+          <div>
+            <label className="text-[10px] text-[#8a8175] uppercase tracking-wider mb-1.5 block">Payment confirmation phone</label>
+            <input
+              value={settings.paymentConfirmationPhone}
+              onChange={(e) => setSettings({ ...settings, paymentConfirmationPhone: e.target.value })}
+              className="w-full bg-[#050505] border border-[#202024] px-4 py-3 text-sm text-[#f4f0e8] focus:outline-none focus:border-[#c8a96a]"
+              placeholder="01037141322"
+            />
+            <p className="mt-1 text-[10px] text-[#8a8175]">Used for Instapay/Vodafone Cash checkout instructions.</p>
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             <div>

@@ -219,14 +219,16 @@ function rowToOrder(row: Record<string, any>, items: any[] = []): Order {
       color: item.color || item.selected_color_name || '',
       colorHex: item.color_hex || item.selected_color_hex || undefined,
       quantity: Number(item.quantity || 1),
-      image: item.image || '',
+      image: item.product_image_url || item.image || '',
+      lineTotal: Number(item.total || item.line_total || (Number(item.unit_price || item.price || 0) * Number(item.quantity || 1))),
+      productSnapshot: item.product_snapshot || {},
     })),
     subtotal: Number(row.subtotal || 0),
     shippingFee: Number(row.shipping_fee || row.shippingFee || 0),
     discount: Number(row.discount_total || row.discount || 0),
     couponCode: row.coupon_code || row.couponCode,
     total: Number(row.total || 0),
-    paymentMethod: 'cod',
+    paymentMethod: row.payment_method || 'cod',
     paymentStatus: row.payment_status || 'pending',
     status: row.order_status || row.status || 'pending',
     trackingUpdates: Array.isArray(row.status_history) ? row.status_history : [],
@@ -238,6 +240,12 @@ function rowToOrder(row: Record<string, any>, items: any[] = []): Order {
     trackingNumber: row.tracking_number || row.trackingNumber,
     deliveryEstimate: row.delivery_estimate || row.deliveryEstimate,
     codFee: Number(row.cod_fee || row.codFee || 0),
+    paymentReference: row.payment_reference || row.paymentReference,
+    paymentNotes: row.payment_notes || row.paymentNotes,
+    paymentConfirmationPhone: row.payment_confirmation_phone || row.paymentConfirmationPhone || '01037141322',
+    followupStatus: row.followup_status || row.followupStatus || 'not_contacted',
+    followups: Array.isArray(row.followups) ? row.followups.map((entry: any) => ({ id: entry.id, orderId: entry.order_id || entry.orderId, type: entry.type || 'note', note: entry.note || '', createdBy: entry.created_by || entry.createdBy || 'studio', createdAt: toDate(entry.created_at || entry.createdAt) })) : [],
+    invoiceSnapshot: row.invoice_snapshot || row.invoiceSnapshot || {},
     shipmentId: row.shipment_id || row.shipmentId,
     createdAt: toDate(row.created_at || row.createdAt),
     updatedAt: toDate(row.updated_at || row.updatedAt),
@@ -466,25 +474,38 @@ export async function createOrder(order: Omit<Order, 'id' | 'createdAt' | 'updat
   return (data as any).id;
 }
 
-export async function createOrderWithStockTransaction(payload: { customer: Order['customer']; items: Order['items']; couponCode?: string; notes?: string; [key: string]: unknown }): Promise<{ orderId: string; orderNumber: string; total: number }> {
-  const { data, error } = await supabase.functions.invoke<{ orderId: string; orderNumber: string; total: number }>('create-order', { body: { ...payload, paymentMethod: 'cod' } });
+export async function createOrderWithStockTransaction(payload: { customer: Order['customer']; items: Order['items']; couponCode?: string; notes?: string; paymentMethod?: Order['paymentMethod']; [key: string]: unknown }): Promise<{ orderId: string; orderNumber: string; total: number; paymentMethod?: string; paymentStatus?: string }> {
+  const { data, error } = await supabase.functions.invoke<{ orderId: string; orderNumber: string; total: number; paymentMethod?: string; paymentStatus?: string }>('create-order', { body: payload });
   if (error) throw new Error(await edgeErrorMessage('create-order', error, 'Could not create order.'));
   if (!data?.orderNumber) throw new Error('Order was not created. Please try again once, or contact NEXORA with your cart screenshot.');
-  return data as { orderId: string; orderNumber: string; total: number };
+  return data as { orderId: string; orderNumber: string; total: number; paymentMethod?: string; paymentStatus?: string };
 }
 
 export async function getOrders(): Promise<Order[]> {
-  const data = await invokeStudioFunction<Record<string, unknown>, { orders: any[]; items?: any[] }>('studio-orders', { action: 'list' });
+  const data = await invokeStudioFunction<Record<string, unknown>, { orders: any[]; items?: any[]; followups?: any[] }>('studio-orders', { action: 'list' });
   const itemsByOrder = new Map<string, any[]>();
   (data.items || []).forEach((item) => {
     const key = item.order_id;
     itemsByOrder.set(key, [...(itemsByOrder.get(key) || []), item]);
   });
-  return (data.orders || []).map((row) => rowToOrder(row, itemsByOrder.get(row.id) || []));
+  const followupsByOrder = new Map<string, any[]>();
+  (data.followups || []).forEach((entry) => {
+    const key = entry.order_id;
+    followupsByOrder.set(key, [...(followupsByOrder.get(key) || []), entry]);
+  });
+  return (data.orders || []).map((row) => rowToOrder({ ...row, followups: followupsByOrder.get(row.id) || [] }, itemsByOrder.get(row.id) || []));
 }
 
 export async function markOrderPaymentCollected(orderId: string): Promise<void> {
   await invokeStudioFunction('studio-orders', studioHeadersPayload('mark-payment-collected', { orderId }));
+}
+
+export async function updateOrderPaymentStatus(orderId: string, paymentStatus: Order['paymentStatus'], paymentReference?: string, paymentNotes?: string): Promise<void> {
+  await invokeStudioFunction('studio-orders', studioHeadersPayload('update-payment-status', { orderId, paymentStatus, paymentReference, paymentNotes }));
+}
+
+export async function addOrderFollowup(orderId: string, type: string, note: string): Promise<void> {
+  await invokeStudioFunction('studio-orders', studioHeadersPayload('add-followup', { orderId, type, note }));
 }
 
 export async function updateOrderStatus(orderId: string, status: OrderStatus, message?: string, updatedBy = 'studio'): Promise<void> {
@@ -635,6 +656,7 @@ export async function getSiteSettings(): Promise<SiteSettings | null> {
     defaultLanguage: data.default_language || 'en',
     defaultTheme: data.default_theme || 'light',
     socialLinks: data.social_links || {},
+    paymentSettings: data.payment_settings || {},
     seo: data.seo || { title: 'NEXORA', description: 'Limited fashion essentials.', keywords: 'fashion, essentials, limited' },
     announcements: [],
     updatedAt: toDate(data.updated_at),

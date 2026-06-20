@@ -1,64 +1,146 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // ============================================================
 // NEXORA — Admin Orders Page
+// Invoice view + item images + manual payments + follow-up log
 // ============================================================
 
-import { useEffect, useMemo, useState } from 'react';
-import { Eye, Package, ChevronDown, RefreshCw, Search, MessageCircle, Copy, CheckCircle, Download, Ship, Truck } from 'lucide-react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  CheckCircle,
+  Copy,
+  Download,
+  Eye,
+  MessageCircle,
+  Package,
+  Phone,
+  Printer,
+  RefreshCw,
+  Search,
+  Send,
+  Ship,
+  Smartphone,
+  Truck,
+} from 'lucide-react';
 import { formatPrice, formatTimestamp, getStatusColor, getStatusLabel, getNextStatus } from '@/lib/utils';
 import { generateWhatsAppLink } from '@/lib/egyptData';
 import type { Order, OrderStatus } from '@/types';
 import toast from 'react-hot-toast';
 
-const ORDER_STATUSES: OrderStatus[] = ['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered', 'cancelled', 'returned'];
+const ORDER_STATUSES: OrderStatus[] = ['pending', 'confirmed', 'preparing', 'packed', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'returned'];
+const PAYMENT_STATUSES: Order['paymentStatus'][] = ['pending', 'pending_confirmation', 'waiting_transfer', 'paid', 'collected', 'failed', 'refunded'];
+
+const FOLLOWUP_TYPES = [
+  { value: 'whatsapp_sent', label: 'WhatsApp sent' },
+  { value: 'reminder_sent', label: 'Reminder sent' },
+  { value: 'called', label: 'Called' },
+  { value: 'no_answer', label: 'No answer' },
+  { value: 'confirmed', label: 'Confirmed' },
+  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'payment_received', label: 'Payment received' },
+  { value: 'note', label: 'Note' },
+];
+
+function paymentLabel(method?: string) {
+  if (method === 'instapay') return 'Instapay';
+  if (method === 'vodafone_cash') return 'Vodafone Cash';
+  return 'Cash on Delivery';
+}
+
+function paymentStatusLabel(status?: string) {
+  const map: Record<string, string> = {
+    pending: 'Pending',
+    pending_confirmation: 'Pending confirmation',
+    waiting_transfer: 'Waiting transfer',
+    paid: 'Paid',
+    collected: 'Collected',
+    failed: 'Failed',
+    refunded: 'Refunded',
+  };
+  return map[String(status || 'pending')] || String(status || 'pending');
+}
+
+function followupLabel(type?: string) {
+  return FOLLOWUP_TYPES.find((item) => item.value === type)?.label || String(type || 'Note');
+}
+
+function AdminCard({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="rounded-[28px] border border-[#e6ded1] bg-white/90 p-5 shadow-[0_18px_50px_rgba(43,33,29,0.06)]">
+      <h4 className="mb-4 text-[10px] font-black uppercase tracking-[0.24em] text-[#9a8461]">{title}</h4>
+      {children}
+    </section>
+  );
+}
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [statusFilter, setStatusFilter] = useState('');
+  const [paymentFilter, setPaymentFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [followupType, setFollowupType] = useState('whatsapp_sent');
+  const [followupNote, setFollowupNote] = useState('');
+  const [paymentReference, setPaymentReference] = useState('');
+  const [paymentNotes, setPaymentNotes] = useState('');
 
   const loadOrders = async () => {
     setIsLoading(true);
     try {
       const { getOrders } = await import('@/lib/supabase/db');
-      setOrders(await getOrders());
-    } catch {
-      toast.error('Could not load orders');
+      const nextOrders = await getOrders();
+      setOrders(nextOrders);
+      setSelectedOrder((current) => nextOrders.find((order) => order.id === current?.id) || current);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not load orders');
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    loadOrders();
+    void loadOrders();
   }, []);
 
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
       const matchesStatus = statusFilter ? order.status === statusFilter : true;
+      const matchesPayment = paymentFilter ? order.paymentMethod === paymentFilter || order.paymentStatus === paymentFilter : true;
       const q = searchQuery.toLowerCase().trim();
-      const matchesSearch = !q ||
-        order.orderNumber.toLowerCase().includes(q) ||
-        order.customer.fullName.toLowerCase().includes(q) ||
-        order.customer.phone.includes(q);
-      return matchesStatus && matchesSearch;
+      const matchesSearch = !q
+        || order.orderNumber.toLowerCase().includes(q)
+        || order.customer.fullName.toLowerCase().includes(q)
+        || order.customer.phone.includes(q);
+      return matchesStatus && matchesPayment && matchesSearch;
     });
-  }, [orders, statusFilter, searchQuery]);
+  }, [orders, statusFilter, paymentFilter, searchQuery]);
 
-  const buildWhatsAppMessage = (order: Order) => `Hello ${order.customer.fullName}, this is NEXORA. Your COD order ${order.orderNumber} is confirmed. Total: ${formatPrice(order.total)}.`;
-
-  const markCollected = async (orderId: string) => {
-    try {
-      const { markOrderPaymentCollected } = await import('@/lib/supabase/db');
-      await markOrderPaymentCollected(orderId);
-      setOrders((current) => current.map((o) => o.id === orderId ? { ...o, paymentStatus: 'collected' } : o));
-      setSelectedOrder((current) => current?.id === orderId ? { ...current, paymentStatus: 'collected' } : current);
-      toast.success('COD payment marked as collected');
-    } catch {
-      toast.error('Could not update payment status');
+  const buildWhatsAppMessage = (order: Order, purpose = 'confirm') => {
+    const method = paymentLabel(order.paymentMethod);
+    if (purpose === 'payment') {
+      return `أهلاً، معاك NEXORA. بنأكد طلبك رقم ${order.orderNumber}. الإجمالي ${formatPrice(order.total)}. طريقة الدفع ${method}. برجاء إرسال صورة التحويل أو تأكيد الدفع على واتساب.`;
     }
+    if (purpose === 'shipping') {
+      return `أهلاً، معاك NEXORA. طلبك رقم ${order.orderNumber} قيد التجهيز. هنبلغك بتحديث الشحن أول ما يخرج للتوصيل.`;
+    }
+    return `أهلاً، معاك NEXORA. بنأكد طلبك رقم ${order.orderNumber}. الإجمالي ${formatPrice(order.total)}. طريقة الدفع ${method}.`;
+  };
+
+  const logFollowup = async (orderId: string, type: string, note: string) => {
+    try {
+      const { addOrderFollowup } = await import('@/lib/supabase/db');
+      await addOrderFollowup(orderId, type, note);
+      toast.success('Follow-up saved');
+      setFollowupNote('');
+      await loadOrders();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not save follow-up');
+    }
+  };
+
+  const openWhatsApp = async (order: Order, purpose: 'confirm' | 'payment' | 'shipping') => {
+    const message = buildWhatsAppMessage(order, purpose);
+    window.open(generateWhatsAppLink(order.customer.phone, message), '_blank', 'noopener,noreferrer');
+    await logFollowup(order.id, purpose === 'payment' ? 'reminder_sent' : 'whatsapp_sent', message);
   };
 
   const copyOrderMessage = async (order: Order) => {
@@ -66,6 +148,27 @@ export default function AdminOrders() {
     toast.success('WhatsApp message copied');
   };
 
+  const markCollected = async (orderId: string) => {
+    try {
+      const { markOrderPaymentCollected } = await import('@/lib/supabase/db');
+      await markOrderPaymentCollected(orderId);
+      toast.success('Payment marked as collected');
+      await loadOrders();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not update payment status');
+    }
+  };
+
+  const updatePayment = async (order: Order, paymentStatus: Order['paymentStatus']) => {
+    try {
+      const { updateOrderPaymentStatus } = await import('@/lib/supabase/db');
+      await updateOrderPaymentStatus(order.id, paymentStatus, paymentReference, paymentNotes);
+      toast.success('Payment status updated');
+      await loadOrders();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not update payment status');
+    }
+  };
 
   const createShipment = async (orderId: string) => {
     try {
@@ -93,29 +196,19 @@ export default function AdminOrders() {
     try {
       const { updateOrderStatus } = await import('@/lib/supabase/db');
       await updateOrderStatus(orderId, newStatus);
-      setOrders((current) => current.map((o) =>
-        o.id === orderId
-          ? {
-              ...o,
-              status: newStatus,
-              updatedAt: new Date(),
-              trackingUpdates: [
-                ...o.trackingUpdates,
-                { status: newStatus, message: `Status updated to ${getStatusLabel(newStatus)}`, timestamp: new Date(), updatedBy: 'admin' },
-              ],
-            }
-          : o
-      ));
       toast.success(`Status updated to ${getStatusLabel(newStatus)}`);
-      setSelectedOrder(null);
-    } catch {
-      toast.error('Could not update order status');
+      await loadOrders();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not update order status');
     }
   };
 
+  const printInvoice = () => {
+    window.print();
+  };
 
   const exportOrdersCsv = () => {
-    const headers = ['order_number','customer_name','phone','governorate','city','total','status','payment_status','items','created_at'];
+    const headers = ['order_number', 'customer_name', 'phone', 'governorate', 'city', 'total', 'order_status', 'payment_method', 'payment_status', 'items', 'created_at'];
     const rows = filteredOrders.map((order) => [
       order.orderNumber,
       order.customer.fullName,
@@ -124,6 +217,7 @@ export default function AdminOrders() {
       order.customer.city,
       String(order.total),
       order.status,
+      order.paymentMethod,
       order.paymentStatus,
       order.items.map((item) => `${item.name} ${item.size}${item.color ? `/${item.color}` : ''} x${item.quantity}`).join(' | '),
       order.createdAt.toISOString(),
@@ -133,150 +227,216 @@ export default function AdminOrders() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `nexora-orders-${new Date().toISOString().slice(0,10)}.csv`;
+    link.download = `nexora-orders-${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+    <div className="space-y-6 text-[#2b211d]">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-lg font-bold tracking-wider uppercase text-[#f4f0e8]">Orders</h1>
-          <p className="text-xs text-[#8a8175] mt-1">{orders.length} orders</p>
+          <h1 className="text-xl font-black uppercase tracking-[0.22em] text-[#2b211d]">Orders</h1>
+          <p className="mt-1 text-xs text-[#8a8175]">{orders.length} orders · Invoice, payments, follow-ups</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8a8175]" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a8461]" />
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search order, customer, phone..."
-              className="w-full sm:w-72 bg-[#0b0b0d] border border-[#202024] pl-10 pr-4 py-2.5 text-xs text-[#f4f0e8] placeholder:text-[#2a2a2d] focus:outline-none focus:border-[#c8a96a]"
+              className="w-full rounded-2xl border border-[#e6ded1] bg-white px-10 py-3 text-xs text-[#2b211d] outline-none transition-colors focus:border-[#b99a62] sm:w-72"
             />
           </div>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="bg-[#0b0b0d] border border-[#202024] px-3 py-2.5 text-xs text-[#b8b0a3] focus:outline-none">
-            <option value="">All Statuses</option>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-2xl border border-[#e6ded1] bg-white px-3 py-3 text-xs text-[#5f584f] outline-none">
+            <option value="">All statuses</option>
             {ORDER_STATUSES.map((s) => <option key={s} value={s}>{getStatusLabel(s)}</option>)}
           </select>
-          <button onClick={exportOrdersCsv} className="nexora-button flex items-center justify-center gap-2">
-            <Download className="w-3.5 h-3.5" /> Export CSV
-          </button>
-          <button onClick={loadOrders} className="nexora-button flex items-center justify-center gap-2">
-            <RefreshCw className="w-3.5 h-3.5" /> Refresh
-          </button>
+          <select value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value)} className="rounded-2xl border border-[#e6ded1] bg-white px-3 py-3 text-xs text-[#5f584f] outline-none">
+            <option value="">All payments</option>
+            <option value="cod">COD</option>
+            <option value="instapay">Instapay</option>
+            <option value="vodafone_cash">Vodafone Cash</option>
+            {PAYMENT_STATUSES.map((s) => <option key={s} value={s}>{paymentStatusLabel(s)}</option>)}
+          </select>
+          <button onClick={exportOrdersCsv} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#e6ded1] bg-white px-4 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#5f584f] hover:border-[#b99a62]"><Download className="h-3.5 w-3.5" /> CSV</button>
+          <button onClick={loadOrders} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#2b211d] px-4 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-white"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button>
         </div>
       </div>
 
-      <div className="bg-[#0b0b0d] border border-[#17171a] overflow-x-auto">
-        <table className="w-full text-left min-w-[820px]">
+      <div className="overflow-x-auto rounded-[28px] border border-[#e6ded1] bg-white shadow-[0_18px_50px_rgba(43,33,29,0.06)]">
+        <table className="w-full min-w-[980px] text-left">
           <thead>
-            <tr className="border-b border-[#17171a]">
-              <th className="p-4 text-[10px] font-medium text-[#8a8175] uppercase tracking-wider">Order #</th>
-              <th className="p-4 text-[10px] font-medium text-[#8a8175] uppercase tracking-wider">Customer</th>
-              <th className="p-4 text-[10px] font-medium text-[#8a8175] uppercase tracking-wider">Phone</th>
-              <th className="p-4 text-[10px] font-medium text-[#8a8175] uppercase tracking-wider">Total</th>
-              <th className="p-4 text-[10px] font-medium text-[#8a8175] uppercase tracking-wider">Status</th>
-              <th className="p-4 text-[10px] font-medium text-[#8a8175] uppercase tracking-wider">COD</th>
-              <th className="p-4 text-[10px] font-medium text-[#8a8175] uppercase tracking-wider">Actions</th>
+            <tr className="border-b border-[#efe8dc] bg-[#faf7f1]">
+              <th className="p-4 text-[10px] font-black uppercase tracking-wider text-[#9a8461]">Order</th>
+              <th className="p-4 text-[10px] font-black uppercase tracking-wider text-[#9a8461]">Items</th>
+              <th className="p-4 text-[10px] font-black uppercase tracking-wider text-[#9a8461]">Customer</th>
+              <th className="p-4 text-[10px] font-black uppercase tracking-wider text-[#9a8461]">Total</th>
+              <th className="p-4 text-[10px] font-black uppercase tracking-wider text-[#9a8461]">Payment</th>
+              <th className="p-4 text-[10px] font-black uppercase tracking-wider text-[#9a8461]">Status</th>
+              <th className="p-4 text-[10px] font-black uppercase tracking-wider text-[#9a8461]">Follow-up</th>
+              <th className="p-4 text-[10px] font-black uppercase tracking-wider text-[#9a8461]">Action</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={7} className="p-8 text-center text-xs text-[#8a8175]">Loading orders...</td></tr>
+              <tr><td colSpan={8} className="p-8 text-center text-xs text-[#8a8175]">Loading orders...</td></tr>
             ) : filteredOrders.length ? filteredOrders.map((order) => (
-              <tr key={order.id} className="border-b border-[#17171a]/50 hover:bg-[#17171a]/30 transition-colors">
-                <td className="p-4 text-xs text-[#c8a96a] font-medium">{order.orderNumber}</td>
-                <td className="p-4 text-xs text-[#f4f0e8]">{order.customer.fullName}</td>
-                <td className="p-4 text-xs text-[#b8b0a3]">{order.customer.phone}</td>
-                <td className="p-4 text-xs font-medium">{formatPrice(order.total)}</td>
-                <td className="p-4"><span className={`status-badge ${getStatusColor(order.status)} text-[9px]`}>{getStatusLabel(order.status)}</span></td>
-                <td className="p-4"><span className={`text-[9px] uppercase tracking-wider border px-2 py-1 ${order.paymentStatus === 'collected' ? 'border-green-500/30 text-green-400 bg-green-500/10' : 'border-[#202024] text-[#8a8175]'}`}>{order.paymentStatus === 'collected' ? 'Collected' : 'Pending'}</span></td>
+              <tr key={order.id} className="border-b border-[#efe8dc]/80 hover:bg-[#faf7f1]">
                 <td className="p-4">
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => setSelectedOrder(selectedOrder?.id === order.id ? null : order)} className="p-1.5 text-[#8a8175] hover:text-[#c8a96a] transition-colors"><Eye className="w-3.5 h-3.5" /></button>
-                    {getNextStatus(order.status) && (
-                      <button onClick={() => updateStatus(order.id, getNextStatus(order.status)! as OrderStatus)} className="flex items-center gap-1 px-2 py-1 bg-[#c8a96a]/10 text-[#c8a96a] text-[9px] uppercase tracking-wider hover:bg-[#c8a96a]/20 transition-colors">
-                        <Package className="w-3 h-3" /> {getStatusLabel(getNextStatus(order.status)!)}
-                      </button>
-                    )}
+                  <p className="text-xs font-black text-[#b99a62]">{order.orderNumber}</p>
+                  <p className="mt-1 text-[10px] text-[#8a8175]">{formatTimestamp(order.createdAt)}</p>
+                </td>
+                <td className="p-4">
+                  <div className="flex -space-x-2">
+                    {order.items.slice(0, 4).map((item, index) => (
+                      <img key={`${order.id}-${item.productId}-${index}`} src={item.image || '/assets/nexora-logo.png'} alt={item.name} className="h-10 w-10 rounded-full border-2 border-white object-cover bg-[#faf7f1]" />
+                    ))}
+                    {order.items.length > 4 && <span className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-[#efe8dc] text-[10px] font-bold text-[#5f584f]">+{order.items.length - 4}</span>}
                   </div>
+                </td>
+                <td className="p-4">
+                  <p className="text-xs font-semibold text-[#2b211d]">{order.customer.fullName}</p>
+                  <p className="mt-1 text-[10px] text-[#8a8175]">{order.customer.phone}</p>
+                </td>
+                <td className="p-4 text-xs font-black text-[#2b211d]">{formatPrice(order.total)}</td>
+                <td className="p-4">
+                  <p className="text-xs text-[#2b211d]">{paymentLabel(order.paymentMethod)}</p>
+                  <p className="mt-1 text-[10px] text-[#8a8175]">{paymentStatusLabel(order.paymentStatus)}</p>
+                </td>
+                <td className="p-4"><span className={`status-badge ${getStatusColor(order.status)} text-[9px]`}>{getStatusLabel(order.status)}</span></td>
+                <td className="p-4 text-[10px] text-[#8a8175]">{followupLabel(order.followupStatus)}</td>
+                <td className="p-4">
+                  <button onClick={() => setSelectedOrder(selectedOrder?.id === order.id ? null : order)} className="inline-flex items-center gap-2 rounded-full border border-[#e6ded1] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5f584f] hover:border-[#b99a62] hover:text-[#b99a62]"><Eye className="h-3.5 w-3.5" /> Invoice</button>
                 </td>
               </tr>
             )) : (
-              <tr><td colSpan={7} className="p-8 text-center text-xs text-[#8a8175]">No orders found</td></tr>
+              <tr><td colSpan={8} className="p-8 text-center text-xs text-[#8a8175]">No orders found</td></tr>
             )}
           </tbody>
         </table>
       </div>
 
       {selectedOrder && (
-        <div className="p-5 bg-[#0b0b0d] border border-[#17171a] space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-[#f4f0e8]">{selectedOrder.orderNumber}</h3>
-            <button onClick={() => setSelectedOrder(null)} className="text-[#8a8175] hover:text-[#f4f0e8]"><ChevronDown className="w-4 h-4" /></button>
-          </div>
-          <div className="grid sm:grid-cols-2 gap-3 text-xs">
-            <div className="p-3 bg-[#050505] border border-[#17171a]">
-              <p className="text-[#8a8175] mb-1">Customer</p>
-              <p className="text-[#f4f0e8]">{selectedOrder.customer.fullName}</p>
-              <p className="text-[#b8b0a3]">{selectedOrder.customer.phone}</p>
-              <p className="text-[#b8b0a3] mt-1">{selectedOrder.customer.address}, {selectedOrder.customer.city}, {selectedOrder.customer.governorate}</p>
-            </div>
-            <div className="p-3 bg-[#050505] border border-[#17171a]">
-              <p className="text-[#8a8175] mb-1">Order Details</p>
-              <p className="text-[#f4f0e8]">Subtotal: {formatPrice(selectedOrder.subtotal)}</p>
-              <p className="text-[#b8b0a3]">Shipping: {formatPrice(selectedOrder.shippingFee)}</p>
-              <p className="text-[#b8b0a3]">Date: {formatTimestamp(selectedOrder.createdAt)}</p>
-              <p className="text-[#c8a96a] font-bold mt-1">Total: {formatPrice(selectedOrder.total)}</p>
-              <p className="text-[#b8b0a3] mt-1">COD: {selectedOrder.paymentStatus === 'collected' ? 'Collected' : 'Pending collection'}</p>
-              <p className="text-[#b8b0a3] mt-1">Delivery estimate: {(selectedOrder as any).deliveryEstimate || '—'}</p>
-              <p className="text-[#b8b0a3] mt-1">Shipping: {(selectedOrder as any).shippingProvider || 'manual'} · {(selectedOrder as any).shippingStatus || 'not_created'}</p>
-              {(selectedOrder as any).trackingNumber && <p className="text-[#c8a96a] mt-1">Tracking: {(selectedOrder as any).trackingNumber}</p>}
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <a href={generateWhatsAppLink(selectedOrder.customer.phone, buildWhatsAppMessage(selectedOrder))} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-3 py-1.5 border border-[#202024] text-[9px] uppercase tracking-wider text-[#c8a96a] hover:border-[#c8a96a]"><MessageCircle className="w-3 h-3" /> WhatsApp</a>
-            <button onClick={() => copyOrderMessage(selectedOrder)} className="inline-flex items-center gap-2 px-3 py-1.5 border border-[#202024] text-[9px] uppercase tracking-wider text-[#8a8175] hover:border-[#c8a96a] hover:text-[#c8a96a]"><Copy className="w-3 h-3" /> Copy Message</button>
-            <button onClick={() => markCollected(selectedOrder.id)} disabled={selectedOrder.paymentStatus === 'collected'} className="inline-flex items-center gap-2 px-3 py-1.5 border border-[#202024] text-[9px] uppercase tracking-wider text-[#8a8175] hover:border-green-400 hover:text-green-400 disabled:opacity-50"><CheckCircle className="w-3 h-3" /> Mark Collected</button>
-            <button onClick={() => createShipment(selectedOrder.id)} disabled={Boolean((selectedOrder as any).trackingNumber)} className="inline-flex items-center gap-2 px-3 py-1.5 border border-[#202024] text-[9px] uppercase tracking-wider text-[#8a8175] hover:border-[#c8a96a] hover:text-[#c8a96a] disabled:opacity-50"><Ship className="w-3 h-3" /> Create Shipment</button>
-            <button onClick={() => refreshShipment(selectedOrder.id)} className="inline-flex items-center gap-2 px-3 py-1.5 border border-[#202024] text-[9px] uppercase tracking-wider text-[#8a8175] hover:border-[#c8a96a] hover:text-[#c8a96a]"><Truck className="w-3 h-3" /> Refresh Shipping</button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {ORDER_STATUSES.map((status) => (
-              <button key={status} onClick={() => updateStatus(selectedOrder.id, status)} className={`px-3 py-1.5 text-[9px] uppercase tracking-wider border transition-colors ${selectedOrder.status === status ? 'border-[#c8a96a] text-[#c8a96a] bg-[#c8a96a]/5' : 'border-[#202024] text-[#8a8175] hover:border-[#6f675d]'}`}>
-                {getStatusLabel(status)}
-              </button>
-            ))}
-          </div>
-          <div className="space-y-2">
-            <h4 className="text-[10px] uppercase tracking-wider text-[#8a8175]">Timeline</h4>
-            {(selectedOrder.trackingUpdates || []).length ? selectedOrder.trackingUpdates.map((entry, index) => (
-              <div key={`${entry.status}-${index}`} className="rounded-2xl border border-[#17171a] bg-[#050505] px-3 py-2 text-xs">
-                <p className="font-semibold text-[#f4f0e8]">{getStatusLabel(entry.status)}</p>
-                <p className="mt-1 text-[#8a8175]">{entry.message}</p>
-                <p className="mt-1 text-[10px] text-[#6f675d]">{formatTimestamp(entry.timestamp)}</p>
+        <div className="print:fixed print:inset-0 print:z-50 print:overflow-auto print:bg-white">
+          <div className="rounded-[32px] border border-[#e6ded1] bg-[#fbf7ef] p-5 shadow-[0_24px_80px_rgba(43,33,29,0.1)] print:rounded-none print:border-0 print:shadow-none">
+            <div className="mb-5 flex flex-col gap-4 border-b border-[#e6ded1] pb-5 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#9a8461]">NEXORA invoice</p>
+                <h2 className="mt-2 text-2xl font-black tracking-[0.08em] text-[#2b211d]">{selectedOrder.orderNumber}</h2>
+                <p className="mt-1 text-xs text-[#8a8175]">{formatTimestamp(selectedOrder.createdAt)}</p>
               </div>
-            )) : <p className="text-xs text-[#8a8175]">No timeline entries yet.</p>}
-          </div>
+              <div className="flex flex-wrap gap-2 print:hidden">
+                <button onClick={printInvoice} className="inline-flex items-center gap-2 rounded-full border border-[#e6ded1] bg-white px-4 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5f584f]"><Printer className="h-3.5 w-3.5" /> Print</button>
+                <button onClick={() => void openWhatsApp(selectedOrder, 'confirm')} className="inline-flex items-center gap-2 rounded-full bg-[#2b211d] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white"><MessageCircle className="h-3.5 w-3.5" /> WhatsApp</button>
+                <button onClick={() => setSelectedOrder(null)} className="rounded-full border border-[#e6ded1] bg-white px-4 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5f584f]">Close</button>
+              </div>
+            </div>
 
-          <div className="space-y-2">
-            <h4 className="text-[10px] uppercase tracking-wider text-[#8a8175]">Items</h4>
-            {selectedOrder.items.map((item) => (
-              <div key={`${item.productId}-${item.size}-${item.color || 'default'}`} className="flex items-start justify-between gap-4 text-xs border-b border-[#17171a]/50 pb-3">
-                <div className="min-w-0">
-                  <p className="text-[#f4f0e8]">{item.name} — {item.size} x{item.quantity}</p>
-                  {item.color && (
-                    <p className="mt-1 flex items-center gap-2 text-[10px] uppercase tracking-wider text-[#8a8175]">
-                      Color:
-                      <span className="inline-flex h-3 w-3 rounded-full border border-white/20" style={{ background: item.colorHex || undefined }} />
-                      <span className="text-[#b8b0a3]">{item.color}</span>
-                    </p>
-                  )}
+            <div className="grid gap-4 lg:grid-cols-3">
+              <AdminCard title="Customer">
+                <p className="text-sm font-bold text-[#2b211d]">{selectedOrder.customer.fullName}</p>
+                <p className="mt-1 text-xs text-[#5f584f]">{selectedOrder.customer.phone}</p>
+                <p className="mt-3 text-xs leading-6 text-[#8a8175]">{selectedOrder.customer.address}, {selectedOrder.customer.city}, {selectedOrder.customer.governorate}</p>
+                {selectedOrder.customer.notes && <p className="mt-3 rounded-2xl bg-[#faf7f1] p-3 text-xs text-[#5f584f]">{selectedOrder.customer.notes}</p>}
+              </AdminCard>
+
+              <AdminCard title="Payment">
+                <p className="text-sm font-bold text-[#2b211d]">{paymentLabel(selectedOrder.paymentMethod)}</p>
+                <p className="mt-1 text-xs text-[#8a8175]">{paymentStatusLabel(selectedOrder.paymentStatus)}</p>
+                <p className="mt-2 text-xs text-[#8a8175]">Confirm on WhatsApp: {selectedOrder.paymentConfirmationPhone || '01037141322'}</p>
+                <div className="mt-4 grid gap-2 print:hidden">
+                  <select onChange={(e) => void updatePayment(selectedOrder, e.target.value as Order['paymentStatus'])} defaultValue="" className="rounded-2xl border border-[#e6ded1] bg-white px-3 py-2 text-xs text-[#5f584f] outline-none">
+                    <option value="" disabled>Update payment status</option>
+                    {PAYMENT_STATUSES.map((status) => <option key={status} value={status}>{paymentStatusLabel(status)}</option>)}
+                  </select>
+                  <input value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} placeholder="Payment reference optional" className="rounded-2xl border border-[#e6ded1] bg-white px-3 py-2 text-xs outline-none" />
+                  <input value={paymentNotes} onChange={(e) => setPaymentNotes(e.target.value)} placeholder="Payment notes optional" className="rounded-2xl border border-[#e6ded1] bg-white px-3 py-2 text-xs outline-none" />
+                  <button onClick={() => void markCollected(selectedOrder.id)} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-green-200 bg-green-50 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-green-700"><CheckCircle className="h-3.5 w-3.5" /> Mark paid/collected</button>
                 </div>
-                <span className="shrink-0 text-[#b8b0a3]">{formatPrice(item.price * item.quantity)}</span>
-              </div>
-            ))}
+              </AdminCard>
+
+              <AdminCard title="Shipping">
+                <p className="text-sm font-bold text-[#2b211d]">{selectedOrder.shippingProvider || 'Manual'} · {selectedOrder.shippingStatus || 'not_created'}</p>
+                <p className="mt-1 text-xs text-[#8a8175]">Estimate: {selectedOrder.deliveryEstimate || '—'}</p>
+                {selectedOrder.trackingNumber && <p className="mt-2 text-xs font-bold text-[#b99a62]">Tracking: {selectedOrder.trackingNumber}</p>}
+                <div className="mt-4 flex flex-wrap gap-2 print:hidden">
+                  <button onClick={() => void createShipment(selectedOrder.id)} disabled={Boolean(selectedOrder.trackingNumber)} className="inline-flex items-center gap-2 rounded-full border border-[#e6ded1] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5f584f] disabled:opacity-50"><Ship className="h-3.5 w-3.5" /> Create shipment</button>
+                  <button onClick={() => void refreshShipment(selectedOrder.id)} className="inline-flex items-center gap-2 rounded-full border border-[#e6ded1] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5f584f]"><Truck className="h-3.5 w-3.5" /> Refresh</button>
+                </div>
+              </AdminCard>
+            </div>
+
+            <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+              <AdminCard title="Items invoice">
+                <div className="space-y-3">
+                  {selectedOrder.items.map((item, index) => (
+                    <div key={`${item.productId}-${item.variantId || index}`} className="flex gap-4 rounded-3xl border border-[#efe8dc] bg-[#faf7f1] p-3">
+                      <img src={item.image || '/assets/nexora-logo.png'} alt={item.name} className="h-20 w-20 rounded-2xl object-cover bg-white" />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-[#2b211d]">{item.name}</p>
+                        <p className="mt-1 text-xs text-[#8a8175]">Size: {item.size}{item.color ? ` · Color: ${item.color}` : ''}</p>
+                        <p className="mt-1 text-xs text-[#8a8175]">Qty: {item.quantity} · Unit: {formatPrice(item.price)}</p>
+                      </div>
+                      <p className="shrink-0 text-sm font-black text-[#2b211d]">{formatPrice(item.lineTotal || item.price * item.quantity)}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-5 space-y-2 rounded-3xl bg-white p-4 text-sm">
+                  <div className="flex justify-between"><span className="text-[#8a8175]">Subtotal</span><span>{formatPrice(selectedOrder.subtotal)}</span></div>
+                  {selectedOrder.discount > 0 && <div className="flex justify-between"><span className="text-[#8a8175]">Discount</span><span>-{formatPrice(selectedOrder.discount)}</span></div>}
+                  <div className="flex justify-between"><span className="text-[#8a8175]">Shipping</span><span>{formatPrice(selectedOrder.shippingFee)}</span></div>
+                  {Number(selectedOrder.codFee || 0) > 0 && <div className="flex justify-between"><span className="text-[#8a8175]">COD fee</span><span>{formatPrice(Number(selectedOrder.codFee || 0))}</span></div>}
+                  <div className="flex justify-between border-t border-[#efe8dc] pt-3 text-lg font-black text-[#2b211d]"><span>Total</span><span>{formatPrice(selectedOrder.total)}</span></div>
+                </div>
+              </AdminCard>
+
+              <AdminCard title="Follow-up timeline">
+                <div className="space-y-3 print:hidden">
+                  <div className="grid gap-2">
+                    <select value={followupType} onChange={(e) => setFollowupType(e.target.value)} className="rounded-2xl border border-[#e6ded1] bg-white px-3 py-2 text-xs outline-none">
+                      {FOLLOWUP_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                    </select>
+                    <textarea value={followupNote} onChange={(e) => setFollowupNote(e.target.value)} rows={3} placeholder="مثال: بعتله رسالة تأكيد / رنيت ومردش / أكد الطلب" className="rounded-2xl border border-[#e6ded1] bg-white px-3 py-2 text-xs outline-none" />
+                    <button onClick={() => void logFollowup(selectedOrder.id, followupType, followupNote)} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#2b211d] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white"><Send className="h-3.5 w-3.5" /> Save follow-up</button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={() => void openWhatsApp(selectedOrder, 'payment')} className="inline-flex items-center gap-2 rounded-full border border-[#e6ded1] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5f584f]"><Smartphone className="h-3.5 w-3.5" /> Payment reminder</button>
+                    <button onClick={() => void openWhatsApp(selectedOrder, 'shipping')} className="inline-flex items-center gap-2 rounded-full border border-[#e6ded1] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5f584f]"><Truck className="h-3.5 w-3.5" /> Shipping update</button>
+                    <button onClick={() => void copyOrderMessage(selectedOrder)} className="inline-flex items-center gap-2 rounded-full border border-[#e6ded1] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5f584f]"><Copy className="h-3.5 w-3.5" /> Copy</button>
+                  </div>
+                </div>
+                <div className="mt-4 space-y-2">
+                  {(selectedOrder.followups || []).length ? (selectedOrder.followups || []).map((entry) => (
+                    <div key={entry.id} className="rounded-2xl border border-[#efe8dc] bg-white px-3 py-2 text-xs">
+                      <p className="font-bold text-[#2b211d]">{followupLabel(entry.type)}</p>
+                      <p className="mt-1 text-[#5f584f]">{entry.note || '—'}</p>
+                      <p className="mt-1 text-[10px] text-[#9a8461]">{formatTimestamp(entry.createdAt)} · {entry.createdBy || 'studio'}</p>
+                    </div>
+                  )) : <p className="text-xs text-[#8a8175]">No follow-up entries yet.</p>}
+                  {(selectedOrder.trackingUpdates || []).map((entry, index) => (
+                    <div key={`${entry.status}-${index}`} className="rounded-2xl border border-[#efe8dc] bg-white px-3 py-2 text-xs">
+                      <p className="font-bold text-[#2b211d]">{getStatusLabel(entry.status)}</p>
+                      <p className="mt-1 text-[#5f584f]">{entry.message}</p>
+                      <p className="mt-1 text-[10px] text-[#9a8461]">{formatTimestamp(entry.timestamp)}</p>
+                    </div>
+                  ))}
+                </div>
+              </AdminCard>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2 print:hidden">
+              {ORDER_STATUSES.map((status) => (
+                <button key={status} onClick={() => void updateStatus(selectedOrder.id, status)} className={`rounded-full border px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] transition-colors ${selectedOrder.status === status ? 'border-[#b99a62] bg-[#b99a62]/10 text-[#b99a62]' : 'border-[#e6ded1] bg-white text-[#5f584f] hover:border-[#b99a62]'}`}>
+                  {getStatusLabel(status)}
+                </button>
+              ))}
+              {getNextStatus(selectedOrder.status) && (
+                <button onClick={() => void updateStatus(selectedOrder.id, getNextStatus(selectedOrder.status)! as OrderStatus)} className="inline-flex items-center gap-2 rounded-full bg-[#b99a62] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white"><Package className="h-3.5 w-3.5" /> Next: {getStatusLabel(getNextStatus(selectedOrder.status)! as OrderStatus)}</button>
+              )}
+              <a href={`tel:${selectedOrder.customer.phone}`} className="inline-flex items-center gap-2 rounded-full border border-[#e6ded1] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5f584f]"><Phone className="h-3.5 w-3.5" /> Call</a>
+            </div>
           </div>
         </div>
       )}

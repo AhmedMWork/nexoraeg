@@ -35,6 +35,7 @@ export default function CheckoutPage() {
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number; freeShipping?: boolean } | null>(null);
   const [isCheckingCoupon, setIsCheckingCoupon] = useState(false);
   const [shippingQuote, setShippingQuote] = useState<import('@/lib/supabase/db').ShippingQuote | null>(null);
+  const [paymentConfirmationPhone, setPaymentConfirmationPhone] = useState('01037141322');
   const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
   const [idempotencyKey, setIdempotencyKey] = useState(() => {
     if (typeof window === 'undefined') return `nx-${Date.now()}`;
@@ -70,6 +71,7 @@ export default function CheckoutPage() {
   const watchedName = watch('fullName');
   const watchedPhone = watch('phone');
   const watchedCity = watch('city');
+  const watchedPaymentMethod = watch('paymentMethod');
   const cities = selectedGovernorate ? getCitiesForGovernorate(selectedGovernorate) : [];
 
   useEffect(() => {
@@ -80,6 +82,7 @@ export default function CheckoutPage() {
       .then(({ getSiteSettings }) => getSiteSettings())
       .then((settings) => {
         if (mounted && settings?.whatsappNumber) setWhatsAppNumber(settings.whatsappNumber);
+        if (mounted && settings?.paymentSettings?.confirmationPhone) setPaymentConfirmationPhone(settings.paymentSettings.confirmationPhone);
 
       })
       .catch(() => undefined);
@@ -199,7 +202,8 @@ export default function CheckoutPage() {
         discount,
         couponCode: appliedCoupon?.code,
         total,
-        paymentMethod: 'cod',
+        paymentMethod: data.paymentMethod,
+        paymentConfirmationPhone,
         paymentStatus: 'pending',
         status: 'pending',
         trackingUpdates: [
@@ -240,7 +244,8 @@ export default function CheckoutPage() {
   }
 
   if (orderComplete) {
-    const whatsappMessage = `Hello NEXORA! I just placed an order with cash on delivery. My order number is: ${orderNumber}`;
+    const paymentLabel = watchedPaymentMethod === 'instapay' ? 'Instapay' : watchedPaymentMethod === 'vodafone_cash' ? 'Vodafone Cash' : 'Cash on Delivery';
+    const whatsappMessage = `Hello NEXORA! I just placed an order ${orderNumber}. Payment method: ${paymentLabel}. Please confirm on WhatsApp.`;
     return (
       <div className="pt-32 pb-20 min-h-screen bg-[#050505] flex items-center justify-center">
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center max-w-md mx-auto px-6">
@@ -368,16 +373,35 @@ export default function CheckoutPage() {
 
                 <div className="p-6 bg-[#0b0b0d] border border-[#17171a]">
                   <h3 className="text-xs font-bold tracking-[0.2em] uppercase text-[#f4f0e8] mb-5">{t('checkout.paymentMethod')}</h3>
-                  <div className="space-y-3">
-                    <button type="button" onClick={() => setValue('paymentMethod', 'cod')} className="w-full flex items-center gap-4 p-4 border border-[#c8a96a] bg-[#c8a96a]/5 transition-all">
-                      <Banknote className="w-5 h-5 text-[#c8a96a]" />
-                      <div className="text-left rtl:text-right">
-                        <p className="text-sm font-medium text-[#f4f0e8]">{t('checkout.cod')}</p>
-                        <p className="text-[10px] text-[#8a8175]">{t('checkout.codDesc')}</p>
-                        <p className="mt-1 text-[10px] text-[#c8a96a]">Cash on Delivery is currently available for all orders in Egypt.</p>
-                      </div>
-                    </button>
+                  <div className="grid gap-3">
+                    {[
+                      { id: 'cod', label: t('checkout.cod'), desc: t('checkout.codDesc'), icon: Banknote },
+                      { id: 'instapay', label: 'Instapay', desc: `Choose Instapay and NEXORA will confirm payment on WhatsApp: ${paymentConfirmationPhone}`, icon: Smartphone },
+                      { id: 'vodafone_cash', label: 'Vodafone Cash', desc: `Choose Vodafone Cash and NEXORA will confirm payment on WhatsApp: ${paymentConfirmationPhone}`, icon: Smartphone },
+                    ].map((method) => {
+                      const Icon = method.icon;
+                      const active = watchedPaymentMethod === method.id;
+                      return (
+                        <button
+                          key={method.id}
+                          type="button"
+                          onClick={() => setValue('paymentMethod', method.id as CheckoutFormData['paymentMethod'])}
+                          className={`w-full flex items-center gap-4 p-4 border transition-all text-left rtl:text-right ${active ? 'border-[#c8a96a] bg-[#c8a96a]/5' : 'border-[#202024] bg-[#050505] hover:border-[#6f675d]'}`}
+                        >
+                          <Icon className="w-5 h-5 text-[#c8a96a]" />
+                          <div>
+                            <p className="text-sm font-medium text-[#f4f0e8]">{method.label}</p>
+                            <p className="text-[10px] leading-5 text-[#8a8175]">{method.desc}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
+                  {watchedPaymentMethod !== 'cod' && (
+                    <div className="mt-4 rounded-2xl border border-[#c8a96a]/20 bg-[#c8a96a]/5 p-4 text-xs leading-6 text-[#b8b0a3]">
+                      Payment is not automatic. Place the order now and NEXORA will confirm transfer details with you on WhatsApp: <span className="font-semibold text-[#c8a96a]">{paymentConfirmationPhone}</span>.
+                    </div>
+                  )}
                 </div>
 
                 <button type="submit" disabled={isSubmitting} className="w-full nexora-button-primary py-4 disabled:opacity-50">

@@ -90,7 +90,10 @@ export interface CartItem {
   colorPattern?: string;
   quantity: number;
   image: string;
+  lineTotal?: number;
+  productSnapshot?: Record<string, unknown>;
 }
+
 
 export interface Order {
   id: string;
@@ -102,8 +105,8 @@ export interface Order {
   discount: number;
   couponCode?: string;
   total: number;
-  paymentMethod: 'cod';
-  paymentStatus: 'pending' | 'collected' | 'failed' | 'refunded';
+  paymentMethod: 'cod' | 'instapay' | 'vodafone_cash';
+  paymentStatus: 'pending' | 'pending_confirmation' | 'waiting_transfer' | 'paid' | 'collected' | 'failed' | 'refunded';
   status: OrderStatus;
   trackingUpdates: TrackingUpdate[];
   adminNotes?: string;
@@ -116,6 +119,12 @@ export interface Order {
   trackingNumber?: string;
   shipmentId?: string;
   shippingQuote?: Record<string, unknown>;
+  paymentReference?: string;
+  paymentNotes?: string;
+  paymentConfirmationPhone?: string;
+  followupStatus?: string;
+  followups?: OrderFollowup[];
+  invoiceSnapshot?: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -130,6 +139,15 @@ export interface CustomerInfo {
   notes?: string;
 }
 
+export interface OrderFollowup {
+  id: string;
+  orderId: string;
+  type: 'whatsapp_sent' | 'reminder_sent' | 'called' | 'no_answer' | 'confirmed' | 'cancelled' | 'payment_received' | 'note' | 'order_created' | string;
+  note?: string;
+  createdBy?: string;
+  createdAt: Date;
+}
+
 export interface OrderItem {
   productId: string;
   variantId?: string;
@@ -141,6 +159,8 @@ export interface OrderItem {
   colorHex?: string;
   quantity: number;
   image: string;
+  lineTotal?: number;
+  productSnapshot?: Record<string, unknown>;
 }
 
 export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'packed' | 'shipped' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'returned' | 'failed';
@@ -306,7 +326,8 @@ export interface SiteSettings {
   maintenanceMode?: boolean;
   defaultLanguage?: 'en' | 'ar';
   defaultTheme?: 'dark' | 'light' | 'system';
-  socialLinks: { instagram?: string; facebook?: string; twitter?: string; tiktok?: string; };
+  socialLinks: { instagram?: string; facebook?: string; twitter?: string; tiktok?: string; whatsapp?: string; };
+  paymentSettings?: { instapayEnabled?: boolean; vodafoneCashEnabled?: boolean; confirmationPhone?: string; instructions?: string; };
   seo: { title: string; description: string; keywords: string; };
   announcements: Announcement[];
   updatedAt: Date;
