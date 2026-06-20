@@ -13,8 +13,8 @@ function TikTokIcon(props: SVGProps<SVGSVGElement>) {
 }
 
 const socialLinks = [
-  { label: 'Instagram', href: '#', Icon: Instagram },
-  { label: 'Facebook', href: '#', Icon: Facebook },
+  { label: 'Instagram', href: 'https://www.instagram.com/nexora.eg_wear?igsh=Zm9zN2ZjZ3Q3Zmlw&utm_source=qr', Icon: Instagram },
+  { label: 'Facebook', href: 'https://www.facebook.com/share/18k2uTBtYu/?mibextid=wwXIfr', Icon: Facebook },
   { label: 'TikTok', href: '#', Icon: TikTokIcon },
   { label: 'WhatsApp', href: 'https://wa.me/201037141322', Icon: MessageCircle },
 ];
@@ -98,7 +98,7 @@ export default function Footer() {
                   key={label}
                   href={href}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   aria-label={`NEXORA ${label}`}
                   className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--v33-border)] text-[var(--v33-muted)] transition-colors hover:border-[var(--v33-accent)] hover:text-[var(--v33-accent-strong)]"
                 >
