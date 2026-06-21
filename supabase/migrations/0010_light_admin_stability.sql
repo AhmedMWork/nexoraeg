@@ -124,7 +124,7 @@ begin
     'freeShippingThreshold', coalesce(settings_row.free_shipping_threshold, 0),
     'showFreeShippingProgress', coalesce(settings_row.show_free_shipping_progress, false),
     'freeShippingProgressMessage', coalesce(settings_row.free_shipping_progress_message, 'Add {amount} more for free shipping.'),
-    'deliveryEstimate', coalesce(zone_row.delivery_estimate, settings_row.fallback_delivery_estimate, '2-5 business days'),
+    'deliveryEstimate', coalesce(zone_row.delivery_estimate, settings_row.fallback_delivery_estimate, '4-7 business days'),
     'zoneId', zone_row.id,
     'shipbluZoneId', zone_row.shipblu_zone_id,
     'remoteArea', coalesce(zone_row.remote_area, false),

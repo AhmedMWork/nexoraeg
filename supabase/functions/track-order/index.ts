@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
 
     const { data: items, error: itemsError } = await supabase
       .from('order_items')
-      .select('product_name, quantity, size, color, image')
+      .select('product_name, quantity, size, size_label, weight_range, color, image, product_image_url')
       .eq('order_id', order.id)
       .order('created_at', { ascending: true });
 
@@ -43,9 +43,10 @@ Deno.serve(async (req) => {
     const safeItems = (items || []).map((item) => ({
       name: item.product_name,
       quantity: Number(item.quantity || 1),
-      size: item.size || '',
+      size: item.size_label || item.size || '',
+      weightRange: item.weight_range || undefined,
       color: item.color || undefined,
-      image: item.image || undefined,
+      image: item.product_image_url || item.image || undefined,
     }));
 
     const history = Array.isArray(order.status_history) ? order.status_history : [];

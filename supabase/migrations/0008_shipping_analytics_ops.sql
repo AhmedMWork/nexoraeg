@@ -66,7 +66,7 @@ create table if not exists public.shipping_settings (
   cod_fee numeric not null default 0 check (cod_fee >= 0),
   free_shipping_enabled boolean not null default false,
   free_shipping_threshold numeric not null default 0 check (free_shipping_threshold >= 0),
-  fallback_delivery_estimate text not null default '2-5 business days',
+  fallback_delivery_estimate text not null default '4-7 business days',
   provider text not null default 'shipblu',
   provider_enabled boolean not null default false,
   provider_environment text not null default 'production' check (provider_environment in ('production','staging')),
@@ -88,7 +88,7 @@ create table if not exists public.shipping_zones (
   city text,
   shipping_fee numeric not null default 80 check (shipping_fee >= 0),
   cod_fee numeric not null default 0 check (cod_fee >= 0),
-  delivery_estimate text not null default '2-5 business days',
+  delivery_estimate text not null default '4-7 business days',
   enabled boolean not null default true,
   remote_area boolean not null default false,
   shipblu_governorate_id integer,
@@ -105,8 +105,8 @@ create index if not exists idx_shipping_zones_lookup on public.shipping_zones(lo
 insert into public.shipping_zones (governorate, city, shipping_fee, cod_fee, delivery_estimate, enabled, notes)
 values
   ('Cairo', '*', 80, 0, '1-3 business days', true, 'Default Cairo rate'),
-  ('Giza', '*', 90, 0, '2-4 business days', true, 'Default Giza rate'),
-  ('Alexandria', '*', 100, 0, '2-5 business days', true, 'Default Alexandria rate'),
+  ('Giza', '*', 90, 0, '4-7 business days', true, 'Default Giza rate'),
+  ('Alexandria', '*', 100, 0, '4-7 business days', true, 'Default Alexandria rate'),
   ('Default', '*', 120, 0, '3-6 business days', true, 'Fallback rate for all other areas')
 on conflict do nothing;
 
@@ -229,7 +229,7 @@ begin
     'freeShippingApplied', free_applied,
     'freeShippingEnabled', coalesce(settings_row.free_shipping_enabled, false),
     'freeShippingThreshold', coalesce(settings_row.free_shipping_threshold, 0),
-    'deliveryEstimate', coalesce(zone_row.delivery_estimate, settings_row.fallback_delivery_estimate, '2-5 business days'),
+    'deliveryEstimate', coalesce(zone_row.delivery_estimate, settings_row.fallback_delivery_estimate, '4-7 business days'),
     'zoneId', zone_row.id,
     'shipbluZoneId', zone_row.shipblu_zone_id,
     'remoteArea', coalesce(zone_row.remote_area, false),
