@@ -60,6 +60,8 @@ export default function AdminDashboard() {
     const activeOrders = data.orders.filter((o) => !['cancelled', 'returned', 'failed'].includes(o.status));
     const revenue = activeOrders.reduce((sum, o) => sum + Number(o.total || 0), 0);
     const pendingOrders = data.orders.filter((o) => ['pending', 'confirmed'].includes(o.status)).length;
+    const waitingTransfer = data.orders.filter((o) => o.paymentStatus === 'waiting_transfer').length;
+    const valuFollowup = data.orders.filter((o) => o.paymentMethod === 'valu' && !['paid', 'collected'].includes(o.paymentStatus)).length;
     const readyToShip = data.orders.filter((o) => ['confirmed', 'preparing'].includes(o.status) && (!o.shippingStatus || o.shippingStatus === 'not_created')).length;
     const failedShipping = data.orders.filter((o) => ['failed','cancelled'].includes(String(o.shippingStatus || ''))).length;
     const lowStockProducts = data.products.filter((p) => p.sizes.some((s) => Number(s.stock || 0) <= Number(s.lowStockThreshold || 3))).length;
@@ -72,22 +74,24 @@ export default function AdminDashboard() {
     const productViews = Number(data.productReport?.summary?.views || 0);
     const productOrders = Number(data.productReport?.summary?.orders || 0);
     const conversion = productViews ? Math.round((productOrders / productViews) * 1000) / 10 : 0;
-    return { revenue, pendingOrders, readyToShip, failedShipping, lowStockProducts, missingImages, missingSeo, leads, whatsapp, healthFailed, healthWarnings, productViews, productOrders, conversion };
+    return { revenue, pendingOrders, waitingTransfer, valuFollowup, readyToShip, failedShipping, lowStockProducts, missingImages, missingSeo, leads, whatsapp, healthFailed, healthWarnings, productViews, productOrders, conversion };
   }, [data]);
 
   const actionInbox = [
-    { title: `${metrics.pendingOrders} orders need review`, description: 'Confirm new orders, check customer details, then prepare or create shipment.', status: metrics.pendingOrders ? 'warn' : 'good', to: '/nexora-admin/orders' },
+    { title: `${metrics.pendingOrders} orders need review`, description: 'Confirm customer details and move valid orders into preparation.', status: metrics.pendingOrders ? 'warn' : 'good', to: '/nexora-admin/orders' },
+    { title: `${metrics.waitingTransfer} payments need screenshot confirmation`, description: 'Instapay and Vodafone Cash orders should be matched with WhatsApp screenshots.', status: metrics.waitingTransfer ? 'warn' : 'good', to: '/nexora-admin/orders' },
+    { title: `${metrics.valuFollowup} ValU requests need manual follow-up`, description: 'Confirm installment details before preparing the order.', status: metrics.valuFollowup ? 'warn' : 'good', to: '/nexora-admin/orders' },
     { title: `${metrics.readyToShip} orders waiting for delivery action`, description: 'Create ShipBlu shipment or handle manually from Orders.', status: metrics.readyToShip ? 'warn' : 'good', to: '/nexora-admin/orders' },
     { title: `${metrics.lowStockProducts} products need stock attention`, description: 'Check size/color stock before pushing campaigns.', status: metrics.lowStockProducts ? 'warn' : 'good', to: '/nexora-admin/inventory' },
-    { title: `${metrics.missingImages + metrics.missingSeo} catalog items need polish`, description: 'Images and SEO are now treated as catalog quality, not technical work.', status: metrics.missingImages + metrics.missingSeo ? 'warn' : 'good', to: '/nexora-admin/products' },
+    { title: `${metrics.missingImages + metrics.missingSeo} catalog items need polish`, description: 'Images and SEO are treated as catalog quality, not technical work.', status: metrics.missingImages + metrics.missingSeo ? 'warn' : 'good', to: '/nexora-admin/products' },
   ] as const;
 
   return (
     <div className="space-y-5">
       <AdminPageHeader
         eyebrow="Today at NEXORA"
-        title="Clean daily dashboard"
-        description="A lighter owner-friendly view. Technical diagnostics are kept in Setup & Recovery so the daily admin stays calm and focused."
+        title="NEXORA operations dashboard"
+        description="Daily control center for orders, payment screenshots, ValU follow-ups, shipping and catalog quality."
         actions={<button onClick={load} className="nexora-button flex items-center gap-2"><RefreshCw className="h-4 w-4" /> Refresh</button>}
       />
 
@@ -95,7 +99,7 @@ export default function AdminDashboard() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <AdminStatCard label="Revenue loaded" value={formatPrice(metrics.revenue)} helper="Non-cancelled orders currently loaded." tone="good" />
-        <AdminStatCard label="Orders to handle" value={metrics.pendingOrders + metrics.readyToShip} helper="Confirm, prepare, ship or follow up." tone={metrics.pendingOrders || metrics.readyToShip ? 'warn' : 'good'} />
+        <AdminStatCard label="Orders to handle" value={metrics.pendingOrders + metrics.waitingTransfer + metrics.valuFollowup + metrics.readyToShip} helper="Confirm, collect screenshots, prepare or ship." tone={metrics.pendingOrders || metrics.readyToShip ? 'warn' : 'good'} />
         <AdminStatCard label="Stock alerts" value={metrics.lowStockProducts} helper="Products with low variant stock." tone={metrics.lowStockProducts ? 'warn' : 'good'} />
         <AdminStatCard label="Product funnel" value={`${metrics.conversion}%`} helper={`${metrics.productViews} views → ${metrics.productOrders} orders.`} />
       </div>
@@ -105,7 +109,7 @@ export default function AdminDashboard() {
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
               <h2 className="text-base font-semibold text-[#231916]">Action Inbox</h2>
-              <p className="mt-1 text-xs leading-6 text-[#735B4F]">Only practical daily tasks are shown here. Setup checks stay under Setup.</p>
+              <p className="mt-1 text-xs leading-6 text-[#735B4F]">Practical queues only: orders, payment proof, ValU and shipping actions.</p>
             </div>
             <AlertTriangle className="h-5 w-5 text-[#9D7159]" />
           </div>
@@ -119,8 +123,8 @@ export default function AdminDashboard() {
         <section className="studio-card p-5">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-base font-semibold text-[#231916]">Quiet system note</h2>
-              <p className="mt-1 text-xs leading-6 text-[#735B4F]">Diagnostics are available, but no longer crowd the daily workflow.</p>
+              <h2 className="text-base font-semibold text-[#231916]">Setup readiness</h2>
+              <p className="mt-1 text-xs leading-6 text-[#735B4F]">Technical checks stay separate from daily selling, but remain one click away.</p>
             </div>
             <ShieldCheck className="h-5 w-5 text-[#9D7159]" />
           </div>

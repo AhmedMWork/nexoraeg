@@ -12,6 +12,9 @@ import { formatPrice } from '@/lib/utils';
 import EmptyState from '@/components/ui/EmptyState';
 import SectionReveal from '@/components/ui/SectionReveal';
 import TrustStrip from '@/components/ui/TrustStrip';
+import ColorSwatch from '@/components/ui/ColorSwatch';
+import OptimizedImage from '@/components/ui/OptimizedImage';
+import { cartItemKey } from '@/lib/orderMath';
 import { SHIPPING_FEE } from '@/lib/constants';
 import { trackEvent } from '@/services/analytics.service';
 
@@ -52,24 +55,20 @@ export default function CartPage() {
             <div className="lg:col-span-2 space-y-4">
               {items.map((item, i) => (
                 <motion.div
-                  key={`${item.productId}-${item.size}-${item.color || 'default'}`}
+                  key={cartItemKey(item)}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
                   className="flex gap-4 p-4 bg-[#0b0b0d] border border-[#17171a]"
                 >
                   <Link to={`/product/${item.slug}`} className="w-24 h-24 flex-shrink-0 overflow-hidden bg-[#050505]">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-full h-full object-cover"
-                    />
+                    <OptimizedImage src={item.image} alt={item.name} className="h-full w-full" />
                   </Link>
                   <div className="flex-1 min-w-0">
                     <Link to={`/product/${item.slug}`} className="text-sm font-semibold text-[#f4f0e8] hover:text-[#c8a96a] transition-colors block truncate">
                       {item.name}
                     </Link>
-                    <div className="mt-1 space-y-1 text-xs text-[#8a8175]"><p>Size: {item.size}</p>{item.color && <p className="flex items-center gap-2">Color: <span className="inline-flex h-3 w-3 rounded-full border border-white/20" style={{ background: item.colorHex || undefined, backgroundImage: item.colorPattern || undefined }} /> {item.color}</p>}</div>
+                    <div className="mt-1 space-y-1 text-xs text-[#8a8175]"><p>Size: {item.size}</p>{item.color && <p className="flex items-center gap-2">Color: <ColorSwatch color={item.colorHex} pattern={item.colorPattern} label={item.color} size="sm" /> {item.color}</p>}</div>
                     <p className="text-sm font-bold text-[#c8a96a] mt-1">{formatPrice(item.price)}</p>
                     <div className="flex items-center justify-between mt-3">
                       <div className="flex items-center gap-0">

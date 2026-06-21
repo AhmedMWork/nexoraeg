@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Copy, Database, KeyRound, PlugZap, RefreshCw, ShieldCheck, Trash2, Truck, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Copy, CreditCard, Database, KeyRound, PlugZap, RefreshCw, ShieldCheck, Trash2, Truck, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AdminPageHeader, AdminStatCard, AdminTabBar } from '@/components/admin/AdminPageHeader';
 import { clearStudioToken, supabaseUrl } from '@/lib/supabase/client';
+import { DEFAULT_PAYMENT_SETTINGS, normalizePaymentSettings, type PaymentSettings } from '@/lib/payments';
 
-const tabs = ['Launch Checklist', 'Integrations', 'Environment', 'Privacy', 'Recovery'];
+const tabs = ['Launch Checklist', 'Payments', 'Integrations', 'Environment', 'Privacy', 'Recovery'];
 
 function CheckRow({ check }: { check: any }) {
   const Icon = check.status === 'ok' ? CheckCircle2 : check.status === 'warn' ? AlertTriangle : XCircle;
@@ -33,6 +34,7 @@ export default function AdminControls() {
   const [loading, setLoading] = useState(false);
   const [metaPixelId, setMetaPixelId] = useState('');
   const [metaPixelEnabled, setMetaPixelEnabled] = useState(false);
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>(DEFAULT_PAYMENT_SETTINGS);
 
   const load = async () => {
     setLoading(true);
@@ -42,6 +44,7 @@ export default function AdminControls() {
       const settings = await getSiteSettings().catch(() => null);
       setMetaPixelId(settings?.metaPixelId || settings?.paymentSettings?.metaPixelId || '');
       setMetaPixelEnabled(Boolean(settings?.metaPixelEnabled || settings?.paymentSettings?.metaPixelEnabled));
+      setPaymentSettings(normalizePaymentSettings(settings?.paymentSettings as Record<string, unknown> | undefined));
     } catch (error) {
       setHealth({ score: 0, failed: 1, warnings: 0, checks: [{ key: 'health', label: 'Health check function', status: 'fail', message: error instanceof Error ? error.message : 'Could not run health check.', fix: 'Deploy studio-health-check function and clear Studio session.' }] });
     } finally {
@@ -77,6 +80,21 @@ export default function AdminControls() {
     }
   };
 
+
+  const updatePaymentField = <K extends keyof PaymentSettings>(field: K, value: PaymentSettings[K]) => {
+    setPaymentSettings((current) => ({ ...current, [field]: value }));
+  };
+
+  const savePaymentSettings = async () => {
+    try {
+      const { updateSiteSettings } = await import('@/lib/supabase/db');
+      await updateSiteSettings({ paymentSettings } as any);
+      toast.success('Payment settings saved');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not save payment settings');
+    }
+  };
+
   const clearSession = () => {
     clearStudioToken();
     toast.success('Studio session cleared. Reloading...');
@@ -104,6 +122,49 @@ export default function AdminControls() {
           <div className="studio-card p-5">
             <div className="mb-4 flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-[#9a8461]" /><h2 className="text-base font-semibold text-[#2b211d]">Exact setup checks</h2></div>
             <div className="space-y-3">{(health?.checks || []).map((check: any) => <CheckRow key={check.key} check={check} />)}</div>
+          </div>
+        </div>
+      )}
+
+      {active === 'Payments' && (
+        <div className="space-y-4">
+          <div className="studio-card p-5">
+            <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+              <div>
+                <div className="mb-2 flex items-center gap-2"><CreditCard className="h-5 w-5 text-[#9a8461]" /><h2 className="font-semibold text-[#2b211d]">Payment methods</h2></div>
+                <p className="text-sm leading-7 text-[#8a8175]">Control available checkout payment methods and the customer-facing manual payment instructions.</p>
+              </div>
+              <button onClick={savePaymentSettings} className="nexora-button">Save payment settings</button>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              {[
+                ['codEnabled', 'Cash on Delivery'],
+                ['instapayEnabled', 'Instapay'],
+                ['vodafoneCashEnabled', 'Vodafone Cash'],
+                ['valuEnabled', 'ValU'],
+              ].map(([field, label]) => (
+                <label key={field} className="flex items-center justify-between rounded-2xl border border-[#e6ded1] bg-white p-3 text-sm text-[#2b211d]">
+                  <span>{label}</span>
+                  <input type="checkbox" checked={Boolean(paymentSettings[field as keyof PaymentSettings])} onChange={(e) => updatePaymentField(field as keyof PaymentSettings, e.target.checked as never)} />
+                </label>
+              ))}
+            </div>
+            <div className="mt-4 grid gap-4 md:grid-cols-3">
+              <label className="text-xs font-semibold text-[#5f584f]">Transfer number<input value={paymentSettings.transferNumber} onChange={(e) => updatePaymentField('transferNumber', e.target.value)} className="studio-input mt-2" /></label>
+              <label className="text-xs font-semibold text-[#5f584f]">Confirmation phone<input value={paymentSettings.confirmationPhone} onChange={(e) => updatePaymentField('confirmationPhone', e.target.value)} className="studio-input mt-2" /></label>
+              <label className="text-xs font-semibold text-[#5f584f]">WhatsApp number<input value={paymentSettings.whatsappConfirmationNumber} onChange={(e) => updatePaymentField('whatsappConfirmationNumber', e.target.value)} className="studio-input mt-2" /></label>
+            </div>
+            <div className="mt-4 grid gap-4 md:grid-cols-3">
+              <label className="flex items-center gap-2 rounded-2xl border border-[#e6ded1] bg-white p-3 text-xs text-[#5f584f]"><input type="checkbox" checked={paymentSettings.codFeeEnabled} onChange={(e) => updatePaymentField('codFeeEnabled', e.target.checked)} /> Add COD fee only to COD orders</label>
+              <label className="flex items-center gap-2 rounded-2xl border border-[#e6ded1] bg-white p-3 text-xs text-[#5f584f]"><input type="checkbox" checked={paymentSettings.requireScreenshotInstapay} onChange={(e) => updatePaymentField('requireScreenshotInstapay', e.target.checked)} /> Instapay screenshot required</label>
+              <label className="flex items-center gap-2 rounded-2xl border border-[#e6ded1] bg-white p-3 text-xs text-[#5f584f]"><input type="checkbox" checked={paymentSettings.requireScreenshotVodafone} onChange={(e) => updatePaymentField('requireScreenshotVodafone', e.target.checked)} /> Vodafone screenshot required</label>
+            </div>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <label className="studio-card p-5 text-xs font-semibold text-[#5f584f]">COD instructions<textarea value={paymentSettings.codInstructionsAr} onChange={(e) => updatePaymentField('codInstructionsAr', e.target.value)} className="studio-input mt-2 min-h-28" /></label>
+            <label className="studio-card p-5 text-xs font-semibold text-[#5f584f]">Instapay instructions<textarea value={paymentSettings.instapayInstructionsAr} onChange={(e) => updatePaymentField('instapayInstructionsAr', e.target.value)} className="studio-input mt-2 min-h-28" /></label>
+            <label className="studio-card p-5 text-xs font-semibold text-[#5f584f]">Vodafone Cash instructions<textarea value={paymentSettings.vodafoneInstructionsAr} onChange={(e) => updatePaymentField('vodafoneInstructionsAr', e.target.value)} className="studio-input mt-2 min-h-28" /></label>
+            <label className="studio-card p-5 text-xs font-semibold text-[#5f584f]">ValU instructions<textarea value={paymentSettings.valuInstructionsAr} onChange={(e) => updatePaymentField('valuInstructionsAr', e.target.value)} className="studio-input mt-2 min-h-28" /></label>
           </div>
         </div>
       )}

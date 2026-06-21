@@ -22,7 +22,8 @@ import {
   Truck,
 } from 'lucide-react';
 import { formatPrice, formatTimestamp, getStatusColor, getStatusLabel, getNextStatus } from '@/lib/utils';
-import { generateWhatsAppLink } from '@/lib/egyptData';
+import { buildAdminOrderWhatsAppMessage, buildWhatsAppUrl } from '@/lib/whatsapp';
+import { getPaymentMethodLabel, getPaymentStatusLabel } from '@/lib/payments';
 import type { Order, OrderStatus } from '@/types';
 import toast from 'react-hot-toast';
 
@@ -30,37 +31,21 @@ const ORDER_STATUSES: OrderStatus[] = ['pending', 'confirmed', 'preparing', 'pac
 const PAYMENT_STATUSES: Order['paymentStatus'][] = ['pending', 'pending_confirmation', 'waiting_transfer', 'paid', 'collected', 'failed', 'refunded'];
 
 const FOLLOWUP_TYPES = [
-  { value: 'whatsapp_sent', label: 'Sent' },
-  { value: 'second_followup', label: 'متابعة 2' },
-  { value: 'reminder_sent', label: 'Reminder sent' },
-  { value: 'called', label: 'Called' },
-  { value: 'no_answer', label: 'No answer' },
-  { value: 'confirmed', label: 'Confirmed' },
-  { value: 'cancelled', label: 'Cancelled' },
-  { value: 'payment_received', label: 'Paid' },
-  { value: 'shipblu', label: 'ShipBlu' },
-  { value: 'note', label: 'Note' },
+  { value: 'whatsapp_sent', label: 'تم إرسال رسالة' },
+  { value: 'second_followup', label: 'تذكير إضافي' },
+  { value: 'reminder_sent', label: 'تم إرسال تذكير' },
+  { value: 'called', label: 'تم الاتصال' },
+  { value: 'no_answer', label: 'لم يرد' },
+  { value: 'confirmed', label: 'تم التأكيد' },
+  { value: 'cancelled', label: 'تم الإلغاء' },
+  { value: 'payment_received', label: 'تم تأكيد الدفع' },
+  { value: 'valu_followup', label: 'متابعة ValU' },
+  { value: 'shipblu', label: 'تحديث الشحن' },
+  { value: 'note', label: 'ملاحظة داخلية' },
 ];
 
-function paymentLabel(method?: string) {
-  if (method === 'instapay') return 'Instapay / Bank transfer';
-  if (method === 'vodafone_cash') return 'Vodafone Cash';
-  if (method === 'valu') return 'ValU Installments';
-  return 'Cash on Delivery';
-}
-
-function paymentStatusLabel(status?: string) {
-  const map: Record<string, string> = {
-    pending: 'Pending',
-    pending_confirmation: 'Pending confirmation',
-    waiting_transfer: 'Waiting transfer',
-    paid: 'Paid',
-    collected: 'Collected',
-    failed: 'Failed',
-    refunded: 'Refunded',
-  };
-  return map[String(status || 'pending')] || String(status || 'pending');
-}
+function paymentLabel(method?: string) { return getPaymentMethodLabel(method, 'ar'); }
+function paymentStatusLabel(status?: string) { return getPaymentStatusLabel(status, 'ar'); }
 
 function followupLabel(type?: string) {
   return FOLLOWUP_TYPES.find((item) => item.value === type)?.label || String(type || 'Note');
@@ -118,17 +103,15 @@ export default function AdminOrders() {
     });
   }, [orders, statusFilter, paymentFilter, searchQuery]);
 
-  const buildWhatsAppMessage = (order: Order, purpose = 'confirm') => {
-    const method = paymentLabel(order.paymentMethod);
-    if (purpose === 'payment') {
-      if (order.paymentMethod === 'valu') return `أهلاً، معاك NEXORA. استلمنا طلبك رقم ${order.orderNumber} واخترت التقسيط مع ValU. هنأكد معاك التفاصيل على واتساب.`;
-      return `أهلاً، معاك NEXORA. بنأكد طلبك رقم ${order.orderNumber}. الإجمالي ${formatPrice(order.total)}. طريقة الدفع ${method}. برجاء إرسال Screenshot التحويل على واتساب لتأكيد الطلب.`;
-    }
-    if (purpose === 'shipping') {
-      return `أهلاً، معاك NEXORA. طلبك رقم ${order.orderNumber} قيد التجهيز. هنبلغك بتحديث الشحن أول ما يخرج للتوصيل.`;
-    }
-    return `أهلاً، معاك NEXORA. بنأكد طلبك رقم ${order.orderNumber}. الإجمالي ${formatPrice(order.total)}. طريقة الدفع ${method}.`;
-  };
+  const orderQueues = useMemo(() => {
+    const newOrders = orders.filter((order) => order.status === 'pending').length;
+    const waitingTransfer = orders.filter((order) => order.paymentStatus === 'waiting_transfer').length;
+    const valuFollowup = orders.filter((order) => order.paymentMethod === 'valu' && order.paymentStatus !== 'paid' && order.paymentStatus !== 'collected').length;
+    const readyToShip = orders.filter((order) => ['confirmed', 'preparing'].includes(order.status) && (!order.shippingStatus || order.shippingStatus === 'not_created')).length;
+    return { newOrders, waitingTransfer, valuFollowup, readyToShip };
+  }, [orders]);
+
+  const buildWhatsAppMessage = (order: Order, purpose: 'confirm' | 'payment' | 'shipping' | 'valu' = 'confirm') => buildAdminOrderWhatsAppMessage(order, purpose);
 
   const logFollowup = async (orderId: string, type: string, note: string) => {
     try {
@@ -144,8 +127,8 @@ export default function AdminOrders() {
 
   const openWhatsApp = async (order: Order, purpose: 'confirm' | 'payment' | 'shipping') => {
     const message = buildWhatsAppMessage(order, purpose);
-    window.open(generateWhatsAppLink(order.customer.phone, message), '_blank', 'noopener,noreferrer');
-    await logFollowup(order.id, purpose === 'payment' ? 'reminder_sent' : 'whatsapp_sent', message);
+    window.open(buildWhatsAppUrl(order.customer.phone, message), '_blank', 'noopener,noreferrer');
+    await logFollowup(order.id, purpose === 'payment' ? (order.paymentMethod === 'valu' ? 'valu_followup' : 'reminder_sent') : 'whatsapp_sent', message);
   };
 
   const copyOrderMessage = async (order: Order) => {
@@ -241,8 +224,8 @@ export default function AdminOrders() {
     <div className="space-y-6 text-[#2b211d]">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-xl font-black uppercase tracking-[0.22em] text-[#2b211d]">Orders</h1>
-          <p className="mt-1 text-xs text-[#8a8175]">{orders.length} orders · Invoice, payments, follow-ups</p>
+          <h1 className="text-xl font-black uppercase tracking-[0.22em] text-[#2b211d]">Orders HQ</h1>
+          <p className="mt-1 text-xs text-[#8a8175]">{orders.length} orders · Payments, fulfillment, customer follow-ups</p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">
           <div className="relative">
@@ -269,6 +252,31 @@ export default function AdminOrders() {
           <button onClick={exportOrdersCsv} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#e6ded1] bg-white px-4 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#5f584f] hover:border-[#b99a62]"><Download className="h-3.5 w-3.5" /> CSV</button>
           <button onClick={loadOrders} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#2b211d] px-4 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-white"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button>
         </div>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-4">
+        {[
+          { label: 'طلبات جديدة', value: orderQueues.newOrders, helper: 'تحتاج تأكيد سريع على واتساب' },
+          { label: 'في انتظار إثبات الدفع', value: orderQueues.waitingTransfer, helper: 'Instapay / Vodafone Cash screenshots' },
+          { label: 'متابعة ValU', value: orderQueues.valuFollowup, helper: 'تأكيد تفاصيل التقسيط يدويًا' },
+          { label: 'جاهز للشحن', value: orderQueues.readyToShip, helper: 'إنشاء شحنة أو تحديث الحالة' },
+        ].map((card) => (
+          <button
+            key={card.label}
+            type="button"
+            onClick={() => {
+              if (card.label === 'في انتظار إثبات الدفع') setPaymentFilter('waiting_transfer');
+              else if (card.label === 'متابعة ValU') setPaymentFilter('valu');
+              else if (card.label === 'طلبات جديدة') setStatusFilter('pending');
+              else if (card.label === 'جاهز للشحن') setStatusFilter('confirmed');
+            }}
+            className="rounded-[26px] border border-[#e6ded1] bg-white p-4 text-left shadow-[0_14px_38px_rgba(43,33,29,0.05)] transition hover:-translate-y-0.5 hover:border-[#b99a62]"
+          >
+            <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#9a8461]">{card.label}</span>
+            <span className="mt-3 block text-2xl font-black text-[#2b211d]">{card.value}</span>
+            <span className="mt-1 block text-[11px] leading-5 text-[#8a8175]">{card.helper}</span>
+          </button>
+        ))}
       </div>
 
       <div className="overflow-x-auto rounded-[28px] border border-[#e6ded1] bg-white shadow-[0_18px_50px_rgba(43,33,29,0.06)]">
@@ -359,7 +367,7 @@ export default function AdminOrders() {
                   </select>
                   <input value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} placeholder="Payment reference optional" className="rounded-2xl border border-[#e6ded1] bg-white px-3 py-2 text-xs outline-none" />
                   <input value={paymentNotes} onChange={(e) => setPaymentNotes(e.target.value)} placeholder="Payment notes optional" className="rounded-2xl border border-[#e6ded1] bg-white px-3 py-2 text-xs outline-none" />
-                  <button onClick={() => void markCollected(selectedOrder.id)} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-green-200 bg-green-50 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-green-700"><CheckCircle className="h-3.5 w-3.5" /> Mark paid/collected</button>
+                  <button onClick={() => void markCollected(selectedOrder.id)} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-green-200 bg-green-50 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-green-700"><CheckCircle className="h-3.5 w-3.5" /> Mark paid</button>
                 </div>
               </AdminCard>
 
@@ -393,7 +401,7 @@ export default function AdminOrders() {
                   <div className="flex justify-between"><span className="text-[#8a8175]">Subtotal</span><span>{formatPrice(selectedOrder.subtotal)}</span></div>
                   {selectedOrder.discount > 0 && <div className="flex justify-between"><span className="text-[#8a8175]">Discount</span><span>-{formatPrice(selectedOrder.discount)}</span></div>}
                   <div className="flex justify-between"><span className="text-[#8a8175]">Shipping</span><span>{formatPrice(selectedOrder.shippingFee)}</span></div>
-                  {Number(selectedOrder.codFee || 0) > 0 && <div className="flex justify-between"><span className="text-[#8a8175]">COD fee</span><span>{formatPrice(Number(selectedOrder.codFee || 0))}</span></div>}
+                  {selectedOrder.paymentMethod === 'cod' && Number(selectedOrder.codFee || 0) > 0 && <div className="flex justify-between"><span className="text-[#8a8175]">COD fee</span><span>{formatPrice(Number(selectedOrder.codFee || 0))}</span></div>}
                   <div className="flex justify-between border-t border-[#efe8dc] pt-3 text-lg font-black text-[#2b211d]"><span>Total</span><span>{formatPrice(selectedOrder.total)}</span></div>
                 </div>
               </AdminCard>
@@ -405,11 +413,11 @@ export default function AdminOrders() {
                       {FOLLOWUP_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
                     </select>
                     <textarea value={followupNote} onChange={(e) => setFollowupNote(e.target.value)} rows={3} placeholder="مثال: بعتله رسالة تأكيد / رنيت ومردش / أكد الطلب" className="rounded-2xl border border-[#e6ded1] bg-white px-3 py-2 text-xs outline-none" />
-                    <button onClick={() => void logFollowup(selectedOrder.id, followupType, followupNote)} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#2b211d] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white"><Send className="h-3.5 w-3.5" /> Save follow-up</button>
+                    <button onClick={() => void logFollowup(selectedOrder.id, followupType, followupNote)} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#2b211d] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white"><Send className="h-3.5 w-3.5" /> Save note</button>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <button onClick={() => void openWhatsApp(selectedOrder, 'payment')} className="inline-flex items-center gap-2 rounded-full border border-[#e6ded1] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5f584f]"><Smartphone className="h-3.5 w-3.5" /> Payment reminder</button>
-                    <button onClick={() => void openWhatsApp(selectedOrder, 'shipping')} className="inline-flex items-center gap-2 rounded-full border border-[#e6ded1] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5f584f]"><Truck className="h-3.5 w-3.5" /> Shipping update</button>
+                    <button onClick={() => void openWhatsApp(selectedOrder, 'payment')} className="inline-flex items-center gap-2 rounded-full border border-[#e6ded1] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5f584f]"><Smartphone className="h-3.5 w-3.5" /> تذكير الدفع</button>
+                    <button onClick={() => void openWhatsApp(selectedOrder, 'shipping')} className="inline-flex items-center gap-2 rounded-full border border-[#e6ded1] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5f584f]"><Truck className="h-3.5 w-3.5" /> تحديث الشحن</button>
                     <button onClick={() => void copyOrderMessage(selectedOrder)} className="inline-flex items-center gap-2 rounded-full border border-[#e6ded1] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5f584f]"><Copy className="h-3.5 w-3.5" /> Copy</button>
                   </div>
                 </div>

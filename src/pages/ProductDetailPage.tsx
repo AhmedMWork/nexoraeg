@@ -26,10 +26,13 @@ import type { Product, ProductVariant, Review } from '@/types';
 import { formatPrice, calculateDiscount } from '@/lib/utils';
 import { SITE_URL } from '@/lib/constants';
 import { absoluteUrl } from '@/lib/env';
-import { normalizeColors, getColorDisplayName, getColorStyle } from '@/lib/productOptions';
+import { normalizeColors, getColorDisplayName } from '@/lib/productOptions';
 import ProductCard from '@/components/ui/ProductCard';
 import SizeGuideModal from '@/components/ui/SizeGuideModal';
 import TrustStrip from '@/components/ui/TrustStrip';
+import ColorSwatch from '@/components/ui/ColorSwatch';
+import OptimizedImage from '@/components/ui/OptimizedImage';
+import { buildWhatsAppUrl, normalizeEgyptPhoneForWhatsApp } from '@/lib/whatsapp';
 import SectionReveal from '@/components/ui/SectionReveal';
 import toast from 'react-hot-toast';
 import { trackEvent } from '@/services/analytics.service';
@@ -294,10 +297,10 @@ export default function ProductDetailPage() {
   };
 
   const handleAskWhatsApp = async () => {
-    const number = import.meta.env.VITE_STORE_WHATSAPP || '201037141322';
+    const number = normalizeEgyptPhoneForWhatsApp(import.meta.env.VITE_STORE_WHATSAPP || '201037141322');
     const message = `Hello NEXORA. I need help with ${product.name}${selectedSize ? ` — size ${selectedSize}` : ''}${selectedColor ? ` / ${getColorDisplayName(selectedColor)}` : ''}.`;
     await trackWhatsAppClick({ phone: number, message, productId: product.id, productName: product.name, sourceType: 'product_detail' });
-    window.open(`https://wa.me/${number}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+    window.open(buildWhatsAppUrl(number, message), '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -339,7 +342,7 @@ export default function ProductDetailPage() {
                   <div className="order-2 grid grid-cols-4 gap-3 lg:order-1 lg:grid-cols-1 lg:self-start">
                     {productImages.map((image, index) => (
                       <button key={`${image}-${index}`} onClick={() => setActiveImage(index)} className={`aspect-square overflow-hidden rounded-2xl border ${activeImage === index ? 'border-[#c8a96a]' : 'border-[#17171a]'} bg-[#0b0b0d]`}>
-                        <img src={image} alt={`${product.name} ${index + 1}`} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                        <OptimizedImage src={image} alt={`${product.name} ${index + 1}`} className="h-full w-full" />
                       </button>
                     ))}
                   </div>
@@ -352,7 +355,7 @@ export default function ProductDetailPage() {
                   className="relative order-1 aspect-[3/4] overflow-hidden rounded-[28px] bg-[#0b0b0d] lg:order-2 text-left"
                   aria-label="Open product image zoom"
                 >
-                  <img src={productImages[activeImage] || productImages[0] || '/assets/nexora-logo-bg.jpg'} alt={product.name} className="w-full h-full object-cover" decoding="async" />
+                  <OptimizedImage src={productImages[activeImage] || productImages[0]} alt={product.name} className="h-full w-full" eager />
                   <span className="absolute bottom-4 right-4 inline-flex items-center gap-2 rounded-full bg-black/55 px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-[#f4f0e8] backdrop-blur">
                     <ZoomIn className="h-3.5 w-3.5" /> Zoom
                   </span>
@@ -413,7 +416,7 @@ export default function ProductDetailPage() {
                         const isAvailable = !!selectedSize && color.available !== false && (!activeVariants.length || activeVariants.some((variant) => String(variant.size || '').toUpperCase() === selectedSize && Math.max(0, Number(variant.stock || 0) - Number(variant.reservedStock || 0)) > 0 && (String(variant.color || '').toLowerCase() === colorName || String(variant.color || '').toLowerCase() === String(color.id || '').toLowerCase())));
                         return (
                           <button key={color.id} type="button" disabled={!isAvailable} onClick={() => { if (!isAvailable) return; setSelectedColorId(color.id); void trackEvent('color_select', { productId: product.id, productName: product.name, color: color.name }); }} className={`flex items-center gap-2 rounded-full border px-3 py-2 text-xs transition-all ${isSelected ? 'border-[#c8a96a] bg-[#c8a96a]/10 text-[#f4f0e8]' : 'border-[#202024] text-[#b8b0a3] hover:border-[#6f675d] hover:text-[#f4f0e8]'} ${!isAvailable ? 'cursor-not-allowed opacity-40' : ''}`}>
-                            <span className="h-5 w-5 rounded-full border border-white/25 shadow-inner" style={getColorStyle(color)} />
+                            <ColorSwatch color={color.hex} pattern={color.pattern} label={getColorDisplayName(color)} size="md" />
                             {getColorDisplayName(color)}
                           </button>
                         );
@@ -459,7 +462,7 @@ export default function ProductDetailPage() {
                 <p className="text-sm text-[#b8b0a3] leading-relaxed max-w-2xl mb-6">{product.description}</p>
                 <div className="grid sm:grid-cols-2 gap-4 max-w-2xl">
                   <div><h4 className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#b8b0a3] mb-2">Materials</h4><ul className="space-y-1">{(product.materials || []).map((m) => <li key={m} className="text-xs text-[#8a8175]">{m}</li>)}</ul></div>
-                  <div><h4 className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#b8b0a3] mb-2">Colors</h4><div className="flex flex-wrap gap-2">{productColors.map((c) => <span key={c.id} className="inline-flex items-center gap-2 rounded-full border border-[#202024] px-3 py-1 text-xs text-[#8a8175]"><span className="h-3 w-3 rounded-full border border-white/20" style={getColorStyle(c)} />{getColorDisplayName(c)}</span>)}</div></div>
+                  <div><h4 className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#b8b0a3] mb-2">Colors</h4><div className="flex flex-wrap gap-2">{productColors.map((c) => <span key={c.id} className="inline-flex items-center gap-2 rounded-full border border-[#202024] px-3 py-1 text-xs text-[#8a8175]"><ColorSwatch color={c.hex} pattern={c.pattern} label={getColorDisplayName(c)} size="sm" />{getColorDisplayName(c)}</span>)}</div></div>
                   <div><h4 className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#b8b0a3] mb-2">Fit</h4><p className="text-xs leading-6 text-[#8a8175]">{product.fit || 'Structured relaxed fit with quiet presence.'}</p></div>
                   <div><h4 className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#b8b0a3] mb-2">Care</h4><p className="text-xs leading-6 text-[#8a8175]">{product.careInstructions || 'Wash inside out with similar colors. Air dry for lasting shape.'}</p></div>
                 </div>
@@ -468,7 +471,7 @@ export default function ProductDetailPage() {
 
             {activeTab === 'shipping' && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-3xl"><div className="space-y-4">{[
               ['Delivery', `Shipping duration: ${SHIPPING_ESTIMATE_TEXT}`],
-              ['Payment', `Cash on Delivery, Instapay, and Vodafone Cash are available. Instapay/Vodafone Cash orders are confirmed manually on WhatsApp.`],
+              ['Payment', `Cash on Delivery, Instapay, Vodafone Cash and ValU installments are available. Manual transfers are confirmed by screenshot on WhatsApp, while ValU is confirmed by the NEXORA team before preparation.`],
               ['Returns & Exchange', RETURN_EXCHANGE_POLICY_AR.join(' ')]
             ].map(([title, body]) => <div key={title} className="p-4 bg-[#0b0b0d] border border-[#17171a]"><h4 className="text-xs font-bold tracking-wider uppercase text-[#f4f0e8] mb-2">{title}</h4><p className="text-xs text-[#b8b0a3] leading-relaxed">{body}</p></div>)}<div className="rounded-3xl border border-[#202024] bg-[#0b0b0d] p-5"><h4 className="text-xs font-bold tracking-wider uppercase text-[#f4f0e8] mb-3">سياسة الاسترجاع والاستبدال</h4><ul className="space-y-2 text-sm leading-6 text-[#b8b0a3] rtl:text-right">{RETURN_EXCHANGE_POLICY_AR.map((item) => <li key={item}>• {item}</li>)}</ul><p className="mt-4 text-xs font-semibold text-[#c8a96a]">مدة الشحن: {SHIPPING_ESTIMATE_TEXT_AR}</p></div></div></motion.div>}
 
