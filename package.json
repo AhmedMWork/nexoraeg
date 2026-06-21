@@ -15,8 +15,9 @@
     "vercel-build": "npm run build",
     "generate:sitemap": "node scripts/generate-sitemap.mjs",
     "check:env": "node scripts/check-env.mjs",
-    "qa": "npm run lint && npm run typecheck && npm run build",
-    "smoke": "node scripts/smoke-check.mjs"
+    "qa": "npm run lint && npm run typecheck && npm run v5:audit && npm run build",
+    "smoke": "node scripts/smoke-check.mjs",
+    "v5:audit": "node scripts/v5-audit-check.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

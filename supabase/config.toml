@@ -75,3 +75,12 @@ verify_jwt = false
 
 [functions.track-shipment]
 verify_jwt = false
+
+[functions.checkout-health-check]
+verify_jwt = false
+
+[functions.studio-customers]
+verify_jwt = false
+
+[functions.studio-health-check]
+verify_jwt = false
