@@ -21,6 +21,7 @@ import { trackEvent } from '@/services/analytics.service';
 import { captureLead, getAttribution } from '@/lib/analytics/tracker';
 import { classifyCheckoutError } from '@/lib/checkoutErrors';
 import FreeShippingProgress from '@/components/ui/FreeShippingProgress';
+import { getSizeDisplayLabel, SHIPPING_ESTIMATE_TEXT } from '@/lib/sizeLabels';
 
 const DEFAULT_WHATSAPP = import.meta.env.VITE_STORE_WHATSAPP || import.meta.env.VITE_DEFAULT_WHATSAPP_NUMBER || '';
 
@@ -82,7 +83,7 @@ export default function CheckoutPage() {
       .then(({ getSiteSettings }) => getSiteSettings())
       .then((settings) => {
         if (mounted && settings?.whatsappNumber) setWhatsAppNumber(settings.whatsappNumber);
-        if (mounted && settings?.paymentSettings?.confirmationPhone) setPaymentConfirmationPhone(settings.paymentSettings.confirmationPhone);
+        if (mounted) setPaymentConfirmationPhone(settings?.paymentSettings?.confirmationPhone || settings?.paymentSettings?.instapayContact || '01037141322');
 
       })
       .catch(() => undefined);
@@ -192,6 +193,8 @@ export default function CheckoutPage() {
           slug: item.slug,
           price: item.price,
           size: item.size,
+          sizeLabel: item.sizeLabel || getSizeDisplayLabel(item.size, item.weightRange),
+          weightRange: item.weightRange,
           color: item.color,
           colorHex: item.colorHex,
           quantity: item.quantity,
@@ -216,8 +219,8 @@ export default function CheckoutPage() {
         ],
       });
 
-      void trackEvent('order_success', { orderNumber: createdOrder.orderNumber, total: createdOrder.total || total });
-      void trackEvent('order_created', { orderNumber: createdOrder.orderNumber, total: createdOrder.total || total });
+      void trackEvent('order_success', { orderNumber: createdOrder.orderNumber, total: createdOrder.total || total, productIds: items.map((item) => item.productId), contents: items.map((item) => ({ id: item.productId, quantity: item.quantity, item_price: item.price })) });
+      void trackEvent('order_created', { orderNumber: createdOrder.orderNumber, total: createdOrder.total || total, productIds: items.map((item) => item.productId), contents: items.map((item) => ({ id: item.productId, quantity: item.quantity, item_price: item.price })) });
       setOrderNumber(createdOrder.orderNumber);
       setOrderComplete(true);
       clearCart();
@@ -244,8 +247,10 @@ export default function CheckoutPage() {
   }
 
   if (orderComplete) {
-    const paymentLabel = watchedPaymentMethod === 'instapay' ? 'Instapay' : watchedPaymentMethod === 'vodafone_cash' ? 'Vodafone Cash' : 'Cash on Delivery';
-    const whatsappMessage = `Hello NEXORA! I just placed an order ${orderNumber}. Payment method: ${paymentLabel}. Please confirm on WhatsApp.`;
+    const paymentLabel = watchedPaymentMethod === 'instapay' ? 'Instapay / Bank transfer' : watchedPaymentMethod === 'vodafone_cash' ? 'Vodafone Cash' : watchedPaymentMethod === 'valu' ? 'ValU Installments' : 'Cash on Delivery';
+    const whatsappMessage = watchedPaymentMethod === 'cod'
+      ? `Hello NEXORA! I just placed an order ${orderNumber}. Payment method: ${paymentLabel}. Please confirm on WhatsApp.`
+      : `Hello NEXORA! I just placed an order ${orderNumber}. Payment method: ${paymentLabel}. I will send the transfer screenshot to confirm the order.`;
     return (
       <div className="pt-32 pb-20 min-h-screen bg-[#050505] flex items-center justify-center">
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center max-w-md mx-auto px-6">
@@ -274,7 +279,7 @@ export default function CheckoutPage() {
 
           <div className="flex flex-col gap-3">
             {whatsAppNumber && (
-              <a href={generateWhatsAppLink(whatsAppNumber, whatsappMessage)} target="_blank" rel="noopener noreferrer" className="nexora-button-primary flex items-center justify-center gap-2">
+              <a href={generateWhatsAppLink(watchedPaymentMethod === 'cod' ? whatsAppNumber : paymentConfirmationPhone, whatsappMessage)} target="_blank" rel="noopener noreferrer" className="nexora-button-primary flex items-center justify-center gap-2">
                 <Smartphone className="w-4 h-4" />
                 {t('checkout.confirmWhatsapp')}
               </a>
@@ -375,9 +380,10 @@ export default function CheckoutPage() {
                   <h3 className="text-xs font-bold tracking-[0.2em] uppercase text-[#f4f0e8] mb-5">{t('checkout.paymentMethod')}</h3>
                   <div className="grid gap-3">
                     {[
-                      { id: 'cod', label: t('checkout.cod'), desc: t('checkout.codDesc'), icon: Banknote },
-                      { id: 'instapay', label: 'Instapay', desc: `Choose Instapay and NEXORA will confirm payment on WhatsApp: ${paymentConfirmationPhone}`, icon: Smartphone },
-                      { id: 'vodafone_cash', label: 'Vodafone Cash', desc: `Choose Vodafone Cash and NEXORA will confirm payment on WhatsApp: ${paymentConfirmationPhone}`, icon: Smartphone },
+                      { id: 'cod', label: 'Cash on delivery', desc: 'ادفع عند الاستلام بعد تأكيد الطلب على واتساب.', icon: Banknote },
+                      { id: 'instapay', label: 'Instapay / Bank Transfer', desc: `حوّل على Instapay أو حساب بنكي، ثم أرسل Screenshot على واتساب لتأكيد الطلب: ${paymentConfirmationPhone}`, icon: Smartphone },
+                      { id: 'vodafone_cash', label: 'Vodafone Cash', desc: `حوّل على محفظة Vodafone Cash، ثم أرسل Screenshot على واتساب: ${paymentConfirmationPhone}`, icon: Smartphone },
+                      { id: 'valu', label: 'ValU Installments', desc: `اختار التقسيط مع ValU وسيتم تأكيد التفاصيل يدويًا عبر واتساب: ${paymentConfirmationPhone}`, icon: Shield },
                     ].map((method) => {
                       const Icon = method.icon;
                       const active = watchedPaymentMethod === method.id;
@@ -399,13 +405,13 @@ export default function CheckoutPage() {
                   </div>
                   {watchedPaymentMethod !== 'cod' && (
                     <div className="mt-4 rounded-2xl border border-[#c8a96a]/20 bg-[#c8a96a]/5 p-4 text-xs leading-6 text-[#b8b0a3]">
-                      Payment is not automatic. Place the order now and NEXORA will confirm transfer details with you on WhatsApp: <span className="font-semibold text-[#c8a96a]">{paymentConfirmationPhone}</span>.
+                      Payment is manual. Place the order, then contact NEXORA on WhatsApp and send a transfer screenshot when required: <span className="font-semibold text-[#c8a96a]">{paymentConfirmationPhone}</span>.
                     </div>
                   )}
                 </div>
 
                 <button type="submit" disabled={isSubmitting} className="w-full nexora-button-primary py-4 disabled:opacity-50">
-                  {isSubmitting ? t('checkout.processing') : `${t('checkout.placeOrder')} — ${formatPrice(total)}`}
+                  {isSubmitting ? t('checkout.processing') : `${watchedPaymentMethod === 'cod' ? t('checkout.placeOrder') : 'Place order & confirm on WhatsApp'} — ${formatPrice(total)}`}
                 </button>
               </form>
             </div>
@@ -416,7 +422,7 @@ export default function CheckoutPage() {
                 {freeShippingThreshold > 0 && <div className="mb-5"><FreeShippingProgress subtotal={subtotal} threshold={freeShippingThreshold} enabled={showFreeShippingProgress} messageTemplate={freeShippingMessage} /></div>}
                 <div className="mb-5 rounded-2xl border border-[#202024] bg-[#050505] p-4">
                   <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#c8a96a]"><Truck className="h-4 w-4" /> Delivery quote</div>
-                  <p className="text-xs leading-6 text-[#8a8175]">{isCalculatingShipping ? 'Calculating delivery...' : shippingQuote?.available ? `${shippingQuote.deliveryEstimate || '2-5 business days'}${shippingQuote.freeShippingApplied ? ' · Free shipping applied' : ''}` : (shippingQuote?.reason || 'Choose governorate and city to calculate delivery.')}</p>
+                  <p className="text-xs leading-6 text-[#8a8175]">{isCalculatingShipping ? 'Calculating delivery...' : shippingQuote?.available ? `${shippingQuote.deliveryEstimate || SHIPPING_ESTIMATE_TEXT}${shippingQuote.freeShippingApplied ? ' · Free shipping applied' : ''}` : (shippingQuote?.reason || 'Choose governorate and city to calculate delivery.')}</p>
                 </div>
                 <div className="space-y-3 mb-5 max-h-60 overflow-y-auto">
                   {items.map((item) => (
@@ -424,7 +430,7 @@ export default function CheckoutPage() {
                       <img src={item.image} alt={item.name} loading="lazy" decoding="async" className="w-12 h-12 object-cover bg-[#050505]" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-[#f4f0e8] truncate">{item.name}</p>
-                        <p className="text-[10px] text-[#8a8175]">Size: {item.size}{item.color ? ` / Color: ${item.color}` : ''} x{item.quantity}</p>
+                        <p className="text-[10px] text-[#8a8175]">Size: {item.sizeLabel || getSizeDisplayLabel(item.size, item.weightRange)}{item.color ? ` / Color: ${item.color}` : ''} x{item.quantity}</p>
                       </div>
                       <span className="text-xs text-[#b8b0a3]">{formatPrice(item.price * item.quantity)}</span>
                     </div>

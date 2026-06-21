@@ -1,4 +1,5 @@
 import { trackVisitorEvent } from '@/lib/analytics/tracker';
+import { mapAnalyticsToMeta } from '@/lib/metaPixel';
 
 export type AnalyticsEventName =
   | 'page_view'
@@ -37,5 +38,6 @@ export type AnalyticsEventName =
   | 'whatsapp_click';
 
 export async function trackEvent(eventName: AnalyticsEventName, payload: Record<string, unknown> = {}) {
+  mapAnalyticsToMeta(eventName, payload);
   await trackVisitorEvent(eventName, payload);
 }

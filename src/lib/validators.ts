@@ -21,7 +21,7 @@ export const checkoutSchema = z.object({
     .min(10, 'Address must be at least 10 characters')
     .max(300, 'Address must be less than 300 characters'),
   notes: z.string().max(500, 'Notes must be less than 500 characters').optional(),
-  paymentMethod: z.enum(['cod', 'instapay', 'vodafone_cash']),
+  paymentMethod: z.enum(['cod', 'instapay', 'vodafone_cash', 'valu']),
 });
 
 export type CheckoutFormData = z.infer<typeof checkoutSchema>;

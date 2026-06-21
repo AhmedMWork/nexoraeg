@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // ============================================================
 // NEXORA V5 — Product Detail Page (premium PDP)
 // ============================================================
 
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -33,6 +34,7 @@ import SectionReveal from '@/components/ui/SectionReveal';
 import toast from 'react-hot-toast';
 import { trackEvent } from '@/services/analytics.service';
 import { trackWhatsAppClick } from '@/lib/analytics/tracker';
+import { getSizeDisplayLabel, getWeightRangeForSize, RETURN_EXCHANGE_POLICY_AR, SHIPPING_ESTIMATE_TEXT, SHIPPING_ESTIMATE_TEXT_AR } from '@/lib/sizeLabels';
 
 export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -52,6 +54,7 @@ export default function ProductDetailPage() {
   const { isInWishlist, toggleItem } = useWishlistStore();
   const addItem = useCartStore((s) => s.addItem);
   const addRecentlyViewed = useRecentlyViewedStore((s) => s.addProduct);
+  const navigate = useNavigate();
 
   useEffect(() => {
     let mounted = true;
@@ -149,12 +152,21 @@ export default function ProductDetailPage() {
     variantsBySize.set(sizeKey, [...(variantsBySize.get(sizeKey) || []), variant]);
   });
   const displaySizes = activeVariants.length
-    ? Array.from(variantsBySize.entries()).map(([size, rows]) => ({
-      size,
-      stock: rows.reduce((sum, row) => sum + Math.max(0, Number(row.stock || 0) - Number(row.reservedStock || 0)), 0),
-      lowStockThreshold: Math.min(...rows.map((row) => Number(row.lowStockThreshold || 3))),
-    }))
-    : product.sizes;
+    ? Array.from(variantsBySize.entries()).map(([size, rows]) => {
+      const first = rows[0] as ProductVariant | undefined;
+      const weightRange = getWeightRangeForSize(size, first?.weightRange);
+      return {
+        size,
+        sizeLabel: getSizeDisplayLabel(size, weightRange, first?.sizeLabel),
+        weightRange,
+        stock: rows.reduce((sum, row) => sum + Math.max(0, Number(row.stock || 0) - Number(row.reservedStock || 0)), 0),
+        lowStockThreshold: Math.min(...rows.map((row) => Number(row.lowStockThreshold || 3))),
+      };
+    })
+    : product.sizes.map((size) => {
+      const weightRange = getWeightRangeForSize(size.size);
+      return { ...size, sizeLabel: getSizeDisplayLabel(size.size, weightRange), weightRange };
+    });
   const selectedColor = productColors.find((color) => color.id === selectedColorId) || null;
   const selectedVariant = activeVariants.find((variant) => {
     const sizeMatch = String(variant.size || '').toUpperCase() === selectedSize;
@@ -209,25 +221,30 @@ export default function ProductDetailPage() {
     ],
   };
 
+  const selectedSizeLabel = selectedSizeData ? getSizeDisplayLabel(selectedSizeData.size, (selectedSizeData as any).weightRange, (selectedSizeData as any).sizeLabel) : selectedSize;
+  const selectedWeightRange = selectedSizeData ? getWeightRangeForSize(selectedSizeData.size, (selectedSizeData as any).weightRange) : '';
   const stockMessage = selectedSizeData
     ? liveSelectedStock <= selectedSizeData.lowStockThreshold
-      ? `Only ${liveSelectedStock} left in ${selectedSize}. Limited by design.`
-      : `${liveSelectedStock} pieces available in ${selectedSize}.`
+      ? `Only ${liveSelectedStock} left in ${selectedSizeLabel}. Limited by design.`
+      : `${liveSelectedStock} pieces available in ${selectedSizeLabel}.`
     : 'Select your size to check live stock.';
 
-  const handleAddToCart = () => {
+  const addSelectedToCart = () => {
     if (!selectedSize) {
       toast.error('Please select a size first');
-      return;
+      return false;
     }
     if (productColors.length > 0 && !selectedColor) {
       toast.error('Please select a color');
-      return;
+      return false;
     }
     if (!selectedSizeData || liveSelectedStock < quantity) {
       toast.error('Not enough stock');
-      return;
+      return false;
     }
+
+    const image = selectedVariant?.imageUrl || productImages[activeImage] || productImages[0] || '/assets/nexora-logo-bg.jpg';
+    const colorName = selectedColor ? getColorDisplayName(selectedColor) : undefined;
     addItem({
       productId: product.id,
       variantId: selectedVariant?.id,
@@ -235,14 +252,40 @@ export default function ProductDetailPage() {
       name: product.name,
       price: product.price,
       size: selectedSize,
-      color: selectedColor ? getColorDisplayName(selectedColor) : undefined,
+      sizeLabel: selectedSizeLabel,
+      weightRange: selectedWeightRange,
+      color: colorName,
       colorHex: selectedColor?.hex,
       colorPattern: selectedColor?.pattern,
       quantity,
-      image: selectedVariant?.imageUrl || productImages[activeImage] || productImages[0] || '/assets/nexora-logo-bg.jpg',
+      image,
+      productSnapshot: {
+        productId: product.id,
+        variantId: selectedVariant?.id,
+        name: product.name,
+        slug: product.slug,
+        size: selectedSize,
+        sizeLabel: selectedSizeLabel,
+        weightRange: selectedWeightRange,
+        color: colorName,
+        image,
+        unitPrice: product.price,
+        quantity,
+      },
     });
-    void trackEvent('add_to_cart', { productId: product.id, variantId: selectedVariant?.id, productName: product.name, size: selectedSize, color: selectedColor?.name, quantity });
+    void trackEvent('add_to_cart', { productId: product.id, variantId: selectedVariant?.id, productName: product.name, size: selectedSizeLabel, color: selectedColor?.name, quantity, price: product.price });
+    return true;
+  };
+
+  const handleAddToCart = () => {
+    if (!addSelectedToCart()) return;
     toast.success(`${product.name} added to cart`);
+  };
+
+  const handleBuyNow = () => {
+    if (!addSelectedToCart()) return;
+    void trackEvent('checkout_start', { itemsCount: quantity, subtotal: product.price * quantity, productId: product.id });
+    navigate('/checkout');
   };
 
   const handleWishlist = () => {
@@ -346,8 +389,8 @@ export default function ProductDetailPage() {
                       const isSelected = selectedSize === size.size;
                       const isLowStock = size.stock <= size.lowStockThreshold && isAvailable;
                       return (
-                        <button key={size.size} type="button" onClick={() => { if (isAvailable) { setSelectedSize(size.size); void trackEvent('size_select', { productId: product.id, productName: product.name, size: size.size }); } }} disabled={!isAvailable} className={`relative w-11 h-11 flex items-center justify-center text-xs font-medium border transition-all ${isSelected ? 'border-[#c8a96a] text-[#c8a96a] bg-[#c8a96a]/5' : isAvailable ? 'border-[#202024] text-[#b8b0a3] hover:border-[#6f675d] hover:text-[#f4f0e8]' : 'border-[#1a1a1a] text-[#2a2a2d] cursor-not-allowed'}`}>
-                          {size.size}
+                        <button key={size.size} type="button" onClick={() => { if (isAvailable) { setSelectedSize(size.size); void trackEvent('size_select', { productId: product.id, productName: product.name, size: size.size }); } }} disabled={!isAvailable} className={`relative min-h-12 min-w-[132px] rounded-2xl px-4 py-3 flex items-center justify-center text-xs font-bold border transition-all ${isSelected ? 'border-[#c8a96a] text-[#c8a96a] bg-[#c8a96a]/5' : isAvailable ? 'border-[#202024] text-[#b8b0a3] hover:border-[#6f675d] hover:text-[#f4f0e8]' : 'border-[#1a1a1a] text-[#2a2a2d] cursor-not-allowed'}`}>
+                          {(size as any).sizeLabel || getSizeDisplayLabel(size.size)}
                           {isLowStock && <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#c8a96a] rounded-full" />}
                           {!isAvailable && <span className="absolute inset-0 flex items-center justify-center"><span className="w-6 h-px bg-[#202024] rotate-45" /></span>}
                         </button>
@@ -392,6 +435,7 @@ export default function ProductDetailPage() {
                   <button onClick={handleAddToCart} className="flex-1 nexora-button-primary flex items-center justify-center gap-2 py-4"><ShoppingBag className="w-4 h-4" />Add to Cart</button>
                   <button onClick={handleWishlist} className={`w-14 h-14 flex items-center justify-center border transition-all ${inWishlist ? 'border-[#c8a96a] bg-[#c8a96a]/5 text-[#c8a96a]' : 'border-[#202024] text-[#b8b0a3] hover:border-[#6f675d]'}`} aria-label="Toggle wishlist"><Heart className={`w-5 h-5 ${inWishlist ? 'fill-current' : ''}`} /></button>
                 </div>
+                <button onClick={handleBuyNow} className="mb-3 w-full rounded-full bg-[#ef4d52] px-6 py-4 text-sm font-black uppercase tracking-[0.22em] text-white transition-transform hover:scale-[1.01]">Buy It Now</button>
                 <button onClick={handleAskWhatsApp} className="mb-8 w-full nexora-button flex items-center justify-center gap-2 py-3"><MessageSquare className="h-4 w-4" />Ask about this piece</button>
 
                 <div className="mb-8 border-b border-[#17171a] pb-8">
@@ -422,11 +466,11 @@ export default function ProductDetailPage() {
               </motion.div>
             )}
 
-            {activeTab === 'shipping' && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-2xl"><div className="space-y-4">{[
-              ['Delivery', 'We deliver across all Egyptian governorates. Orders typically arrive within 3–7 business days depending on your governorate.'],
-              ['Payment', 'Cash on Delivery is currently available for all orders in Egypt. You pay only when the order arrives.'],
-              ['Returns', 'Returns can be requested within 14 days when the item is unused and kept in its original condition.']
-            ].map(([title, body]) => <div key={title} className="p-4 bg-[#0b0b0d] border border-[#17171a]"><h4 className="text-xs font-bold tracking-wider uppercase text-[#f4f0e8] mb-2">{title}</h4><p className="text-xs text-[#b8b0a3] leading-relaxed">{body}</p></div>)}</div></motion.div>}
+            {activeTab === 'shipping' && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-3xl"><div className="space-y-4">{[
+              ['Delivery', `Shipping duration: ${SHIPPING_ESTIMATE_TEXT}`],
+              ['Payment', `Cash on Delivery, Instapay, and Vodafone Cash are available. Instapay/Vodafone Cash orders are confirmed manually on WhatsApp.`],
+              ['Returns & Exchange', RETURN_EXCHANGE_POLICY_AR.join(' ')]
+            ].map(([title, body]) => <div key={title} className="p-4 bg-[#0b0b0d] border border-[#17171a]"><h4 className="text-xs font-bold tracking-wider uppercase text-[#f4f0e8] mb-2">{title}</h4><p className="text-xs text-[#b8b0a3] leading-relaxed">{body}</p></div>)}<div className="rounded-3xl border border-[#202024] bg-[#0b0b0d] p-5"><h4 className="text-xs font-bold tracking-wider uppercase text-[#f4f0e8] mb-3">سياسة الاسترجاع والاستبدال</h4><ul className="space-y-2 text-sm leading-6 text-[#b8b0a3] rtl:text-right">{RETURN_EXCHANGE_POLICY_AR.map((item) => <li key={item}>• {item}</li>)}</ul><p className="mt-4 text-xs font-semibold text-[#c8a96a]">مدة الشحن: {SHIPPING_ESTIMATE_TEXT_AR}</p></div></div></motion.div>}
 
             {activeTab === 'reviews' && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -440,7 +484,7 @@ export default function ProductDetailPage() {
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#202024] bg-[#050505]/95 p-3 backdrop-blur md:hidden">
-        <button onClick={handleAddToCart} className="w-full nexora-button-primary flex items-center justify-center gap-2 py-3"><ShoppingBag className="w-4 h-4" />Add to Cart — {formatPrice(product.price * quantity)}</button>
+        <div className="grid grid-cols-2 gap-2"><button onClick={handleAddToCart} className="nexora-button flex items-center justify-center gap-2 py-3"><ShoppingBag className="w-4 h-4" />Cart</button><button onClick={handleBuyNow} className="rounded-full bg-[#ef4d52] px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-white">Buy Now</button></div>
       </div>
 
       <SizeGuideModal open={isSizeGuideOpen} onClose={() => setIsSizeGuideOpen(false)} />

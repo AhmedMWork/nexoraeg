@@ -12,7 +12,7 @@ function Card({ title, value, helper, icon: Icon }: { title: string; value: stri
   return <div className="studio-card p-5"><div className="mb-3 flex items-center justify-between"><Icon className="h-5 w-5 text-[#D2B48C]" /><span className="text-[10px] uppercase tracking-[0.18em] text-[#BCAEA0]">{title}</span></div><p className="text-2xl font-bold text-[#FFF0E1]">{value}</p><p className="mt-2 text-xs leading-6 text-[#BCAEA0]">{helper}</p></div>;
 }
 
-const emptyZone = { governorate: '', city: '*', shippingFee: 80, codFee: 0, deliveryEstimate: '2-5 business days', enabled: true, remoteArea: false, shipbluGovernorateId: '', shipbluCityId: '', shipbluZoneId: '', notes: '' };
+const emptyZone = { governorate: '', city: '*', shippingFee: 80, codFee: 0, deliveryEstimate: '4-7 business days', enabled: true, remoteArea: false, shipbluGovernorateId: '', shipbluCityId: '', shipbluZoneId: '', notes: '' };
 
 export default function AdminShipping() {
   const [settings, setSettings] = useState<any>(null);
@@ -121,7 +121,7 @@ export default function AdminShipping() {
           <Field label="COD fee" help="Extra cash-on-delivery fee. Leave 0 if included in shipping." example="0 or 15">
             <input className="studio-input" type="number" min="0" value={settings?.codFee || 0} onChange={(e) => setSettings({ ...settings, codFee: Number(e.target.value) })} />
           </Field>
-          <Field label="Delivery estimate" help="Shown in checkout when no zone-specific estimate exists." example="2-5 business days">
+          <Field label="Delivery estimate" help="Shown in checkout when no zone-specific estimate exists." example="4-7 business days">
             <input className="studio-input" value={settings?.fallbackDeliveryEstimate || ''} onChange={(e) => setSettings({ ...settings, fallbackDeliveryEstimate: e.target.value })} />
           </Field>
           <Field label="Free shipping" help="OFF means no free delivery regardless of order value.">
@@ -172,7 +172,7 @@ export default function AdminShipping() {
           <Field label="Shipping fee" help="Delivery price for this area." example="90"><input className="studio-input" type="number" min="0" value={zoneForm.shippingFee} onChange={(e) => setZoneForm({ ...zoneForm, shippingFee: Number(e.target.value) })} /></Field>
           <Field label="COD fee" help="Extra cash collection fee for this area, if any." example="0"><input className="studio-input" type="number" min="0" value={zoneForm.codFee} onChange={(e) => setZoneForm({ ...zoneForm, codFee: Number(e.target.value) })} /></Field>
           <Field label="ShipBlu Zone ID" help="Required for real Create Shipment. Get it from ShipBlu cities/zones API or support." example="123"><input className="studio-input" value={zoneForm.shipbluZoneId} onChange={(e) => setZoneForm({ ...zoneForm, shipbluZoneId: e.target.value })} /></Field>
-          <Field label="Estimate" help="Shown to customers in checkout." example="2-4 business days"><input className="studio-input" value={zoneForm.deliveryEstimate} onChange={(e) => setZoneForm({ ...zoneForm, deliveryEstimate: e.target.value })} /></Field>
+          <Field label="Estimate" help="Shown to customers in checkout." example="4-7 business days"><input className="studio-input" value={zoneForm.deliveryEstimate} onChange={(e) => setZoneForm({ ...zoneForm, deliveryEstimate: e.target.value })} /></Field>
           <Field label="Enabled" help="Disabled areas will not match during checkout."><select className="studio-input" value={String(zoneForm.enabled)} onChange={(e) => setZoneForm({ ...zoneForm, enabled: e.target.value === 'true' })}><option value="true">Enabled</option><option value="false">Disabled</option></select></Field>
           <button onClick={saveZone} className="nexora-button-primary w-full"><Plus className="h-4 w-4" />Save area</button>
         </div>

@@ -4,6 +4,7 @@
 // ============================================================
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import {
   CheckCircle,
   Copy,
@@ -29,19 +30,22 @@ const ORDER_STATUSES: OrderStatus[] = ['pending', 'confirmed', 'preparing', 'pac
 const PAYMENT_STATUSES: Order['paymentStatus'][] = ['pending', 'pending_confirmation', 'waiting_transfer', 'paid', 'collected', 'failed', 'refunded'];
 
 const FOLLOWUP_TYPES = [
-  { value: 'whatsapp_sent', label: 'WhatsApp sent' },
+  { value: 'whatsapp_sent', label: 'Sent' },
+  { value: 'second_followup', label: 'متابعة 2' },
   { value: 'reminder_sent', label: 'Reminder sent' },
   { value: 'called', label: 'Called' },
   { value: 'no_answer', label: 'No answer' },
   { value: 'confirmed', label: 'Confirmed' },
   { value: 'cancelled', label: 'Cancelled' },
-  { value: 'payment_received', label: 'Payment received' },
+  { value: 'payment_received', label: 'Paid' },
+  { value: 'shipblu', label: 'ShipBlu' },
   { value: 'note', label: 'Note' },
 ];
 
 function paymentLabel(method?: string) {
-  if (method === 'instapay') return 'Instapay';
+  if (method === 'instapay') return 'Instapay / Bank transfer';
   if (method === 'vodafone_cash') return 'Vodafone Cash';
+  if (method === 'valu') return 'ValU Installments';
   return 'Cash on Delivery';
 }
 
@@ -117,7 +121,8 @@ export default function AdminOrders() {
   const buildWhatsAppMessage = (order: Order, purpose = 'confirm') => {
     const method = paymentLabel(order.paymentMethod);
     if (purpose === 'payment') {
-      return `أهلاً، معاك NEXORA. بنأكد طلبك رقم ${order.orderNumber}. الإجمالي ${formatPrice(order.total)}. طريقة الدفع ${method}. برجاء إرسال صورة التحويل أو تأكيد الدفع على واتساب.`;
+      if (order.paymentMethod === 'valu') return `أهلاً، معاك NEXORA. استلمنا طلبك رقم ${order.orderNumber} واخترت التقسيط مع ValU. هنأكد معاك التفاصيل على واتساب.`;
+      return `أهلاً، معاك NEXORA. بنأكد طلبك رقم ${order.orderNumber}. الإجمالي ${formatPrice(order.total)}. طريقة الدفع ${method}. برجاء إرسال Screenshot التحويل على واتساب لتأكيد الطلب.`;
     }
     if (purpose === 'shipping') {
       return `أهلاً، معاك NEXORA. طلبك رقم ${order.orderNumber} قيد التجهيز. هنبلغك بتحديث الشحن أول ما يخرج للتوصيل.`;
@@ -258,6 +263,7 @@ export default function AdminOrders() {
             <option value="cod">COD</option>
             <option value="instapay">Instapay</option>
             <option value="vodafone_cash">Vodafone Cash</option>
+            <option value="valu">ValU Installments</option>
             {PAYMENT_STATUSES.map((s) => <option key={s} value={s}>{paymentStatusLabel(s)}</option>)}
           </select>
           <button onClick={exportOrdersCsv} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#e6ded1] bg-white px-4 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#5f584f] hover:border-[#b99a62]"><Download className="h-3.5 w-3.5" /> CSV</button>
@@ -308,7 +314,7 @@ export default function AdminOrders() {
                 <td className="p-4"><span className={`status-badge ${getStatusColor(order.status)} text-[9px]`}>{getStatusLabel(order.status)}</span></td>
                 <td className="p-4 text-[10px] text-[#8a8175]">{followupLabel(order.followupStatus)}</td>
                 <td className="p-4">
-                  <button onClick={() => setSelectedOrder(selectedOrder?.id === order.id ? null : order)} className="inline-flex items-center gap-2 rounded-full border border-[#e6ded1] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5f584f] hover:border-[#b99a62] hover:text-[#b99a62]"><Eye className="h-3.5 w-3.5" /> Invoice</button>
+                  <Link to={`/nexora-admin/orders/${order.id}`} className="inline-flex items-center gap-2 rounded-full border border-[#e6ded1] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5f584f] hover:border-[#b99a62] hover:text-[#b99a62]"><Eye className="h-3.5 w-3.5" /> Open</Link>
                 </td>
               </tr>
             )) : (

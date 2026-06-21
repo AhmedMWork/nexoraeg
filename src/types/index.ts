@@ -16,6 +16,8 @@ export interface ProductVariant {
   reservedStock?: number;
   lowStockThreshold: number;
   imageUrl?: string;
+  sizeLabel?: string;
+  weightRange?: string;
   barcode?: string;
   status: 'active' | 'disabled' | 'hidden' | 'sold_out' | 'archived';
   sortOrder?: number;
@@ -90,6 +92,8 @@ export interface CartItem {
   colorPattern?: string;
   quantity: number;
   image: string;
+  sizeLabel?: string;
+  weightRange?: string;
   lineTotal?: number;
   productSnapshot?: Record<string, unknown>;
 }
@@ -105,7 +109,7 @@ export interface Order {
   discount: number;
   couponCode?: string;
   total: number;
-  paymentMethod: 'cod' | 'instapay' | 'vodafone_cash';
+  paymentMethod: 'cod' | 'instapay' | 'vodafone_cash' | 'valu';
   paymentStatus: 'pending' | 'pending_confirmation' | 'waiting_transfer' | 'paid' | 'collected' | 'failed' | 'refunded';
   status: OrderStatus;
   trackingUpdates: TrackingUpdate[];
@@ -159,6 +163,8 @@ export interface OrderItem {
   colorHex?: string;
   quantity: number;
   image: string;
+  sizeLabel?: string;
+  weightRange?: string;
   lineTotal?: number;
   productSnapshot?: Record<string, unknown>;
 }
@@ -327,7 +333,11 @@ export interface SiteSettings {
   defaultLanguage?: 'en' | 'ar';
   defaultTheme?: 'dark' | 'light' | 'system';
   socialLinks: { instagram?: string; facebook?: string; twitter?: string; tiktok?: string; whatsapp?: string; };
-  paymentSettings?: { instapayEnabled?: boolean; vodafoneCashEnabled?: boolean; confirmationPhone?: string; instructions?: string; };
+  paymentSettings?: { codEnabled?: boolean; instapayEnabled?: boolean; vodafoneCashEnabled?: boolean; valuEnabled?: boolean; confirmationPhone?: string; instapayContact?: string; vodafoneCashNumber?: string; screenshotRequired?: boolean; instructions?: string; valuInstructions?: string; metaPixelEnabled?: boolean; metaPixelId?: string; };
+  metaPixelEnabled?: boolean;
+  metaPixelId?: string;
+  returnPolicyText?: string;
+  shippingPolicyText?: string;
   seo: { title: string; description: string; keywords: string; };
   announcements: Announcement[];
   updatedAt: Date;

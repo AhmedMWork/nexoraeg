@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // ============================================================
 // NEXORA — Main Application Router
 // ============================================================
@@ -16,6 +17,7 @@ import { ThemeProvider } from '@/providers/ThemeProvider';
 import { I18nProvider } from '@/i18n/I18nProvider';
 import ErrorBoundary from './components/system/ErrorBoundary';
 import { trackEvent } from '@/services/analytics.service';
+import { installMetaPixel } from '@/lib/metaPixel';
 
 // ─── Lazy-loaded Pages ───
 const HomePage = lazy(() => import('@/pages/HomePage'));
@@ -35,6 +37,7 @@ const InfoPage = lazy(() => import('@/pages/info/InfoPage'));
 const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard'));
 const AdminProducts = lazy(() => import('@/pages/admin/AdminProducts'));
 const AdminOrders = lazy(() => import('@/pages/admin/AdminOrders'));
+const AdminOrderDetail = lazy(() => import('@/pages/admin/AdminOrderDetail'));
 const AdminInventory = lazy(() => import('@/pages/admin/AdminInventory'));
 const AdminReviews = lazy(() => import('@/pages/admin/AdminReviews'));
 const AdminCoupons = lazy(() => import('@/pages/admin/AdminCoupons'));
@@ -107,6 +110,7 @@ function AdminRoutes() {
           <Route path="/products" element={<PageTransition><AdminProducts /></PageTransition>} />
           <Route path="/storefront" element={<PageTransition><AdminStorefront /></PageTransition>} />
           <Route path="/orders" element={<PageTransition><AdminOrders /></PageTransition>} />
+          <Route path="/orders/:orderId" element={<PageTransition><AdminOrderDetail /></PageTransition>} />
           <Route path="/inventory" element={<PageTransition><AdminInventory /></PageTransition>} />
           <Route path="/shipping" element={<PageTransition><AdminShipping /></PageTransition>} />
           <Route path="/controls" element={<PageTransition><AdminControls /></PageTransition>} />
@@ -131,6 +135,24 @@ function AdminRoutes() {
 }
 
 
+function MetaPixelGate() {
+  useEffect(() => {
+    let active = true;
+    import('@/lib/supabase/db')
+      .then(({ getSiteSettings }) => getSiteSettings())
+      .then((settings) => {
+        if (!active) return;
+        const paymentSettings = settings?.paymentSettings || {};
+        const pixelId = (settings as any)?.metaPixelId || (paymentSettings as any)?.metaPixelId || '';
+        const enabled = (settings as any)?.metaPixelEnabled ?? (paymentSettings as any)?.metaPixelEnabled ?? Boolean(pixelId);
+        installMetaPixel(pixelId, Boolean(enabled));
+      })
+      .catch(() => installMetaPixel((import.meta as any).env?.VITE_META_PIXEL_ID, Boolean((import.meta as any).env?.VITE_META_PIXEL_ID)));
+    return () => { active = false; };
+  }, []);
+  return null;
+}
+
 function SplashGate() {
   const { pathname } = useLocation();
   if (pathname.startsWith('/admin') || pathname.startsWith('/studio') || pathname.startsWith('/nexora-admin')) return null;
@@ -146,6 +168,7 @@ export default function App() {
       <BrowserRouter>
         <ErrorBoundary>
         <ScrollToTop />
+        <MetaPixelGate />
         <SplashGate />
         <Toaster
           position="bottom-right"

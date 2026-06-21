@@ -9,7 +9,7 @@ import type { Product, Review } from '@/types';
 import { loadProducts } from '@/services/productService';
 import { useI18n } from '@/i18n/I18nProvider';
 import { SITE_URL } from '@/lib/constants';
-import { DEFAULT_HOME_COLLECTION_TILES, type HomeCollectionTile } from '@/content/homeTiles';
+import { DEFAULT_HOME_COLLECTION_TILES, getVisibleHomeTiles, type HomeCollectionTile } from '@/content/homeTiles';
 import PrivateListForm from '@/components/growth/PrivateListForm';
 
 export default function HomePage() {
@@ -34,8 +34,8 @@ export default function HomePage() {
 
     import('@/lib/supabase/db')
       .then(({ getHomeCollectionTiles }) => getHomeCollectionTiles())
-      .then((tiles) => { if (mounted) setCategoryTiles(tiles); })
-      .catch(() => { if (mounted) setCategoryTiles(DEFAULT_HOME_COLLECTION_TILES); });
+      .then((tiles) => { if (mounted) setCategoryTiles(getVisibleHomeTiles(tiles)); })
+      .catch(() => { if (mounted) setCategoryTiles(getVisibleHomeTiles(DEFAULT_HOME_COLLECTION_TILES)); });
 
     return () => { mounted = false; };
   }, []);
@@ -89,7 +89,7 @@ export default function HomePage() {
 
         <section className="v3-shell mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {categoryTiles.map((tile, index) => (
-            <motion.div key={tile.title} initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.06 }}>
+            <motion.div key={tile.id} initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.06 }}>
               <Link to={tile.href} className="v3-category-card">
                 <img src={tile.image} alt={lang === 'ar' ? (tile.titleAr || tile.title) : tile.title} />
                 <div>
