@@ -1,26 +1,21 @@
-import type { SVGProps } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Facebook, Instagram, MessageCircle } from 'lucide-react';
 import { useI18n } from '@/i18n/I18nProvider';
+import { buildWhatsAppUrl } from '@/lib/whatsapp';
 
-function TikTokIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
-      <path d="M16.6 3c.45 2.7 1.95 4.35 4.4 4.55v3.35a8.25 8.25 0 0 1-4.28-1.25v5.95c0 3.25-2.16 5.4-5.35 5.4-3.06 0-5.37-2.2-5.37-5.1 0-3.06 2.42-5.28 5.78-5.28.35 0 .68.03 1 .1v3.42a3.6 3.6 0 0 0-1.04-.16c-1.32 0-2.21.75-2.21 1.86 0 1.06.82 1.8 1.95 1.8 1.24 0 2.02-.77 2.02-2.1V3h3.1Z" />
-    </svg>
-  );
-}
-
-const socialLinks = [
+const socialLinksBase = [
   { label: 'Instagram', href: 'https://www.instagram.com/nexora.eg_wear?igsh=Zm9zN2ZjZ3Q3Zmlw&utm_source=qr', Icon: Instagram },
   { label: 'Facebook', href: 'https://www.facebook.com/share/18k2uTBtYu/?mibextid=wwXIfr', Icon: Facebook },
-  { label: 'TikTok', href: '#', Icon: TikTokIcon },
-  { label: 'WhatsApp', href: 'https://wa.me/201037141322', Icon: MessageCircle },
 ];
 
 export default function Footer() {
   const { lang, t } = useI18n();
+  const whatsappMessage = lang === 'ar' ? 'مرحبًا NEXORA، أريد الاستفسار عن المنتجات.' : 'Hello NEXORA, I would like to ask about your products.';
+  const socialLinks = [
+    ...socialLinksBase,
+    { label: 'WhatsApp', href: buildWhatsAppUrl('201037141322', whatsappMessage), Icon: MessageCircle, featured: true },
+  ];
 
   const groups = [
     {
@@ -100,7 +95,7 @@ export default function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={`NEXORA ${label}`}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--v33-border)] text-[var(--v33-muted)] transition-colors hover:border-[var(--v33-accent)] hover:text-[var(--v33-accent-strong)]"
+                  className={`flex h-10 w-10 items-center justify-center rounded-full border transition-all hover:-translate-y-0.5 ${label === 'WhatsApp' ? 'border-[var(--v33-accent)] bg-[var(--v33-accent)]/12 text-[var(--v33-accent-strong)] shadow-[0_12px_30px_rgba(214,181,143,0.14)]' : 'border-[var(--v33-border)] text-[var(--v33-muted)] hover:border-[var(--v33-accent)] hover:text-[var(--v33-accent-strong)]'}`}
                 >
                   <Icon className="h-4 w-4" />
                 </a>

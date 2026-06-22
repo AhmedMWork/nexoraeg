@@ -88,7 +88,7 @@ export default function AdminSidebar() {
             <img src="/assets/nexora-logo.png" alt="NEXORA" className="h-9 w-auto object-contain" />
             <div>
               <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#231916]">NEXORA</p>
-              <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8E7664]">Clean HQ</p>
+              <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8E7664]">لوحة التشغيل</p>
             </div>
           </Link>
         </div>
@@ -133,14 +133,14 @@ export default function AdminSidebar() {
             onClick={() => setIsMobileOpen(false)}
             className="flex items-center justify-between rounded-2xl border border-[#E4D6C5] bg-[#FAF5EE] px-4 py-3 text-xs font-semibold text-[#6F5D50] hover:border-[#D6B58F] hover:text-[#231916]"
           >
-            <span>Setup & Recovery</span>
+            <span>جاهزية المتجر</span>
             <Settings className="h-4 w-4" />
           </Link>
           <button
             onClick={() => navigate('/')}
             className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-xs font-semibold text-[#6F5D50] transition hover:bg-[#FAF5EE] hover:text-[#9D7159]"
           >
-            <span>View storefront</span>
+            <span>عرض المتجر</span>
             <ExternalLink className="h-4 w-4" />
           </button>
         </div>
