@@ -792,3 +792,39 @@ html.dark .v34-logo-img { filter: brightness(1.14) contrast(1.08) drop-shadow(0 
     border-radius: 18px !important;
   }
 }
+
+/* NEXORA Experience Upgrade — lightweight motion system */
+@layer utilities {
+  .motion-soft-reveal {
+    animation: nexora-soft-reveal 520ms cubic-bezier(.25,.46,.45,.94) both;
+  }
+  .motion-hover-lift {
+    transition: transform 260ms cubic-bezier(.25,.46,.45,.94), box-shadow 260ms cubic-bezier(.25,.46,.45,.94), border-color 260ms ease;
+  }
+  .motion-hover-lift:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 24px 62px var(--v33-shadow);
+  }
+  .motion-button {
+    transition: transform 220ms cubic-bezier(.25,.46,.45,.94), box-shadow 220ms cubic-bezier(.25,.46,.45,.94), background 220ms ease;
+  }
+  .motion-button:hover { transform: translateY(-2px); }
+  .motion-button:active { transform: translateY(0) scale(.99); }
+  .checkout-pro-card {
+    animation: nexora-soft-reveal 520ms cubic-bezier(.25,.46,.45,.94) both;
+  }
+}
+
+@keyframes nexora-soft-reveal {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -17,7 +17,7 @@ function Field({ label, help, children }: { label: string; help?: string; childr
 function SummaryCard({ title, value, helper, icon: Icon, tone = 'neutral' }: { title: string; value: string; helper: string; icon: React.ElementType; tone?: 'neutral' | 'good' | 'warn' }) {
   const toneClass = tone === 'good' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : tone === 'warn' ? 'text-amber-700 bg-amber-50 border-amber-200' : 'text-[#9a8461] bg-[#fbf7ef] border-[#e6ded1]';
   return (
-    <div className="rounded-[26px] border border-[#e6ded1] bg-white p-5 shadow-[0_14px_38px_rgba(43,33,29,0.05)]">
+    <div className="rounded-[26px] border border-[#e6ded1] bg-white p-5 shadow-[0_14px_38px_rgba(43,33,29,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_55px_rgba(43,33,29,.08)]">
       <div className="mb-3 flex items-center justify-between">
         <span className={`grid h-10 w-10 place-items-center rounded-2xl border ${toneClass}`}><Icon className="h-5 w-5" /></span>
         <span className="text-[10px] font-black uppercase tracking-[0.18em] text-[#9a8461]">{title}</span>
@@ -28,7 +28,7 @@ function SummaryCard({ title, value, helper, icon: Icon, tone = 'neutral' }: { t
   );
 }
 
-const emptyZone = { governorate: '', city: '*', shippingFee: 80, codFee: 0, deliveryEstimate: '4-7 أيام عمل', enabled: true, remoteArea: false, shipbluGovernorateId: '', shipbluCityId: '', shipbluZoneId: '', notes: '' };
+const emptyZone = { governorate: '', city: '*', shippingFee: 80, codFee: 0, deliveryEstimate: '4-7 business days', enabled: true, remoteArea: false, shipbluGovernorateId: '', shipbluCityId: '', shipbluZoneId: '', notes: '' };
 
 export default function AdminShipping() {
   const [settings, setSettings] = useState<any>(null);
@@ -64,9 +64,9 @@ export default function AdminShipping() {
     try {
       const { saveShippingSettings } = await import('@/lib/supabase/db');
       setSettings(await saveShippingSettings(settings));
-      toast.success('تم حفظ إعدادات الشحن. صفحة الدفع ستستخدم القواعد الجديدة فورًا.');
+      toast.success('Shipping settings saved. Checkout will use the new rules immediately.');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'تعذر حفظ إعدادات الشحن.');
+      toast.error(error instanceof Error ? error.message : 'Could not save shipping settings.');
     } finally {
       setIsSaving(false);
     }
@@ -74,25 +74,25 @@ export default function AdminShipping() {
 
   const saveZone = async () => {
     if (!zoneForm.governorate.trim()) {
-      toast.error('اكتب اسم المحافظة أولًا.');
+      toast.error('Enter the governorate first.');
       return;
     }
     try {
       const { upsertShippingZone } = await import('@/lib/supabase/db');
       await upsertShippingZone(zoneForm);
-      toast.success('تم حفظ منطقة الشحن.');
+      toast.success('Shipping zone saved.');
       setZoneForm(emptyZone);
       await load();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'تعذر حفظ منطقة الشحن.');
+      toast.error(error instanceof Error ? error.message : 'Could not save shipping zone.');
     }
   };
 
   const removeZone = async (id: string) => {
-    if (!window.confirm('هل تريد حذف منطقة الشحن؟')) return;
+    if (!window.confirm('Delete this shipping zone?')) return;
     const { deleteShippingZone } = await import('@/lib/supabase/db');
     await deleteShippingZone(id);
-    toast.success('تم حذف منطقة الشحن.');
+    toast.success('Shipping zone deleted.');
     await load();
   };
 
@@ -100,68 +100,68 @@ export default function AdminShipping() {
     try {
       const { testShippingProvider } = await import('@/lib/supabase/db');
       const result = await testShippingProvider();
-      if (result.ok) toast.success(`تم الاتصال بـ ShipBlu بنجاح (${result.status}).`);
-      else toast.error(result.error || `فشل اختبار ShipBlu (${result.status || 'بدون حالة'}).`);
+      if (result.ok) toast.success(`ShipBlu connection is working (${result.status}).`);
+      else toast.error(result.error || `ShipBlu test failed (${result.status || 'no status'}).`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'تعذر اختبار شركة الشحن.');
+      toast.error(error instanceof Error ? error.message : 'Could not test shipping provider.');
     }
   };
 
-  if (isLoading && !settings) return <div className="studio-card p-6 text-sm text-[#8a8175]">جاري تحميل إعدادات الشحن...</div>;
+  if (isLoading && !settings) return <div className="studio-card p-6 text-sm text-[#8a8175]">Loading shipping settings...</div>;
 
   return (
-    <div className="space-y-6 text-[#2b211d]" dir="rtl">
+    <div className="space-y-6 text-[#2b211d]" dir="ltr">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#9a8461]">NEXORA SHIPPING</p>
-          <h1 className="mt-2 text-2xl font-black text-[#2b211d]">إدارة الشحن</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-7 text-[#8a8175]">صفحة مبسطة للتحكم في تكلفة الشحن، رسوم الدفع عند الاستلام، الشحن المجاني، والمناطق المتاحة داخل صفحة الدفع.</p>
+          <h1 className="mt-2 text-2xl font-black text-[#2b211d]">Shipping Management</h1>
+          <p className="mt-2 max-w-3xl text-sm leading-7 text-[#8a8175]">A simpler shipping command center for delivery fees, COD fees, free shipping, and active checkout zones.</p>
         </div>
-        <button onClick={load} className="nexora-button"><RefreshCw className="h-4 w-4" />تحديث</button>
+        <button onClick={load} className="nexora-button"><RefreshCw className="h-4 w-4" />Refresh</button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard title="حالة الشحن" value={settings?.shippingEnabled ? 'مفعل' : 'متوقف'} helper="عند الإيقاف لن يستطيع العميل إتمام طلب توصيل." icon={Truck} tone={settings?.shippingEnabled ? 'good' : 'warn'} />
-        <SummaryCard title="متوسط التكلفة" value={formatPrice(avgFee || settings?.defaultShippingFee || 0)} helper="متوسط أسعار المناطق أو السعر الافتراضي." icon={Ship} />
-        <SummaryCard title="المناطق" value={`${enabledZones}/${zones.length}`} helper="عدد المناطق المفعلة من إجمالي مناطق الشحن." icon={CheckCircle2} tone={enabledZones ? 'good' : 'warn'} />
-        <SummaryCard title="ShipBlu" value={providerConnected && settings?.providerEnabled ? 'جاهز' : 'يدوي'} helper="يمكنك إنشاء الشحنات يدويًا أو تفعيل الربط لاحقًا." icon={providerConnected ? CheckCircle2 : XCircle} tone={providerConnected && settings?.providerEnabled ? 'good' : 'neutral'} />
+        <SummaryCard title="Shipping Status" value={settings?.shippingEnabled ? 'Enabled' : 'Paused'} helper="When paused, customers cannot complete delivery checkout." icon={Truck} tone={settings?.shippingEnabled ? 'good' : 'warn'} />
+        <SummaryCard title="Average Fee" value={formatPrice(avgFee || settings?.defaultShippingFee || 0)} helper="Average zone price or fallback default fee." icon={Ship} />
+        <SummaryCard title="Active Zones" value={`${enabledZones}/${zones.length}`} helper="Enabled zones out of all configured shipping zones." icon={CheckCircle2} tone={enabledZones ? 'good' : 'warn'} />
+        <SummaryCard title="ShipBlu" value={providerConnected && settings?.providerEnabled ? 'Connected' : 'Manual'} helper="Ship manually now, or enable courier automation later." icon={providerConnected ? CheckCircle2 : XCircle} tone={providerConnected && settings?.providerEnabled ? 'good' : 'neutral'} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
         <section className="rounded-[28px] border border-[#e6ded1] bg-white p-5 shadow-[0_18px_50px_rgba(43,33,29,0.06)]">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-[#2b211d]">إعدادات عامة</h2>
-              <p className="mt-1 text-xs leading-6 text-[#8a8175]">هذه القيم تطبق عندما لا توجد قاعدة مخصصة للمدينة.</p>
+              <h2 className="text-base font-bold text-[#2b211d]">General Settings</h2>
+              <p className="mt-1 text-xs leading-6 text-[#8a8175]">These values apply when no city-specific rule exists.</p>
             </div>
-            <button onClick={saveSettings} disabled={isSaving} className="nexora-button-primary"><Save className="h-4 w-4" />{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
+            <button onClick={saveSettings} disabled={isSaving} className="nexora-button-primary"><Save className="h-4 w-4" />{isSaving ? 'Saving...' : 'Save'}</button>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="تشغيل الشحن"><select className="studio-input" value={String(settings?.shippingEnabled)} onChange={(event) => setSettings({ ...settings, shippingEnabled: event.target.value === 'true' })}><option value="true">مفعل</option><option value="false">متوقف</option></select></Field>
-            <Field label="تكلفة الشحن الافتراضية"><input className="studio-input" type="number" min="0" value={settings?.defaultShippingFee || 0} onChange={(event) => setSettings({ ...settings, defaultShippingFee: Number(event.target.value) })} /></Field>
-            <Field label="رسوم الدفع عند الاستلام" help="تظهر فقط مع طلبات COD."><input className="studio-input" type="number" min="0" value={settings?.codFee || 0} onChange={(event) => setSettings({ ...settings, codFee: Number(event.target.value) })} /></Field>
-            <Field label="مدة التوصيل الافتراضية"><input className="studio-input" value={settings?.fallbackDeliveryEstimate || ''} onChange={(event) => setSettings({ ...settings, fallbackDeliveryEstimate: event.target.value })} /></Field>
-            <Field label="الشحن المجاني"><select className="studio-input" value={String(settings?.freeShippingEnabled)} onChange={(event) => setSettings({ ...settings, freeShippingEnabled: event.target.value === 'true' })}><option value="false">متوقف</option><option value="true">مفعل</option></select></Field>
-            <Field label="حد الشحن المجاني"><input className="studio-input" type="number" min="0" value={settings?.freeShippingThreshold || 0} onChange={(event) => setSettings({ ...settings, freeShippingThreshold: Number(event.target.value) })} /></Field>
+            <Field label="Shipping enabled"><select className="studio-input" value={String(settings?.shippingEnabled)} onChange={(event) => setSettings({ ...settings, shippingEnabled: event.target.value === 'true' })}><option value="true">Enabled</option><option value="false">Paused</option></select></Field>
+            <Field label="Default shipping fee"><input className="studio-input" type="number" min="0" value={settings?.defaultShippingFee || 0} onChange={(event) => setSettings({ ...settings, defaultShippingFee: Number(event.target.value) })} /></Field>
+            <Field label="COD fee" help="Displayed and charged only for COD orders."><input className="studio-input" type="number" min="0" value={settings?.codFee || 0} onChange={(event) => setSettings({ ...settings, codFee: Number(event.target.value) })} /></Field>
+            <Field label="Default delivery estimate"><input className="studio-input" value={settings?.fallbackDeliveryEstimate || ''} onChange={(event) => setSettings({ ...settings, fallbackDeliveryEstimate: event.target.value })} /></Field>
+            <Field label="Free shipping"><select className="studio-input" value={String(settings?.freeShippingEnabled)} onChange={(event) => setSettings({ ...settings, freeShippingEnabled: event.target.value === 'true' })}><option value="false">Off</option><option value="true">On</option></select></Field>
+            <Field label="Free shipping threshold"><input className="studio-input" type="number" min="0" value={settings?.freeShippingThreshold || 0} onChange={(event) => setSettings({ ...settings, freeShippingThreshold: Number(event.target.value) })} /></Field>
           </div>
         </section>
 
         <section className="rounded-[28px] border border-[#e6ded1] bg-white p-5 shadow-[0_18px_50px_rgba(43,33,29,0.06)]">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-[#2b211d]">إضافة أو تعديل منطقة</h2>
-              <p className="mt-1 text-xs leading-6 text-[#8a8175]">استخدم * في المدينة لتطبيق القاعدة على محافظة كاملة.</p>
+              <h2 className="text-base font-bold text-[#2b211d]">Add or Edit Zone</h2>
+              <p className="mt-1 text-xs leading-6 text-[#8a8175]">Use * in the city field to apply a rule to the whole governorate.</p>
             </div>
-            <button onClick={saveZone} className="nexora-button-primary"><Plus className="h-4 w-4" />حفظ المنطقة</button>
+            <button onClick={saveZone} className="nexora-button-primary"><Plus className="h-4 w-4" />Save Zone</button>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="المحافظة"><input className="studio-input" value={zoneForm.governorate} onChange={(event) => setZoneForm({ ...zoneForm, governorate: event.target.value })} /></Field>
-            <Field label="المدينة / المنطقة"><input className="studio-input" value={zoneForm.city} onChange={(event) => setZoneForm({ ...zoneForm, city: event.target.value })} /></Field>
-            <Field label="تكلفة الشحن"><input className="studio-input" type="number" min="0" value={zoneForm.shippingFee} onChange={(event) => setZoneForm({ ...zoneForm, shippingFee: Number(event.target.value) })} /></Field>
-            <Field label="رسوم COD"><input className="studio-input" type="number" min="0" value={zoneForm.codFee} onChange={(event) => setZoneForm({ ...zoneForm, codFee: Number(event.target.value) })} /></Field>
-            <Field label="مدة التوصيل"><input className="studio-input" value={zoneForm.deliveryEstimate} onChange={(event) => setZoneForm({ ...zoneForm, deliveryEstimate: event.target.value })} /></Field>
-            <Field label="الحالة"><select className="studio-input" value={String(zoneForm.enabled)} onChange={(event) => setZoneForm({ ...zoneForm, enabled: event.target.value === 'true' })}><option value="true">مفعلة</option><option value="false">متوقفة</option></select></Field>
-            <Field label="ShipBlu Zone ID" help="اختياري، يستخدم فقط عند إنشاء شحنة من ShipBlu."><input className="studio-input" value={zoneForm.shipbluZoneId} onChange={(event) => setZoneForm({ ...zoneForm, shipbluZoneId: event.target.value })} dir="ltr" /></Field>
+            <Field label="Governorate"><input className="studio-input" value={zoneForm.governorate} onChange={(event) => setZoneForm({ ...zoneForm, governorate: event.target.value })} /></Field>
+            <Field label="City / Zone"><input className="studio-input" value={zoneForm.city} onChange={(event) => setZoneForm({ ...zoneForm, city: event.target.value })} /></Field>
+            <Field label="Shipping fee"><input className="studio-input" type="number" min="0" value={zoneForm.shippingFee} onChange={(event) => setZoneForm({ ...zoneForm, shippingFee: Number(event.target.value) })} /></Field>
+            <Field label="COD fee"><input className="studio-input" type="number" min="0" value={zoneForm.codFee} onChange={(event) => setZoneForm({ ...zoneForm, codFee: Number(event.target.value) })} /></Field>
+            <Field label="Delivery estimate"><input className="studio-input" value={zoneForm.deliveryEstimate} onChange={(event) => setZoneForm({ ...zoneForm, deliveryEstimate: event.target.value })} /></Field>
+            <Field label="Status"><select className="studio-input" value={String(zoneForm.enabled)} onChange={(event) => setZoneForm({ ...zoneForm, enabled: event.target.value === 'true' })}><option value="true">Enabled</option><option value="false">Paused</option></select></Field>
+            <Field label="ShipBlu Zone ID" help="Optional. Used only when creating a ShipBlu shipment."><input className="studio-input" value={zoneForm.shipbluZoneId} onChange={(event) => setZoneForm({ ...zoneForm, shipbluZoneId: event.target.value })} dir="ltr" /></Field>
           </div>
         </section>
       </div>
@@ -169,18 +169,18 @@ export default function AdminShipping() {
       <section className="overflow-hidden rounded-[28px] border border-[#e6ded1] bg-white shadow-[0_18px_50px_rgba(43,33,29,0.06)]">
         <div className="flex flex-col gap-3 border-b border-[#efe8dc] p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-base font-bold text-[#2b211d]">مناطق الشحن</h2>
-            <p className="mt-1 text-xs text-[#8a8175]">المدينة المحددة لها أولوية، ثم قاعدة المحافظة بعلامة *، ثم السعر الافتراضي.</p>
+            <h2 className="text-base font-bold text-[#2b211d]">Shipping Zones</h2>
+            <p className="mt-1 text-xs text-[#8a8175]">Specific city rules run first, then governorate-wide * rules, then the default fee.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button onClick={saveSettings} className="nexora-button"><Save className="h-4 w-4" />حفظ الإعدادات</button>
-            <button onClick={testProvider} className="nexora-button"><Ship className="h-4 w-4" />اختبار ShipBlu</button>
+            <button onClick={saveSettings} className="nexora-button"><Save className="h-4 w-4" />Save Settings</button>
+            <button onClick={testProvider} className="nexora-button"><Ship className="h-4 w-4" />Test ShipBlu</button>
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] text-right">
+          <table className="w-full min-w-[860px] text-left">
             <thead className="bg-[#faf7f1]">
-              <tr>{['المحافظة', 'المدينة', 'تكلفة الشحن', 'رسوم COD', 'المدة', 'الحالة', 'إجراءات'].map((heading) => <th key={heading} className="p-4 text-[10px] font-black uppercase tracking-[0.18em] text-[#9a8461]">{heading}</th>)}</tr>
+              <tr>{['Governorate', 'City / Zone', 'Shipping Fee', 'COD Fee', 'ETA', 'Status', 'Actions'].map((heading) => <th key={heading} className="p-4 text-[10px] font-black uppercase tracking-[0.18em] text-[#9a8461]">{heading}</th>)}</tr>
             </thead>
             <tbody>
               {zones.length ? zones.map((zone) => (
@@ -190,19 +190,19 @@ export default function AdminShipping() {
                   <td className="p-4 text-xs font-bold text-[#b99a62]">{formatPrice(zone.shippingFee)}</td>
                   <td className="p-4 text-xs text-[#5f584f]">{formatPrice(zone.codFee)}</td>
                   <td className="p-4 text-xs text-[#5f584f]">{zone.deliveryEstimate || '—'}</td>
-                  <td className="p-4 text-xs"><span className={`rounded-full border px-2 py-1 text-[9px] font-bold ${zone.enabled ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-red-200 bg-red-50 text-red-700'}`}>{zone.enabled ? 'مفعلة' : 'متوقفة'}</span></td>
-                  <td className="p-4"><div className="flex gap-2"><button onClick={() => setZoneForm(zone)} className="text-xs font-bold text-[#b99a62]">تعديل</button><button onClick={() => removeZone(zone.id)} className="text-red-600"><Trash2 className="h-4 w-4" /></button></div></td>
+                  <td className="p-4 text-xs"><span className={`rounded-full border px-2 py-1 text-[9px] font-bold ${zone.enabled ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-red-200 bg-red-50 text-red-700'}`}>{zone.enabled ? 'Enabled' : 'Paused'}</span></td>
+                  <td className="p-4"><div className="flex gap-2"><button onClick={() => setZoneForm(zone)} className="text-xs font-bold text-[#b99a62]">Edit</button><button onClick={() => removeZone(zone.id)} className="text-red-600"><Trash2 className="h-4 w-4" /></button></div></td>
                 </tr>
-              )) : <tr><td colSpan={7} className="p-8 text-center text-sm text-[#8a8175]">لا توجد مناطق شحن حتى الآن.</td></tr>}
+              )) : <tr><td colSpan={7} className="p-8 text-center text-sm text-[#8a8175]">No shipping zones yet.</td></tr>}
             </tbody>
           </table>
         </div>
       </section>
 
       <section className="rounded-[28px] border border-[#e6ded1] bg-white p-5 shadow-[0_18px_50px_rgba(43,33,29,0.06)]">
-        <h2 className="mb-4 text-base font-bold text-[#2b211d]">آخر الشحنات</h2>
+        <h2 className="mb-4 text-base font-bold text-[#2b211d]">Recent Shipments</h2>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {shipments.length ? shipments.map((shipment) => <div key={shipment.id} className="rounded-2xl border border-[#efe8dc] bg-[#faf7f1] p-4"><p className="text-xs font-semibold text-[#2b211d]">{shipment.trackingNumber || shipment.providerOrderId || shipment.id}</p><p className="mt-1 text-xs text-[#8a8175]">{shipment.provider} · {shipment.status}</p><p className="mt-1 text-xs font-bold text-[#b99a62]">COD {formatPrice(shipment.codAmount || 0)}</p></div>) : <p className="text-sm text-[#8a8175]">لا توجد شحنات حتى الآن. يتم إنشاء الشحنة من صفحة الطلبات بعد تأكيد الطلب.</p>}
+          {shipments.length ? shipments.map((shipment) => <div key={shipment.id} className="rounded-2xl border border-[#efe8dc] bg-[#faf7f1] p-4"><p className="text-xs font-semibold text-[#2b211d]">{shipment.trackingNumber || shipment.providerOrderId || shipment.id}</p><p className="mt-1 text-xs text-[#8a8175]">{shipment.provider} · {shipment.status}</p><p className="mt-1 text-xs font-bold text-[#b99a62]">COD {formatPrice(shipment.codAmount || 0)}</p></div>) : <p className="text-sm text-[#8a8175]">No shipments yet. Create shipments from the order page after confirmation.</p>}
         </div>
       </section>
     </div>

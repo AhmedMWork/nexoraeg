@@ -172,7 +172,7 @@ export default function AdminStorefront() {
                 <Field label="English title" help="Main title displayed on the card." example="Oversized Tees">
                   <input className="studio-input" value={tile.title} onChange={(e) => updateTile(index, { title: e.target.value })} />
                 </Field>
-                <Field label="Arabic title" help="Used when Arabic storefront is active." example="تيشيرتات واسعة">
+                <Field label="Arabic title" help="Used when Arabic storefront is active." example="Oversized tees">
                   <input className="studio-input" value={tile.titleAr || ''} onChange={(e) => updateTile(index, { titleAr: e.target.value })} />
                 </Field>
                 <Field label="Link" help="Where the card opens when customer clicks it." example="/shop?availability=last-pieces">

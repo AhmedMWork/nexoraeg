@@ -52,7 +52,7 @@ const emptyDraft: ProductDraft = {
   productType: 'T-Shirts',
   collection: 'core',
   imageUrls: [],
-  colors: [{ id: 'black', name: 'Black', nameEn: 'Black', nameAr: 'أسود', hex: '#0E0B0A', available: true }],
+  colors: [{ id: 'black', name: 'Black', nameEn: 'Black', nameAr: 'Black', hex: '#0E0B0A', available: true }],
   customColorName: '',
   customColorHex: '#D2B48C',
   customColorPattern: '',

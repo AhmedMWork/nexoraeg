@@ -1,5 +1,5 @@
 // ============================================================
-// NEXORA — Arabic Orders HQ V5.1
+// NEXORA — English Orders HQ
 // Clear daily operations table with direct edit access.
 // ============================================================
 
@@ -15,9 +15,9 @@ import type { Order, OrderStatus } from '@/types';
 const ORDER_STATUSES: OrderStatus[] = ['pending', 'confirmed', 'preparing', 'packed', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'returned'];
 const PAYMENT_STATUSES: Order['paymentStatus'][] = ['pending', 'pending_confirmation', 'waiting_transfer', 'paid', 'collected', 'failed', 'refunded'];
 
-function paymentLabel(method?: string) { return getPaymentMethodLabel(method, 'ar'); }
-function paymentStatusLabel(status?: string) { return getPaymentStatusLabel(status, 'ar'); }
-function statusLabel(status?: string) { return getStatusLabel(String(status || 'pending'), 'ar'); }
+function paymentLabel(method?: string) { return getPaymentMethodLabel(method, 'en'); }
+function paymentStatusLabel(status?: string) { return getPaymentStatusLabel(status, 'en'); }
+function statusLabel(status?: string) { return getStatusLabel(String(status || 'pending'), 'en'); }
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -32,7 +32,7 @@ export default function AdminOrders() {
       const { getOrders } = await import('@/lib/supabase/db');
       setOrders(await getOrders());
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'تعذر تحميل الطلبات');
+      toast.error(error instanceof Error ? error.message : 'Could not load orders');
     } finally {
       setIsLoading(false);
     }
@@ -74,10 +74,10 @@ export default function AdminOrders() {
     try {
       const { markOrderPaymentCollected } = await import('@/lib/supabase/db');
       await markOrderPaymentCollected(orderId);
-      toast.success('تم تأكيد الدفع');
+      toast.success('Payment marked as paid');
       await loadOrders();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'تعذر تأكيد الدفع');
+      toast.error(error instanceof Error ? error.message : 'Could not mark payment as paid');
     }
   };
 
@@ -85,10 +85,10 @@ export default function AdminOrders() {
     try {
       const { createOrderShipment } = await import('@/lib/supabase/db');
       const shipment = await createOrderShipment(orderId);
-      toast.success(shipment?.trackingNumber ? `تم إنشاء الشحنة: ${shipment.trackingNumber}` : 'تم إنشاء الشحنة');
+      toast.success(shipment?.trackingNumber ? `Shipment created: ${shipment.trackingNumber}` : 'Shipment created');
       await loadOrders();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'تعذر إنشاء الشحنة. راجع إعدادات الشحن.');
+      toast.error(error instanceof Error ? error.message : 'Could not create shipment. Review shipping settings.');
     }
   };
 
@@ -118,44 +118,44 @@ export default function AdminOrders() {
   };
 
   return (
-    <div className="space-y-6 text-[#2b211d]" dir="rtl">
+    <div className="space-y-6 text-[#2b211d]" dir="ltr">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#9a8461]">NEXORA ORDERS</p>
-          <h1 className="mt-2 text-2xl font-black text-[#2b211d]">إدارة الطلبات</h1>
-          <p className="mt-1 text-sm text-[#8a8175]">{orders.length} طلب · تأكيد الدفع · تعديل الطلبات · الشحن والمتابعة</p>
+          <h1 className="mt-2 text-2xl font-black text-[#2b211d]">Orders Management</h1>
+          <p className="mt-1 text-sm text-[#8a8175]">{orders.length} orders · payment confirmation · order editing · shipping follow-up</p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">
           <div className="relative">
-            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a8461]" />
-            <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="بحث برقم الطلب / العميل / الهاتف..." className="w-full rounded-2xl border border-[#e6ded1] bg-white py-3 pl-4 pr-10 text-xs text-[#2b211d] outline-none transition-colors focus:border-[#b99a62] sm:w-80" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a8461]" />
+            <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search order, customer, or phone..." className="w-full rounded-2xl border border-[#e6ded1] bg-white py-3 pl-10 pr-4 text-xs text-[#2b211d] outline-none transition-colors focus:border-[#b99a62] sm:w-80" />
           </div>
           <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="rounded-2xl border border-[#e6ded1] bg-white px-3 py-3 text-xs text-[#5f584f] outline-none">
-            <option value="">كل حالات الطلب</option>
+            <option value="">All order statuses</option>
             {ORDER_STATUSES.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}
           </select>
           <select value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)} className="rounded-2xl border border-[#e6ded1] bg-white px-3 py-3 text-xs text-[#5f584f] outline-none">
-            <option value="">كل طرق الدفع</option>
-            <option value="cod">الدفع عند الاستلام</option>
+            <option value="">All payment methods</option>
+            <option value="cod">Cash on Delivery</option>
             <option value="instapay">Instapay</option>
             <option value="vodafone_cash">Vodafone Cash</option>
             <option value="valu">ValU</option>
             {PAYMENT_STATUSES.map((status) => <option key={status} value={status}>{paymentStatusLabel(status)}</option>)}
           </select>
           <button onClick={exportOrdersCsv} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#e6ded1] bg-white px-4 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#5f584f] hover:border-[#b99a62]"><Download className="h-3.5 w-3.5" /> CSV</button>
-          <button onClick={loadOrders} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#2b211d] px-4 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-white"><RefreshCw className="h-3.5 w-3.5" /> تحديث</button>
+          <button onClick={loadOrders} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#2b211d] px-4 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-white"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button>
         </div>
       </div>
 
       <div className="grid gap-3 md:grid-cols-5">
         {[
-          { label: 'طلبات جديدة', value: queues.newOrders, helper: 'تحتاج تأكيد سريع', action: () => setStatusFilter('pending') },
-          { label: 'في انتظار إثبات الدفع', value: queues.waitingTransfer, helper: 'Instapay / Vodafone', action: () => setPaymentFilter('waiting_transfer') },
-          { label: 'متابعة ValU', value: queues.valuFollowup, helper: 'تأكيد التقسيط', action: () => setPaymentFilter('valu') },
-          { label: 'جاهز للشحن', value: queues.readyToShip, helper: 'إنشاء الشحنة', action: () => setStatusFilter('confirmed') },
-          { label: 'طلبات متأخرة', value: queues.lateOrders, helper: 'تحتاج مراجعة', action: () => setStatusFilter('') },
+          { label: 'New Orders', value: queues.newOrders, helper: 'Need quick confirmation', action: () => setStatusFilter('pending') },
+          { label: 'Waiting Payment Proof', value: queues.waitingTransfer, helper: 'Instapay / Vodafone', action: () => setPaymentFilter('waiting_transfer') },
+          { label: 'ValU Follow-up', value: queues.valuFollowup, helper: 'Installment confirmation', action: () => setPaymentFilter('valu') },
+          { label: 'Ready to Ship', value: queues.readyToShip, helper: 'Create shipment', action: () => setStatusFilter('confirmed') },
+          { label: 'Delayed Orders', value: queues.lateOrders, helper: 'Needs review', action: () => setStatusFilter('') },
         ].map((card) => (
-          <button key={card.label} type="button" onClick={card.action} className="rounded-[26px] border border-[#e6ded1] bg-white p-4 text-right shadow-[0_14px_38px_rgba(43,33,29,0.05)] transition hover:-translate-y-0.5 hover:border-[#b99a62]">
+          <button key={card.label} type="button" onClick={card.action} className="rounded-[26px] border border-[#e6ded1] bg-white p-4 text-left shadow-[0_14px_38px_rgba(43,33,29,0.05)] transition hover:-translate-y-0.5 hover:border-[#b99a62]">
             <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#9a8461]">{card.label}</span>
             <span className="mt-3 block text-2xl font-black text-[#2b211d]">{card.value}</span>
             <span className="mt-1 block text-[11px] leading-5 text-[#8a8175]">{card.helper}</span>
@@ -164,23 +164,23 @@ export default function AdminOrders() {
       </div>
 
       <div className="overflow-x-auto rounded-[28px] border border-[#e6ded1] bg-white shadow-[0_18px_50px_rgba(43,33,29,0.06)]">
-        <table className="w-full min-w-[1060px] text-right">
+        <table className="w-full min-w-[1060px] text-left">
           <thead>
             <tr className="border-b border-[#efe8dc] bg-[#faf7f1]">
-              {['رقم الطلب', 'المنتجات', 'العميل', 'الإجمالي', 'الدفع', 'الحالة', 'الشحن', 'الإجراءات'].map((heading) => <th key={heading} className="p-4 text-[10px] font-black uppercase tracking-wider text-[#9a8461]">{heading}</th>)}
+              {['Order', 'Items', 'Customer', 'Total', 'Payment', 'Status', 'Shipping', 'Actions'].map((heading) => <th key={heading} className="p-4 text-[10px] font-black uppercase tracking-wider text-[#9a8461]">{heading}</th>)}
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={8} className="p-8 text-center text-xs text-[#8a8175]">جاري تحميل الطلبات...</td></tr>
+              <tr><td colSpan={8} className="p-8 text-center text-xs text-[#8a8175]">Loading orders...</td></tr>
             ) : filteredOrders.length ? filteredOrders.map((order) => (
               <tr key={order.id} className="border-b border-[#efe8dc]/80 hover:bg-[#faf7f1]">
                 <td className="p-4">
                   <p className="text-xs font-black text-[#b99a62]">{order.orderNumber}</p>
-                  <p className="mt-1 text-[10px] text-[#8a8175]">{formatTimestamp(order.createdAt, 'ar-EG')}</p>
+                  <p className="mt-1 text-[10px] text-[#8a8175]">{formatTimestamp(order.createdAt, 'en-EG')}</p>
                 </td>
                 <td className="p-4">
-                  <div className="flex justify-end -space-x-2 space-x-reverse">
+                  <div className="flex justify-start -space-x-2">
                     {order.items.slice(0, 4).map((item, index) => <img key={`${order.id}-${item.productId}-${index}`} src={item.image || '/assets/nexora-logo.png'} alt={item.name} className="h-10 w-10 rounded-full border-2 border-white bg-[#faf7f1] object-cover" />)}
                     {order.items.length > 4 && <span className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-[#efe8dc] text-[10px] font-bold text-[#5f584f]">+{order.items.length - 4}</span>}
                   </div>
@@ -195,20 +195,20 @@ export default function AdminOrders() {
                   <p className="mt-1 text-[10px] text-[#8a8175]">{paymentStatusLabel(order.paymentStatus)}</p>
                 </td>
                 <td className="p-4"><span className={`status-badge ${getStatusColor(order.status)} text-[9px]`}>{statusLabel(order.status)}</span></td>
-                <td className="p-4 text-[10px] text-[#8a8175]">{order.shippingStatus || 'لم تُنشأ'}</td>
+                <td className="p-4 text-[10px] text-[#8a8175]">{order.shippingStatus || 'Not created'}</td>
                 <td className="p-4">
-                  <div className="flex flex-wrap justify-end gap-2">
-                    <Link to={`/nexora-admin/orders/${order.id}`} className="inline-flex items-center gap-2 rounded-full border border-[#e6ded1] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5f584f] hover:border-[#b99a62] hover:text-[#b99a62]"><Eye className="h-3.5 w-3.5" /> فتح</Link>
-                    <Link to={`/nexora-admin/orders/${order.id}`} className="inline-flex items-center gap-2 rounded-full border border-[#d7b98e] bg-[#fbf7ef] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#8a6c3d]"><Pencil className="h-3.5 w-3.5" /> تعديل</Link>
-                    <button onClick={() => void openWhatsApp(order)} className="inline-flex items-center gap-2 rounded-full border border-[#e6ded1] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5f584f]"><MessageCircle className="h-3.5 w-3.5" /> واتساب</button>
-                    {!['paid', 'collected'].includes(String(order.paymentStatus)) && <button onClick={() => void markPaid(order.id)} className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700"><CheckCircle className="h-3.5 w-3.5" /> دفع</button>}
-                    {!order.trackingNumber && <button onClick={() => void createShipment(order.id)} className="inline-flex items-center gap-2 rounded-full border border-[#e6ded1] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5f584f]"><Ship className="h-3.5 w-3.5" /> شحن</button>}
+                  <div className="flex flex-wrap justify-start gap-2">
+                    <Link to={`/nexora-admin/orders/${order.id}`} className="inline-flex items-center gap-2 rounded-full border border-[#e6ded1] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5f584f] hover:border-[#b99a62] hover:text-[#b99a62]"><Eye className="h-3.5 w-3.5" /> Open</Link>
+                    <Link to={`/nexora-admin/orders/${order.id}`} className="inline-flex items-center gap-2 rounded-full border border-[#d7b98e] bg-[#fbf7ef] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#8a6c3d]"><Pencil className="h-3.5 w-3.5" /> Edit</Link>
+                    <button onClick={() => void openWhatsApp(order)} className="inline-flex items-center gap-2 rounded-full border border-[#e6ded1] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5f584f]"><MessageCircle className="h-3.5 w-3.5" /> WhatsApp</button>
+                    {!['paid', 'collected'].includes(String(order.paymentStatus)) && <button onClick={() => void markPaid(order.id)} className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700"><CheckCircle className="h-3.5 w-3.5" /> Paid</button>}
+                    {!order.trackingNumber && <button onClick={() => void createShipment(order.id)} className="inline-flex items-center gap-2 rounded-full border border-[#e6ded1] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5f584f]"><Ship className="h-3.5 w-3.5" /> Ship</button>}
                     {order.trackingNumber && <span className="inline-flex items-center gap-1 rounded-full border border-[#e6ded1] bg-white px-3 py-2 text-[10px] font-bold text-[#5f584f]"><Truck className="h-3.5 w-3.5" /> {order.trackingNumber}</span>}
                   </div>
                 </td>
               </tr>
             )) : (
-              <tr><td colSpan={8} className="p-8 text-center text-xs text-[#8a8175]">لا توجد طلبات مطابقة.</td></tr>
+              <tr><td colSpan={8} className="p-8 text-center text-xs text-[#8a8175]">No matching orders.</td></tr>
             )}
           </tbody>
         </table>

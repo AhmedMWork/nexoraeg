@@ -6,39 +6,46 @@ import { AdminPageHeader, AdminStatCard, AdminTabBar } from '@/components/admin/
 import { clearStudioToken } from '@/lib/supabase/client';
 import { DEFAULT_PAYMENT_SETTINGS, normalizePaymentSettings, type PaymentSettings } from '@/lib/payments';
 
-const tabs = ['جاهزية المتجر', 'الدفع', 'الربط', 'الخصوصية', 'استعادة'];
+const tabs = ['Store Readiness', 'Payments', 'Integrations', 'Privacy', 'Recovery'];
 
 function statusLabel(status?: string) {
-  if (status === 'ok') return 'جاهز';
-  if (status === 'warn') return 'تنبيه';
-  return 'يحتاج إصلاح';
+  if (status === 'ok') return 'Ready';
+  if (status === 'warn') return 'Warning';
+  return 'Needs Fix';
+}
+
+function cleanTechnicalText(value: unknown) {
+  return String(value || '')
+    .replace(/environment|env/gi, 'connection settings')
+    .replace(/VITE_[A-Z0-9_]+/g, 'connection setting')
+    .replace(/SUPABASE_[A-Z0-9_]+/g, 'Supabase setting');
 }
 
 function friendlyCheckLabel(label?: string) {
-  const raw = String(label || 'فحص النظام');
+  const raw = String(label || 'System check');
   const map: Record<string, string> = {
-    'Health check function': 'فحص حالة النظام',
-    'Supabase URL': 'اتصال قاعدة البيانات',
-    'Database tables': 'جداول قاعدة البيانات',
-    'Shipping settings': 'إعدادات الشحن',
-    'Studio token': 'جلسة لوحة التحكم',
-    'Edge Functions': 'دوال التشغيل',
+    'Health check function': 'System health check',
+    'Supabase URL': 'Database connection',
+    'Database tables': 'Database tables',
+    'Shipping settings': 'Shipping settings',
+    'Studio token': 'Admin session',
+    'Edge Functions': 'Edge functions',
   };
-  return map[raw] || raw.replace(/environment|env/gi, 'إعدادات الربط');
+  return map[raw] || cleanTechnicalText(raw);
 }
 
 function CheckRow({ check }: { check: any }) {
   const Icon = check.status === 'ok' ? CheckCircle2 : check.status === 'warn' ? AlertTriangle : XCircle;
   const cls = check.status === 'ok' ? 'text-emerald-600' : check.status === 'warn' ? 'text-amber-600' : 'text-red-600';
   return (
-    <div className="rounded-[22px] border border-[#e6ded1] bg-white p-4">
+    <div className="rounded-[22px] border border-[#e6ded1] bg-white p-4 transition hover:-translate-y-0.5 hover:shadow-[0_16px_42px_rgba(43,33,29,.07)]">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="flex gap-3">
           <Icon className={`mt-0.5 h-5 w-5 ${cls}`} />
           <div>
             <h3 className="text-sm font-semibold text-[#2b211d]">{friendlyCheckLabel(check.label)}</h3>
-            <p className="mt-1 text-xs leading-6 text-[#8a8175]">{String(check.message || '').replace(/environment|env/gi, 'إعدادات الربط')}</p>
-            {check.fix && <p className="mt-2 rounded-2xl border border-[#d7b98e]/30 bg-[#fbf7ef] p-3 text-xs leading-6 text-[#8a6c3d]">الإجراء المقترح: {String(check.fix).replace(/environment|env/gi, 'إعدادات الربط')}</p>}
+            <p className="mt-1 text-xs leading-6 text-[#8a8175]">{cleanTechnicalText(check.message)}</p>
+            {check.fix && <p className="mt-2 rounded-2xl border border-[#d7b98e]/30 bg-[#fbf7ef] p-3 text-xs leading-6 text-[#8a6c3d]">Suggested action: {cleanTechnicalText(check.fix)}</p>}
           </div>
         </div>
         <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${check.status === 'ok' ? 'border-emerald-400/40 bg-emerald-50 text-emerald-700' : check.status === 'warn' ? 'border-amber-400/40 bg-amber-50 text-amber-700' : 'border-red-400/40 bg-red-50 text-red-700'}`}>{statusLabel(check.status)}</span>
@@ -65,7 +72,7 @@ export default function AdminControls() {
       setMetaPixelEnabled(Boolean(settings?.metaPixelEnabled || settings?.paymentSettings?.metaPixelEnabled));
       setPaymentSettings(normalizePaymentSettings(settings?.paymentSettings as Record<string, unknown> | undefined));
     } catch (error) {
-      setHealth({ score: 0, failed: 1, warnings: 0, checks: [{ key: 'health', label: 'فحص حالة النظام', status: 'fail', message: error instanceof Error ? error.message : 'تعذر تشغيل فحص الجاهزية.', fix: 'أعد نشر دوال لوحة التحكم ثم سجّل الدخول مرة أخرى.' }] });
+      setHealth({ score: 0, failed: 1, warnings: 0, checks: [{ key: 'health', label: 'System health check', status: 'fail', message: error instanceof Error ? error.message : 'Could not run readiness check.', fix: 'Redeploy admin functions, then sign in again.' }] });
     } finally {
       setLoading(false);
     }
@@ -82,7 +89,7 @@ export default function AdminControls() {
 
   const copyCommand = async (command: string) => {
     await navigator.clipboard.writeText(command);
-    toast.success('تم نسخ الأمر');
+    toast.success('Command copied');
   };
 
   const saveMetaPixel = async () => {
@@ -93,9 +100,9 @@ export default function AdminControls() {
         metaPixelId: metaPixelId.trim(),
         paymentSettings: { metaPixelEnabled, metaPixelId: metaPixelId.trim() },
       } as any);
-      toast.success('تم حفظ إعدادات Meta Pixel');
+      toast.success('Meta Pixel settings saved');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'تعذر حفظ إعدادات Meta Pixel');
+      toast.error(error instanceof Error ? error.message : 'Could not save Meta Pixel settings');
     }
   };
 
@@ -107,56 +114,56 @@ export default function AdminControls() {
     try {
       const { updateSiteSettings } = await import('@/lib/supabase/db');
       await updateSiteSettings({ paymentSettings } as any);
-      toast.success('تم حفظ إعدادات الدفع');
+      toast.success('Payment settings saved');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'تعذر حفظ إعدادات الدفع');
+      toast.error(error instanceof Error ? error.message : 'Could not save payment settings');
     }
   };
 
   const clearSession = () => {
     clearStudioToken();
-    toast.success('تم مسح جلسة لوحة التحكم. سيتم إعادة التحميل...');
+    toast.success('Admin session cleared. The page will reload.');
     window.location.reload();
   };
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="space-y-6" dir="ltr">
       <AdminPageHeader
-        title="جاهزية المتجر والتحكم"
-        description="مركز مبسط لمراجعة حالة المتجر، طرق الدفع، الربط، الخصوصية، واستعادة الجلسة بدون عرض مفاتيح أو تفاصيل تقنية حساسة."
-        actions={<button onClick={load} className="nexora-button flex items-center gap-2" disabled={loading}><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> فحص الآن</button>}
+        title="Store Readiness & Controls"
+        description="A simplified command center for store readiness, payments, integrations, privacy, and session recovery without exposing technical environment keys."
+        actions={<button onClick={load} className="nexora-button flex items-center gap-2" disabled={loading}><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Run Check</button>}
       />
 
       <AdminTabBar tabs={tabs} active={active} onChange={setActive} />
 
-      {active === 'جاهزية المتجر' && (
+      {active === 'Store Readiness' && (
         <div className="space-y-4">
           <div className="grid gap-4 md:grid-cols-4">
-            <AdminStatCard label="نسبة الجاهزية" value={`${summary.score}%`} helper="تقييم عام لحالة المتجر والطلبات والشحن." tone={summary.failed ? 'danger' : summary.warnings ? 'warn' : 'good'} />
-            <AdminStatCard label="جاهز" value={summary.ok} helper="بنود تعمل بشكل صحيح." tone="good" />
-            <AdminStatCard label="تنبيهات" value={summary.warnings} helper="ليست مانعة لكن الأفضل مراجعتها." tone={summary.warnings ? 'warn' : 'good'} />
-            <AdminStatCard label="مشاكل" value={summary.failed} helper="تحتاج تدخل قبل الاعتماد على التشغيل." tone={summary.failed ? 'danger' : 'good'} />
+            <AdminStatCard label="Readiness Score" value={`${summary.score}%`} helper="Overall store, orders, payments, and shipping readiness." tone={summary.failed ? 'danger' : summary.warnings ? 'warn' : 'good'} />
+            <AdminStatCard label="Ready" value={summary.ok} helper="Checks working correctly." tone="good" />
+            <AdminStatCard label="Warnings" value={summary.warnings} helper="Not blocking, but worth reviewing." tone={summary.warnings ? 'warn' : 'good'} />
+            <AdminStatCard label="Issues" value={summary.failed} helper="Needs attention before relying on operations." tone={summary.failed ? 'danger' : 'good'} />
           </div>
           <div className="studio-card p-5">
-            <div className="mb-4 flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-[#9a8461]" /><h2 className="text-base font-semibold text-[#2b211d]">فحوصات جاهزية المتجر</h2></div>
+            <div className="mb-4 flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-[#9a8461]" /><h2 className="text-base font-semibold text-[#2b211d]">Store readiness checks</h2></div>
             <div className="space-y-3">{(health?.checks || []).map((check: any) => <CheckRow key={check.key} check={check} />)}</div>
           </div>
         </div>
       )}
 
-      {active === 'الدفع' && (
+      {active === 'Payments' && (
         <div className="space-y-4">
           <div className="studio-card p-5">
             <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
               <div>
-                <div className="mb-2 flex items-center gap-2"><CreditCard className="h-5 w-5 text-[#9a8461]" /><h2 className="font-semibold text-[#2b211d]">طرق الدفع</h2></div>
-                <p className="text-sm leading-7 text-[#8a8175]">تحكم في طرق الدفع التي تظهر للعميل وتعليمات التحويل اليدوي داخل صفحة الدفع.</p>
+                <div className="mb-2 flex items-center gap-2"><CreditCard className="h-5 w-5 text-[#9a8461]" /><h2 className="font-semibold text-[#2b211d]">Payment methods</h2></div>
+                <p className="text-sm leading-7 text-[#8a8175]">Control which payment methods appear at checkout and keep manual transfer instructions clear for customers.</p>
               </div>
-              <button onClick={savePaymentSettings} className="nexora-button">حفظ إعدادات الدفع</button>
+              <button onClick={savePaymentSettings} className="nexora-button">Save Payment Settings</button>
             </div>
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
               {[
-                ['codEnabled', 'الدفع عند الاستلام'],
+                ['codEnabled', 'Cash on Delivery'],
                 ['instapayEnabled', 'Instapay'],
                 ['vodafoneCashEnabled', 'Vodafone Cash'],
                 ['valuEnabled', 'ValU'],
@@ -168,62 +175,62 @@ export default function AdminControls() {
               ))}
             </div>
             <div className="mt-4 grid gap-4 md:grid-cols-3">
-              <label className="text-xs font-semibold text-[#5f584f]">رقم التحويل<input value={paymentSettings.transferNumber} onChange={(event) => updatePaymentField('transferNumber', event.target.value)} className="studio-input mt-2" dir="ltr" /></label>
-              <label className="text-xs font-semibold text-[#5f584f]">رقم تأكيد الدفع<input value={paymentSettings.confirmationPhone} onChange={(event) => updatePaymentField('confirmationPhone', event.target.value)} className="studio-input mt-2" dir="ltr" /></label>
-              <label className="text-xs font-semibold text-[#5f584f]">رقم واتساب التأكيد<input value={paymentSettings.whatsappConfirmationNumber} onChange={(event) => updatePaymentField('whatsappConfirmationNumber', event.target.value)} className="studio-input mt-2" dir="ltr" /></label>
+              <label className="text-xs font-semibold text-[#5f584f]">Transfer number<input value={paymentSettings.transferNumber} onChange={(event) => updatePaymentField('transferNumber', event.target.value)} className="studio-input mt-2" dir="ltr" /></label>
+              <label className="text-xs font-semibold text-[#5f584f]">Payment confirmation phone<input value={paymentSettings.confirmationPhone} onChange={(event) => updatePaymentField('confirmationPhone', event.target.value)} className="studio-input mt-2" dir="ltr" /></label>
+              <label className="text-xs font-semibold text-[#5f584f]">WhatsApp confirmation number<input value={paymentSettings.whatsappConfirmationNumber} onChange={(event) => updatePaymentField('whatsappConfirmationNumber', event.target.value)} className="studio-input mt-2" dir="ltr" /></label>
             </div>
             <div className="mt-4 grid gap-4 md:grid-cols-3">
-              <label className="flex items-center gap-2 rounded-2xl border border-[#e6ded1] bg-white p-3 text-xs text-[#5f584f]"><input type="checkbox" checked={paymentSettings.codFeeEnabled} onChange={(event) => updatePaymentField('codFeeEnabled', event.target.checked)} /> إضافة رسوم COD فقط لطلبات الدفع عند الاستلام</label>
-              <label className="flex items-center gap-2 rounded-2xl border border-[#e6ded1] bg-white p-3 text-xs text-[#5f584f]"><input type="checkbox" checked={paymentSettings.requireScreenshotInstapay} onChange={(event) => updatePaymentField('requireScreenshotInstapay', event.target.checked)} /> Instapay يحتاج Screenshot</label>
-              <label className="flex items-center gap-2 rounded-2xl border border-[#e6ded1] bg-white p-3 text-xs text-[#5f584f]"><input type="checkbox" checked={paymentSettings.requireScreenshotVodafone} onChange={(event) => updatePaymentField('requireScreenshotVodafone', event.target.checked)} /> Vodafone Cash يحتاج Screenshot</label>
+              <label className="flex items-center gap-2 rounded-2xl border border-[#e6ded1] bg-white p-3 text-xs text-[#5f584f]"><input type="checkbox" checked={paymentSettings.codFeeEnabled} onChange={(event) => updatePaymentField('codFeeEnabled', event.target.checked)} /> Add COD fee only to COD orders</label>
+              <label className="flex items-center gap-2 rounded-2xl border border-[#e6ded1] bg-white p-3 text-xs text-[#5f584f]"><input type="checkbox" checked={paymentSettings.requireScreenshotInstapay} onChange={(event) => updatePaymentField('requireScreenshotInstapay', event.target.checked)} /> Instapay requires screenshot</label>
+              <label className="flex items-center gap-2 rounded-2xl border border-[#e6ded1] bg-white p-3 text-xs text-[#5f584f]"><input type="checkbox" checked={paymentSettings.requireScreenshotVodafone} onChange={(event) => updatePaymentField('requireScreenshotVodafone', event.target.checked)} /> Vodafone Cash requires screenshot</label>
             </div>
           </div>
           <div className="grid gap-4 lg:grid-cols-2">
-            <label className="studio-card p-5 text-xs font-semibold text-[#5f584f]">تعليمات الدفع عند الاستلام<textarea value={paymentSettings.codInstructionsAr} onChange={(event) => updatePaymentField('codInstructionsAr', event.target.value)} className="studio-input mt-2 min-h-28" /></label>
-            <label className="studio-card p-5 text-xs font-semibold text-[#5f584f]">تعليمات Instapay<textarea value={paymentSettings.instapayInstructionsAr} onChange={(event) => updatePaymentField('instapayInstructionsAr', event.target.value)} className="studio-input mt-2 min-h-28" /></label>
-            <label className="studio-card p-5 text-xs font-semibold text-[#5f584f]">تعليمات Vodafone Cash<textarea value={paymentSettings.vodafoneInstructionsAr} onChange={(event) => updatePaymentField('vodafoneInstructionsAr', event.target.value)} className="studio-input mt-2 min-h-28" /></label>
-            <label className="studio-card p-5 text-xs font-semibold text-[#5f584f]">تعليمات ValU<textarea value={paymentSettings.valuInstructionsAr} onChange={(event) => updatePaymentField('valuInstructionsAr', event.target.value)} className="studio-input mt-2 min-h-28" /></label>
+            <label className="studio-card p-5 text-xs font-semibold text-[#5f584f]">COD instructions<textarea value={paymentSettings.codInstructionsAr} onChange={(event) => updatePaymentField('codInstructionsAr', event.target.value)} className="studio-input mt-2 min-h-28" /></label>
+            <label className="studio-card p-5 text-xs font-semibold text-[#5f584f]">Instapay instructions<textarea value={paymentSettings.instapayInstructionsAr} onChange={(event) => updatePaymentField('instapayInstructionsAr', event.target.value)} className="studio-input mt-2 min-h-28" /></label>
+            <label className="studio-card p-5 text-xs font-semibold text-[#5f584f]">Vodafone Cash instructions<textarea value={paymentSettings.vodafoneInstructionsAr} onChange={(event) => updatePaymentField('vodafoneInstructionsAr', event.target.value)} className="studio-input mt-2 min-h-28" /></label>
+            <label className="studio-card p-5 text-xs font-semibold text-[#5f584f]">ValU instructions<textarea value={paymentSettings.valuInstructionsAr} onChange={(event) => updatePaymentField('valuInstructionsAr', event.target.value)} className="studio-input mt-2 min-h-28" /></label>
           </div>
         </div>
       )}
 
-      {active === 'الربط' && (
+      {active === 'Integrations' && (
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="studio-card p-5">
             <div className="mb-3 flex items-center gap-2"><Truck className="h-5 w-5 text-[#9a8461]" /><h2 className="font-semibold text-[#2b211d]">ShipBlu</h2></div>
-            <p className="text-sm leading-7 text-[#8a8175]">يتم إنشاء الشحنات فقط بعد تفعيل الربط وإضافة المناطق المناسبة. لا تظهر هنا أي مفاتيح سرية.</p>
-            <button onClick={() => copyCommand('supabase functions deploy')} className="nexora-button mt-4 flex items-center gap-2"><Copy className="h-4 w-4" /> نسخ أمر نشر الدوال</button>
+            <p className="text-sm leading-7 text-[#8a8175]">Create shipments only after the courier connection and shipping zones are ready. Secret keys are not displayed here.</p>
+            <button onClick={() => copyCommand('supabase functions deploy')} className="nexora-button mt-4 flex items-center gap-2"><Copy className="h-4 w-4" /> Copy functions deploy command</button>
           </div>
           <div className="studio-card p-5">
             <div className="mb-3 flex items-center gap-2"><PlugZap className="h-5 w-5 text-[#9a8461]" /><h2 className="font-semibold text-[#2b211d]">Meta Pixel</h2></div>
-            <p className="text-sm leading-7 text-[#8a8175]">فعّل التتبع فقط بعد مراجعة سياسة الخصوصية وتجهيز الحملات الإعلانية.</p>
+            <p className="text-sm leading-7 text-[#8a8175]">Enable tracking only after privacy copy is ready and campaigns are prepared.</p>
             <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-center">
               <input value={metaPixelId} onChange={(event) => setMetaPixelId(event.target.value)} placeholder="Meta Pixel ID" className="studio-input" dir="ltr" />
-              <label className="flex items-center gap-2 text-sm text-[#2b211d]"><input type="checkbox" checked={metaPixelEnabled} onChange={(event) => setMetaPixelEnabled(event.target.checked)} /> مفعل</label>
-              <button onClick={saveMetaPixel} className="nexora-button">حفظ Pixel</button>
+              <label className="flex items-center gap-2 text-sm text-[#2b211d]"><input type="checkbox" checked={metaPixelEnabled} onChange={(event) => setMetaPixelEnabled(event.target.checked)} /> Enabled</label>
+              <button onClick={saveMetaPixel} className="nexora-button">Save Pixel</button>
             </div>
           </div>
         </div>
       )}
 
-      {active === 'الخصوصية' && (
+      {active === 'Privacy' && (
         <div className="studio-card p-5">
-          <h2 className="font-semibold text-[#2b211d]">الخصوصية والتتبع</h2>
-          <p className="mt-2 text-sm leading-7 text-[#8a8175]">حافظ على شفافية التتبع ولا تفعّل أي أدوات إعلانية إلا بعد تجهيز نصوص الخصوصية المناسبة.</p>
+          <h2 className="font-semibold text-[#2b211d]">Privacy & tracking</h2>
+          <p className="mt-2 text-sm leading-7 text-[#8a8175]">Keep tracking transparent and only enable advertising tools after the privacy copy is ready.</p>
         </div>
       )}
 
-      {active === 'استعادة' && (
+      {active === 'Recovery' && (
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="studio-card p-5">
-            <div className="mb-3 flex items-center gap-2"><Trash2 className="h-5 w-5 text-amber-600" /><h2 className="font-semibold text-[#2b211d]">مسح جلسة لوحة التحكم</h2></div>
-            <p className="text-sm leading-7 text-[#8a8175]">استخدم هذا الإجراء لو انتهت الجلسة أو ظهرت مشكلة بعد إعادة النشر.</p>
-            <button onClick={clearSession} className="nexora-button mt-4">مسح الجلسة وإعادة التحميل</button>
+            <div className="mb-3 flex items-center gap-2"><Trash2 className="h-5 w-5 text-amber-600" /><h2 className="font-semibold text-[#2b211d]">Clear admin session</h2></div>
+            <p className="text-sm leading-7 text-[#8a8175]">Use this if the session expires or the admin panel behaves unexpectedly after a redeploy.</p>
+            <button onClick={clearSession} className="nexora-button mt-4">Clear session and reload</button>
           </div>
           <div className="studio-card p-5">
-            <div className="mb-3 flex items-center gap-2"><Database className="h-5 w-5 text-[#9a8461]" /><h2 className="font-semibold text-[#2b211d]">استعادة قاعدة البيانات</h2></div>
-            <p className="text-sm leading-7 text-[#8a8175]">إذا أظهر الفحص نقصًا في الجداول أو الدوال، ادفع التحديثات مرة أخرى من جهاز التطوير.</p>
-            <button onClick={() => copyCommand('supabase db push')} className="nexora-button mt-4 flex items-center gap-2"><Copy className="h-4 w-4" /> نسخ أمر تحديث القاعدة</button>
+            <div className="mb-3 flex items-center gap-2"><Database className="h-5 w-5 text-[#9a8461]" /><h2 className="font-semibold text-[#2b211d]">Database update</h2></div>
+            <p className="text-sm leading-7 text-[#8a8175]">If readiness checks show missing tables or functions, push the latest database updates from your development machine.</p>
+            <button onClick={() => copyCommand('supabase db push')} className="nexora-button mt-4 flex items-center gap-2"><Copy className="h-4 w-4" /> Copy database update command</button>
           </div>
         </div>
       )}
