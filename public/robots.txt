@@ -4,4 +4,4 @@ Disallow: /nexora-admin/
 Disallow: /studio/
 Disallow: /admin/
 
-Sitemap: https://nexoraeg.vercel.app/sitemap.xml
+Sitemap: https://example.com/sitemap.xml
