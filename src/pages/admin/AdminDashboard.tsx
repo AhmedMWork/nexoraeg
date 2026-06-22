@@ -123,22 +123,22 @@ export default function AdminDashboard() {
         <section className="studio-card p-5">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-base font-semibold text-[#231916]">Setup readiness</h2>
+              <h2 className="text-base font-semibold text-[#231916]">الجاهزية readiness</h2>
               <p className="mt-1 text-xs leading-6 text-[#735B4F]">Technical checks stay separate from daily selling, but remain one click away.</p>
             </div>
             <ShieldCheck className="h-5 w-5 text-[#9D7159]" />
           </div>
           <div className="rounded-[24px] border border-[#E4D6C5] bg-[#FAF5EE] p-4">
             <p className="text-sm font-semibold text-[#231916]">
-              {metrics.healthFailed ? `${metrics.healthFailed} setup issue${metrics.healthFailed === 1 ? '' : 's'} found` : 'Setup looks ready'}
+              {metrics.healthFailed ? `${metrics.healthFailed} مشكلة جاهزية${metrics.healthFailed === 1 ? '' : 's'} found` : 'الجاهزية looks ready'}
             </p>
             <p className="mt-2 text-xs leading-6 text-[#735B4F]">
               {metrics.healthFailed || metrics.healthWarnings
-                ? 'Open Setup & Recovery only when checkout, shipping or admin loading needs diagnosis.'
+                ? 'Open جاهزية المتجر only when checkout, shipping or admin loading needs diagnosis.'
                 : 'You can focus on orders, products and customers. Technical status is tucked away.'}
             </p>
             <Link to="/nexora-admin/controls" className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#D6B58F]/50 bg-[#FFFDF8] px-4 py-2 text-xs font-bold text-[#8C634B] hover:bg-[#F2E7D8]">
-              Open Setup & Recovery <ArrowRight className="h-3.5 w-3.5" />
+              Open جاهزية المتجر <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 text-xs">

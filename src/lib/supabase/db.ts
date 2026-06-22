@@ -518,6 +518,25 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus, me
   await invokeStudioFunction('studio-orders', studioHeadersPayload('update-status', { orderId, status, message, updatedBy }));
 }
 
+
+export type AdminOrderUpdatePayload = {
+  orderId: string;
+  customer?: Partial<Order['customer']>;
+  items?: Order['items'];
+  paymentMethod?: Order['paymentMethod'];
+  paymentStatus?: Order['paymentStatus'];
+  shippingFee?: number;
+  codFee?: number;
+  discount?: number;
+  couponCode?: string;
+  notes?: string;
+  reason?: string;
+};
+
+export async function updateOrderAdmin(payload: AdminOrderUpdatePayload): Promise<void> {
+  await invokeStudioFunction('studio-orders', studioHeadersPayload('update-order-admin', payload));
+}
+
 // Coupons
 export async function getCoupons(): Promise<Coupon[]> {
   const data = await invokeStudioFunction<Record<string, unknown>, { coupons: any[] }>('studio-coupons', { action: 'list' });

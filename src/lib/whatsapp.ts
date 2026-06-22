@@ -20,16 +20,16 @@ export function buildWhatsAppUrl(phone: string, message?: string): string {
   return `https://wa.me/${normalized}${encoded}`;
 }
 
-export function buildCheckoutWhatsAppMessage(orderNumber: string, method: PaymentMethod): string {
-  if (method === 'instapay') {
-    return `أهلاً NEXORA، تم تسجيل طلبي رقم ${orderNumber}. طريقة الدفع: Instapay. سأرسل Screenshot التحويل لتأكيد الطلب.`;
+export function buildCheckoutWhatsAppMessage(orderNumber: string, method: PaymentMethod, locale: 'ar' | 'en' = 'ar'): string {
+  if (locale === 'en') {
+    if (method === 'instapay') return `Hello NEXORA, my order ${orderNumber} has been placed. Payment method: Instapay. I will send the transfer screenshot to confirm payment.`;
+    if (method === 'vodafone_cash') return `Hello NEXORA, my order ${orderNumber} has been placed. Payment method: Vodafone Cash. I will send the transfer screenshot to confirm payment.`;
+    if (method === 'valu') return `Hello NEXORA, my order ${orderNumber} has been placed. Payment method: ValU Installments. Please contact me to confirm installment details.`;
+    return `Hello NEXORA, my order ${orderNumber} has been placed. Payment method: Cash on Delivery. Please confirm the order and delivery time.`;
   }
-  if (method === 'vodafone_cash') {
-    return `أهلاً NEXORA، تم تسجيل طلبي رقم ${orderNumber}. طريقة الدفع: Vodafone Cash. سأرسل Screenshot التحويل لتأكيد الطلب.`;
-  }
-  if (method === 'valu') {
-    return `أهلاً NEXORA، تم تسجيل طلبي رقم ${orderNumber}. طريقة الدفع: ValU Installments. برجاء التواصل معي لتأكيد تفاصيل التقسيط.`;
-  }
+  if (method === 'instapay') return `أهلاً NEXORA، تم تسجيل طلبي رقم ${orderNumber}. طريقة الدفع: Instapay. سأرسل Screenshot التحويل لتأكيد الطلب.`;
+  if (method === 'vodafone_cash') return `أهلاً NEXORA، تم تسجيل طلبي رقم ${orderNumber}. طريقة الدفع: Vodafone Cash. سأرسل Screenshot التحويل لتأكيد الطلب.`;
+  if (method === 'valu') return `أهلاً NEXORA، تم تسجيل طلبي رقم ${orderNumber}. طريقة الدفع: ValU Installments. برجاء التواصل معي لتأكيد تفاصيل التقسيط.`;
   return `أهلاً NEXORA، تم تسجيل طلبي رقم ${orderNumber}. طريقة الدفع: الدفع عند الاستلام. برجاء تأكيد الطلب وموعد التوصيل.`;
 }
 

@@ -84,46 +84,46 @@ export type AdminNavGroup = { label: string; links: AdminNavLink[] };
 
 export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
   {
-    label: 'Daily',
+    label: 'اليومي',
     links: [
-      { label: 'Today', href: '/nexora-admin/dashboard', icon: 'LayoutDashboard', description: 'Orders, stock, shipping and follow-ups for today' },
-      { label: 'Orders', href: '/nexora-admin/orders', icon: 'ShoppingBag', description: 'Confirm orders, shipment actions and customer notes' },
+      { label: 'لوحة اليوم', href: '/nexora-admin/dashboard', icon: 'LayoutDashboard', description: 'طلبات اليوم، المخزون، الشحن، والمتابعات المهمة' },
+      { label: 'الطلبات', href: '/nexora-admin/orders', icon: 'ShoppingBag', description: 'تأكيد الطلبات، تعديل الطلب، الشحن، وملاحظات العملاء' },
     ],
   },
   {
-    label: 'Run',
+    label: 'التشغيل',
     links: [
-      { label: 'Catalog', href: '/nexora-admin/products', icon: 'Package', description: 'Products, setup quality, media, variants and SEO' },
-      { label: 'Inventory', href: '/nexora-admin/inventory', icon: 'Warehouse', description: 'Variant stock, low stock and stock logs' },
-      { label: 'Shipping', href: '/nexora-admin/shipping', icon: 'Truck', description: 'Delivery fees, free shipping rules, ShipBlu zones' },
+      { label: 'المنتجات', href: '/nexora-admin/products', icon: 'Package', description: 'إدارة المنتجات والصور والمقاسات والألوان' },
+      { label: 'المخزون', href: '/nexora-admin/inventory', icon: 'Warehouse', description: 'مخزون المقاسات والألوان والتنبيهات' },
+      { label: 'الشحن', href: '/nexora-admin/shipping', icon: 'Truck', description: 'تكلفة الشحن، مناطق التوصيل، ورسوم COD' },
     ],
   },
   {
-    label: 'People',
+    label: 'العملاء',
     links: [
-      { label: 'Customers', href: '/nexora-admin/customers', icon: 'UserRound', description: 'Customer profiles, order value, notes and tags' },
-      { label: 'Growth', href: '/nexora-admin/reports', icon: 'FileBarChart', description: 'Reports, campaigns, visitors, leads and analytics' },
+      { label: 'العملاء', href: '/nexora-admin/customers', icon: 'UserRound', description: 'بيانات العملاء، الطلبات، والملاحظات' },
+      { label: 'التقارير', href: '/nexora-admin/reports', icon: 'FileBarChart', description: 'تقارير المبيعات والحملات والزوار' },
     ],
   },
   {
-    label: 'Store',
+    label: 'المتجر',
     links: [
-      { label: 'Storefront', href: '/nexora-admin/storefront', icon: 'MonitorSmartphone', description: 'Home sections, tiles, promo surfaces and content' },
-      { label: 'Setup', href: '/nexora-admin/controls', icon: 'Settings', description: 'Setup, recovery, integrations and diagnostics' },
+      { label: 'واجهة المتجر', href: '/nexora-admin/storefront', icon: 'MonitorSmartphone', description: 'أقسام الصفحة الرئيسية والبنرات والمحتوى' },
+      { label: 'جاهزية المتجر', href: '/nexora-admin/controls', icon: 'Settings', description: 'الدفع والربط والجاهزية والاستعادة' },
     ],
   },
 ];
 
 export const ADMIN_SECONDARY_NAV_LINKS: AdminNavLink[] = [
-  { label: 'Reviews', href: '/nexora-admin/reviews', icon: 'Star', description: 'Social proof and publishing' },
-  { label: 'Leads CRM', href: '/nexora-admin/leads', icon: 'UserPlus', description: 'Pipeline and follow-up actions' },
-  { label: 'Visitors', href: '/nexora-admin/visitors', icon: 'MousePointerClick', description: 'Visitor journeys and action explanations' },
-  { label: 'Campaigns', href: '/nexora-admin/campaigns', icon: 'Target', description: 'UTM links and campaign attribution' },
-  { label: 'Analytics', href: '/nexora-admin/analytics', icon: 'BarChart3', description: 'Cart, checkout and product interaction analytics' },
-  { label: 'Promotions', href: '/nexora-admin/promotions', icon: 'BadgePercent', description: 'Promo strip and merch messages' },
-  { label: 'Coupons', href: '/nexora-admin/coupons', icon: 'Tag', description: 'Discount codes and campaign offers' },
-  { label: 'Drops', href: '/nexora-admin/drops', icon: 'CalendarClock', description: 'Limited releases' },
-  { label: 'SEO', href: '/nexora-admin/seo', icon: 'SearchCheck', description: 'Search appearance, sitemap and indexing notes' },
+  { label: 'التقييمات', href: '/nexora-admin/reviews', icon: 'Star', description: 'تقييمات العملاء والنشر' },
+  { label: 'المتابعات', href: '/nexora-admin/leads', icon: 'UserPlus', description: 'العملاء المحتملون والمتابعة' },
+  { label: 'الزوار', href: '/nexora-admin/visitors', icon: 'MousePointerClick', description: 'رحلة الزائر وتحليل السلوك' },
+  { label: 'الحملات', href: '/nexora-admin/campaigns', icon: 'Target', description: 'روابط الحملات وتتبع المصدر' },
+  { label: 'التحليلات', href: '/nexora-admin/analytics', icon: 'BarChart3', description: 'السلة والدفع وتفاعل المنتجات' },
+  { label: 'العروض', href: '/nexora-admin/promotions', icon: 'BadgePercent', description: 'رسائل العروض والشريط الترويجي' },
+  { label: 'الكوبونات', href: '/nexora-admin/coupons', icon: 'Tag', description: 'أكواد الخصم وحملات التخفيض' },
+  { label: 'الإصدارات', href: '/nexora-admin/drops', icon: 'CalendarClock', description: 'الإصدارات المحدودة' },
+  { label: 'SEO', href: '/nexora-admin/seo', icon: 'SearchCheck', description: 'ظهور البحث والسitemap والفهرسة' },
 ];
 
 export const ADMIN_NAV_LINKS: AdminNavLink[] = [...ADMIN_NAV_GROUPS.flatMap((group) => group.links), ...ADMIN_SECONDARY_NAV_LINKS];

@@ -1,7 +1,6 @@
 // ============================================================
-// NEXORA — Premium Checkout Page
-// Polished payment copy, manual transfer flow, ValU handling,
-// and payment-aware delivery totals.
+// NEXORA — Checkout Page V5.1
+// Fully bilingual customer checkout with payment-aware totals.
 // ============================================================
 
 import { useEffect, useMemo, useState } from 'react';
@@ -10,7 +9,8 @@ import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Banknote, CheckCircle, CreditCard, MessageCircle, Shield, Smartphone, Truck, Wallet } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Banknote, CheckCircle, CreditCard, MessageCircle, Shield, Smartphone, Truck, Wallet } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useCartStore } from '@/stores/cartStore';
 import { checkoutSchema, type CheckoutFormData } from '@/lib/validators';
 import { getGovernorateNames, getCitiesForGovernorate } from '@/lib/egyptData';
@@ -18,7 +18,6 @@ import { formatPrice } from '@/lib/utils';
 import SectionReveal from '@/components/ui/SectionReveal';
 import EmptyState from '@/components/ui/EmptyState';
 import { useI18n } from '@/i18n/I18nProvider';
-import toast from 'react-hot-toast';
 import { trackEvent } from '@/services/analytics.service';
 import { captureLead, getAttribution } from '@/lib/analytics/tracker';
 import { classifyCheckoutError } from '@/lib/checkoutErrors';
@@ -28,7 +27,8 @@ import CopyButton from '@/components/ui/CopyButton';
 import ColorSwatch from '@/components/ui/ColorSwatch';
 import { buildCheckoutWhatsAppMessage, buildWhatsAppUrl } from '@/lib/whatsapp';
 import { computeCheckoutTotals } from '@/lib/orderMath';
-import { DEFAULT_PAYMENT_SETTINGS, getEnabledPaymentMethods, getInitialPaymentStatus, normalizePaymentSettings, paymentSuccessCopy, type PaymentSettings } from '@/lib/payments';
+import { DEFAULT_PAYMENT_SETTINGS, getEnabledPaymentMethods, getInitialPaymentStatus, normalizePaymentSettings, requiresPaymentScreenshot, type PaymentSettings } from '@/lib/payments';
+import { getCheckoutCopy, translateCheckoutError } from '@/content/checkoutCopy';
 
 const DEFAULT_WHATSAPP = import.meta.env.VITE_STORE_WHATSAPP || import.meta.env.VITE_DEFAULT_WHATSAPP_NUMBER || '';
 const DEFAULT_PAYMENT_PHONE = '01037141322';
@@ -47,12 +47,12 @@ type PaymentOption = {
 };
 
 export default function CheckoutPage() {
-  const { t } = useI18n();
+  const { lang } = useI18n();
+  const copy = getCheckoutCopy(lang);
   const { items, getTotalPrice, clearCart } = useCartStore();
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
   const [completedPaymentMethod, setCompletedPaymentMethod] = useState<PaymentMethod>('cod');
-  const [selectedGovernorate, setSelectedGovernorate] = useState('');
   const [whatsAppNumber, setWhatsAppNumber] = useState(DEFAULT_WHATSAPP);
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number; freeShipping?: boolean } | null>(null);
@@ -89,7 +89,7 @@ export default function CheckoutPage() {
   const watchedPhone = watch('phone');
   const watchedCity = watch('city');
   const watchedPaymentMethod = watch('paymentMethod') || 'cod';
-  const cities = selectedGovernorate ? getCitiesForGovernorate(selectedGovernorate) : [];
+  const cities = watchedGovernorate ? getCitiesForGovernorate(watchedGovernorate) : [];
 
   const rawDeliveryFee = shippingQuote?.available ? Number(shippingQuote.shippingFee || 0) : 0;
   const rawCodFee = paymentSettings.codFeeEnabled && shippingQuote?.available
@@ -105,54 +105,64 @@ export default function CheckoutPage() {
   });
   const showFreeShippingProgress = Boolean(shippingQuote?.showFreeShippingProgress);
   const freeShippingThreshold = showFreeShippingProgress ? Number(shippingQuote?.freeShippingThreshold || 0) : 0;
-  const freeShippingMessage = shippingQuote?.freeShippingProgressMessage || 'Add {amount} more for free shipping.';
+  const freeShippingMessage = shippingQuote?.freeShippingProgressMessage || (lang === 'ar' ? 'أضف {amount} للشحن المجاني.' : 'Add {amount} more for free shipping.');
 
   const paymentOptions: PaymentOption[] = useMemo(() => {
+    const totalLabel = formatPrice(total);
+    const paymentCopy = copy.payments;
     const allOptions: PaymentOption[] = [
       {
         id: 'cod',
-        label: 'الدفع عند الاستلام',
-        badge: 'بدون تحويل',
-        description: 'ادفع نقدًا عند استلام الطلب بعد تأكيده على واتساب.',
-        note: paymentSettings.codInstructionsAr,
-        cta: `تأكيد الطلب — ${formatPrice(total)}`,
+        label: paymentCopy.cod.label,
+        badge: paymentCopy.cod.badge,
+        description: paymentCopy.cod.description,
+        note: lang === 'ar' ? paymentSettings.codInstructionsAr : paymentCopy.cod.note,
+        cta: paymentCopy.cod.cta(totalLabel),
         icon: Banknote,
       },
       {
         id: 'instapay',
-        label: 'Instapay / تحويل بنكي',
-        badge: 'يحتاج إثبات تحويل',
-        description: `حوّل قيمة الطلب على رقم NEXORA، ثم أرسل Screenshot التحويل على واتساب لتأكيد الطلب.`,
-        note: paymentSettings.instapayInstructionsAr,
-        cta: `تسجيل الطلب وإرسال إثبات الدفع — ${formatPrice(total)}`,
+        label: paymentCopy.instapay.label,
+        badge: paymentCopy.instapay.badge,
+        description: paymentCopy.instapay.description,
+        note: lang === 'ar' ? paymentSettings.instapayInstructionsAr : paymentCopy.instapay.note,
+        cta: paymentCopy.instapay.cta(totalLabel),
         icon: Smartphone,
-        requiresTransfer: paymentSettings.requireScreenshotInstapay,
+        requiresTransfer: requiresPaymentScreenshot('instapay', paymentSettings),
       },
       {
         id: 'vodafone_cash',
-        label: 'Vodafone Cash',
-        badge: 'يحتاج إثبات تحويل',
-        description: 'حوّل قيمة الطلب على محفظة Vodafone Cash، ثم أرسل Screenshot التحويل على واتساب لتأكيد الطلب.',
-        note: paymentSettings.vodafoneInstructionsAr,
-        cta: `تسجيل الطلب وإرسال إثبات الدفع — ${formatPrice(total)}`,
+        label: paymentCopy.vodafone_cash.label,
+        badge: paymentCopy.vodafone_cash.badge,
+        description: paymentCopy.vodafone_cash.description,
+        note: lang === 'ar' ? paymentSettings.vodafoneInstructionsAr : paymentCopy.vodafone_cash.note,
+        cta: paymentCopy.vodafone_cash.cta(totalLabel),
         icon: Wallet,
-        requiresTransfer: paymentSettings.requireScreenshotVodafone,
+        requiresTransfer: requiresPaymentScreenshot('vodafone_cash', paymentSettings),
       },
       {
         id: 'valu',
-        label: 'ValU Installments',
-        badge: 'تأكيد يدوي',
-        description: 'اختر التقسيط مع ValU وسنراجع الطلب معك على واتساب لتأكيد التفاصيل وخطة التقسيط المتاحة.',
-        note: paymentSettings.valuInstructionsAr,
-        cta: `تسجيل الطلب والتواصل لتأكيد التقسيط — ${formatPrice(total)}`,
+        label: paymentCopy.valu.label,
+        badge: paymentCopy.valu.badge,
+        description: paymentCopy.valu.description,
+        note: lang === 'ar' ? paymentSettings.valuInstructionsAr : paymentCopy.valu.note,
+        cta: paymentCopy.valu.cta(totalLabel),
         icon: CreditCard,
       },
     ];
     const enabled = getEnabledPaymentMethods(paymentSettings);
     return allOptions.filter((option) => enabled.includes(option.id));
-  }, [paymentSettings, total]);
+  }, [copy, lang, paymentSettings, total]);
 
-  const selectedPayment = paymentOptions.find((option) => option.id === watchedPaymentMethod) || paymentOptions[0] || { id: 'cod', label: 'الدفع عند الاستلام', badge: 'متاح', description: '', note: DEFAULT_PAYMENT_SETTINGS.codInstructionsAr, cta: `تأكيد الطلب — ${formatPrice(total)}`, icon: Banknote };
+  const selectedPayment = paymentOptions.find((option) => option.id === watchedPaymentMethod) || paymentOptions[0] || {
+    id: 'cod' as PaymentMethod,
+    label: copy.payments.cod.label,
+    badge: copy.payments.cod.badge,
+    description: copy.payments.cod.description,
+    note: copy.payments.cod.note,
+    cta: copy.payments.cod.cta(formatPrice(total)),
+    icon: Banknote,
+  };
 
   useEffect(() => {
     if (paymentOptions.length > 0 && !paymentOptions.some((option) => option.id === watchedPaymentMethod)) {
@@ -192,10 +202,10 @@ export default function CheckoutPage() {
         couponFreeShipping: Boolean(appliedCoupon?.freeShipping),
       }))
       .then((quote) => { if (!cancelled) setShippingQuote(quote); })
-      .catch(() => { if (!cancelled) setShippingQuote({ available: false, reason: 'تعذر حساب التوصيل الآن.', shippingFee: 0, codFee: 0, totalDeliveryFee: 0 }); })
+      .catch(() => { if (!cancelled) setShippingQuote({ available: false, reason: lang === 'ar' ? 'تعذر حساب التوصيل الآن.' : 'Could not calculate delivery right now.', shippingFee: 0, codFee: 0, totalDeliveryFee: 0 }); })
       .finally(() => { if (!cancelled) setIsCalculatingShipping(false); });
     return () => { cancelled = true; };
-  }, [watchedGovernorate, watchedCity, subtotal, appliedCoupon?.freeShipping]);
+  }, [watchedGovernorate, watchedCity, subtotal, appliedCoupon?.freeShipping, lang]);
 
   useEffect(() => {
     const phone = String(watchedPhone || '').replace(/\s/g, '');
@@ -209,10 +219,12 @@ export default function CheckoutPage() {
         notes: 'Customer entered checkout contact details before order completion.',
         metadata: { itemsCount: items.length, subtotal },
       });
-      void trackEvent('checkout_contact_entered', { hasName: Boolean(watchedName), itemsCount: items.length, subtotal });
-    }, 1200);
+      void trackEvent('checkout_contact_entered', { phone });
+    }, 1800);
     return () => window.clearTimeout(timer);
   }, [watchedName, watchedPhone, items.length, subtotal]);
+
+  const errorText = (message: unknown) => translateCheckoutError(message, lang);
 
   const applyCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -236,7 +248,7 @@ export default function CheckoutPage() {
       void trackEvent('coupon_applied', { code: result.code || couponCode.toUpperCase(), discount: result.discount });
       toast.success(result.message);
     } catch {
-      toast.error('تعذر التحقق من الكود الآن');
+      toast.error(copy.couponError);
     } finally {
       setIsCheckingCoupon(false);
     }
@@ -244,11 +256,11 @@ export default function CheckoutPage() {
 
   const onSubmit = async (data: CheckoutFormData) => {
     if (items.length === 0) {
-      toast.error('السلة فارغة');
+      toast.error(copy.emptyCart);
       return;
     }
     if (!shippingQuote?.available) {
-      toast.error(shippingQuote?.reason || 'اختر منطقة توصيل مدعومة قبل تأكيد الطلب.');
+      toast.error(shippingQuote?.reason || copy.unsupportedArea);
       return;
     }
 
@@ -312,20 +324,20 @@ export default function CheckoutPage() {
       clearCart();
       if (typeof window !== 'undefined') window.sessionStorage.removeItem('nexora-checkout-idempotency-key-v5-5-3');
       setIdempotencyKey(`nx-${Date.now()}-${Math.random().toString(16).slice(2)}`);
-      toast.success('تم تسجيل الطلب بنجاح');
+      toast.success(copy.orderSaved);
     } catch (error) {
       const checkoutError = classifyCheckoutError(error);
       void trackEvent('order_failed', { kind: checkoutError.kind, message: checkoutError.message });
       void trackEvent('checkout_error', { kind: checkoutError.kind, message: checkoutError.message });
-      toast.error(checkoutError.message || t('checkout.failed'));
+      toast.error(checkoutError.message || copy.couponError);
     }
   };
 
   if (items.length === 0 && !orderComplete) {
     return (
       <>
-        <Helmet><title>{t('checkout.title')} | NEXORA</title></Helmet>
-        <div className="pt-32 pb-20 min-h-screen bg-[#050505]">
+        <Helmet><title>{copy.title} | NEXORA</title></Helmet>
+        <div className="min-h-screen bg-[#050505] pb-20 pt-32">
           <EmptyState type="cart" />
         </div>
       </>
@@ -335,33 +347,33 @@ export default function CheckoutPage() {
   if (orderComplete) {
     const whatsappTarget = completedPaymentMethod === 'cod' ? whatsAppNumber : paymentConfirmationPhone;
     return (
-      <div className="pt-32 pb-20 min-h-screen bg-[#050505] flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-[#050505] pb-20 pt-32" dir={copy.dir}>
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="mx-auto max-w-lg px-6 text-center">
           <div className="mx-auto mb-6 grid h-20 w-20 place-items-center rounded-[28px] border border-[#c8a96a]/30 bg-[#c8a96a]/10">
             <CheckCircle className="h-10 w-10 text-[#c8a96a]" />
           </div>
-          <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.26em] text-[#c8a96a]">NEXORA ORDER RECEIVED</p>
-          <h1 className="mb-3 text-3xl font-bold text-[#f4f0e8]">تم استلام طلبك بنجاح</h1>
-          <p className="mx-auto mb-6 max-w-md text-sm leading-7 text-[#b8b0a3]">{paymentSuccessCopy(completedPaymentMethod)}</p>
+          <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.26em] text-[#c8a96a]">{copy.successKicker}</p>
+          <h1 className="mb-3 text-3xl font-bold text-[#f4f0e8]">{copy.successTitle}</h1>
+          <p className="mx-auto mb-6 max-w-md text-sm leading-7 text-[#b8b0a3]">{copy.success[completedPaymentMethod]}</p>
 
           <div className="mb-6 rounded-[28px] border border-[#17171a] bg-[#0b0b0d] p-5">
-            <p className="mb-2 text-[10px] uppercase tracking-wider text-[#8a8175]">رقم الطلب</p>
+            <p className="mb-2 text-[10px] uppercase tracking-wider text-[#8a8175]">{copy.orderNumber}</p>
             <div className="flex items-center justify-center gap-3">
               <span className="text-xl font-black tracking-wider text-[#c8a96a]">{orderNumber}</span>
-              <CopyButton value={orderNumber} label="نسخ" success="تم نسخ رقم الطلب" className="px-3 py-2" />
+              <CopyButton value={orderNumber} label={copy.copy} success={copy.orderCopied} className="px-3 py-2" />
             </div>
           </div>
 
           <div className="flex flex-col gap-3">
             {whatsappTarget && (
-              <a href={buildWhatsAppUrl(whatsappTarget, buildCheckoutWhatsAppMessage(orderNumber, completedPaymentMethod))} target="_blank" rel="noopener noreferrer" className="nexora-button-primary flex items-center justify-center gap-2">
+              <a href={buildWhatsAppUrl(whatsappTarget, buildCheckoutWhatsAppMessage(orderNumber, completedPaymentMethod, lang))} target="_blank" rel="noopener noreferrer" className="nexora-button-primary flex items-center justify-center gap-2">
                 <MessageCircle className="h-4 w-4" />
-                فتح واتساب لتأكيد الطلب
+                {copy.whatsappConfirm}
               </a>
             )}
-            <Link to="/track" className="nexora-button flex items-center justify-center gap-2">متابعة حالة الطلب</Link>
+            <Link to="/track" className="nexora-button flex items-center justify-center gap-2">{copy.trackOrder}</Link>
             <Link to="/shop" className="text-xs uppercase tracking-wider text-[#b8b0a3] transition-colors hover:text-[#c8a96a]">
-              {t('common.continueShopping')}
+              {copy.continueShopping}
             </Link>
           </div>
         </motion.div>
@@ -369,21 +381,23 @@ export default function CheckoutPage() {
     );
   }
 
+  const BackIcon = lang === 'ar' ? ArrowRight : ArrowLeft;
+
   return (
     <>
-      <Helmet><title>{t('checkout.title')} | NEXORA</title></Helmet>
-      <div className="min-h-screen bg-[#050505] pb-20 pt-24">
+      <Helmet><title>{copy.title} | NEXORA</title></Helmet>
+      <div className="min-h-screen bg-[#050505] pb-20 pt-24" dir={copy.dir}>
         <div className="w-full px-4 sm:px-6 lg:px-10">
           <SectionReveal>
             <Link to="/cart" className="mb-6 flex items-center gap-2 text-xs uppercase tracking-wider text-[#b8b0a3] transition-colors hover:text-[#c8a96a]">
-              <ArrowLeft className="h-3 w-3" />
-              الرجوع للسلة
+              <BackIcon className="h-3 w-3" />
+              {copy.backToCart}
             </Link>
-            <p className="nexora-caption mb-3 text-[#c8a96a]">الخطوة الأخيرة</p>
-            <h1 className="nexora-heading-md mb-3">إتمام الطلب</h1>
-            <p className="mb-8 max-w-2xl text-sm leading-7 text-[#b8b0a3]">راجع بياناتك واختر طريقة الدفع المناسبة. بعد تسجيل الطلب سنؤكد التفاصيل معك على واتساب.</p>
+            <p className="nexora-caption mb-3 text-[#c8a96a]">{copy.kicker}</p>
+            <h1 className="nexora-heading-md mb-3">{copy.title}</h1>
+            <p className="mb-8 max-w-2xl text-sm leading-7 text-[#b8b0a3]">{copy.intro}</p>
             <div className="mb-10 grid grid-cols-2 gap-2 text-center text-[10px] font-bold uppercase tracking-[0.16em] text-[#8a8175] sm:grid-cols-4">
-              {['بياناتك', 'التوصيل', 'الدفع', 'التأكيد'].map((step, index) => (
+              {copy.steps.map((step, index) => (
                 <div key={step} className={`rounded-full border px-2 py-2 ${index < 3 ? 'border-[#c8a96a]/40 bg-[#c8a96a]/10 text-[#c8a96a]' : 'border-[#202024] bg-[#0b0b0d] text-[#8a8175]'}`}>
                   {step}
                 </div>
@@ -395,67 +409,67 @@ export default function CheckoutPage() {
             <div className="lg:col-span-2">
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 <div className="rounded-[30px] border border-[#17171a] bg-[#0b0b0d] p-6 shadow-[0_28px_80px_rgba(0,0,0,0.16)]">
-                  <h3 className="mb-5 text-xs font-bold uppercase tracking-[0.2em] text-[#f4f0e8]">بيانات التواصل</h3>
+                  <h3 className="mb-5 text-xs font-bold uppercase tracking-[0.2em] text-[#f4f0e8]">{copy.contactTitle}</h3>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                      <label className="mb-1.5 block text-[10px] uppercase tracking-wider text-[#8a8175]">الاسم بالكامل *</label>
-                      <input {...register('fullName')} className="w-full rounded-2xl border border-[#202024] bg-[#050505] px-4 py-3 text-sm text-[#f4f0e8] placeholder:text-[#4c4640] outline-none transition-colors focus:border-[#c8a96a]" placeholder="اكتب اسمك بالكامل" />
-                      {errors.fullName && <p className="mt-1 text-[10px] text-red-400">{errors.fullName.message}</p>}
+                      <label className="mb-1.5 block text-[10px] uppercase tracking-wider text-[#8a8175]">{copy.fullName}</label>
+                      <input {...register('fullName')} className="w-full rounded-2xl border border-[#202024] bg-[#050505] px-4 py-3 text-sm text-[#f4f0e8] placeholder:text-[#4c4640] outline-none transition-colors focus:border-[#c8a96a]" placeholder={copy.fullNamePlaceholder} />
+                      {errors.fullName && <p className="mt-1 text-[10px] text-red-400">{errorText(errors.fullName.message)}</p>}
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-[10px] uppercase tracking-wider text-[#8a8175]">رقم الهاتف *</label>
+                      <label className="mb-1.5 block text-[10px] uppercase tracking-wider text-[#8a8175]">{copy.phone}</label>
                       <input {...register('phone')} className="w-full rounded-2xl border border-[#202024] bg-[#050505] px-4 py-3 text-sm text-[#f4f0e8] placeholder:text-[#4c4640] outline-none transition-colors focus:border-[#c8a96a]" placeholder="01XXXXXXXXX" dir="ltr" />
-                      {errors.phone && <p className="mt-1 text-[10px] text-red-400">{errors.phone.message}</p>}
+                      {errors.phone && <p className="mt-1 text-[10px] text-red-400">{errorText(errors.phone.message)}</p>}
                     </div>
                   </div>
                 </div>
 
                 <div className="rounded-[30px] border border-[#17171a] bg-[#0b0b0d] p-6 shadow-[0_28px_80px_rgba(0,0,0,0.16)]">
-                  <h3 className="mb-5 text-xs font-bold uppercase tracking-[0.2em] text-[#f4f0e8]">عنوان التوصيل</h3>
+                  <h3 className="mb-5 text-xs font-bold uppercase tracking-[0.2em] text-[#f4f0e8]">{copy.deliveryTitle}</h3>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                      <label className="mb-1.5 block text-[10px] uppercase tracking-wider text-[#8a8175]">المحافظة *</label>
+                      <label className="mb-1.5 block text-[10px] uppercase tracking-wider text-[#8a8175]">{copy.governorate}</label>
                       <select
                         {...register('governorate')}
-                        onChange={(e) => {
-                          setSelectedGovernorate(e.target.value);
-                          setValue('governorate', e.target.value);
-                          setValue('city', '');
+                        onChange={(event) => {
+                          setValue('governorate', event.target.value, { shouldValidate: true });
+                          setValue('city', '', { shouldValidate: true });
                         }}
                         className="w-full appearance-none rounded-2xl border border-[#202024] bg-[#050505] px-4 py-3 text-sm text-[#f4f0e8] outline-none transition-colors focus:border-[#c8a96a]"
                       >
-                        <option value="">اختر المحافظة</option>
-                        {getGovernorateNames().map((g) => <option key={g} value={g}>{g}</option>)}
+                        <option value="">{copy.chooseGovernorate}</option>
+                        {getGovernorateNames().map((governorate) => <option key={governorate} value={governorate}>{governorate}</option>)}
                       </select>
-                      {errors.governorate && <p className="mt-1 text-[10px] text-red-400">{errors.governorate.message}</p>}
+                      {errors.governorate && <p className="mt-1 text-[10px] text-red-400">{errorText(errors.governorate.message)}</p>}
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-[10px] uppercase tracking-wider text-[#8a8175]">المدينة *</label>
+                      <label className="mb-1.5 block text-[10px] uppercase tracking-wider text-[#8a8175]">{copy.city}</label>
                       <select {...register('city')} disabled={!watchedGovernorate} className="w-full appearance-none rounded-2xl border border-[#202024] bg-[#050505] px-4 py-3 text-sm text-[#f4f0e8] outline-none transition-colors focus:border-[#c8a96a] disabled:opacity-50">
-                        <option value="">اختر المدينة</option>
-                        {cities.map((c) => <option key={c} value={c}>{c}</option>)}
+                        <option value="">{copy.chooseCity}</option>
+                        {cities.map((city) => <option key={city} value={city}>{city}</option>)}
                       </select>
-                      {errors.city && <p className="mt-1 text-[10px] text-red-400">{errors.city.message}</p>}
+                      {errors.city && <p className="mt-1 text-[10px] text-red-400">{errorText(errors.city.message)}</p>}
                     </div>
                   </div>
                   <div className="mt-4">
-                    <label className="mb-1.5 block text-[10px] uppercase tracking-wider text-[#8a8175]">العنوان التفصيلي *</label>
-                    <textarea {...register('address')} rows={2} className="w-full resize-none rounded-2xl border border-[#202024] bg-[#050505] px-4 py-3 text-sm text-[#f4f0e8] placeholder:text-[#4c4640] outline-none transition-colors focus:border-[#c8a96a]" placeholder="اسم الشارع، رقم العمارة، الدور، الشقة، أقرب علامة مميزة" />
-                    {errors.address && <p className="mt-1 text-[10px] text-red-400">{errors.address.message}</p>}
+                    <label className="mb-1.5 block text-[10px] uppercase tracking-wider text-[#8a8175]">{copy.address}</label>
+                    <textarea {...register('address')} rows={2} className="w-full resize-none rounded-2xl border border-[#202024] bg-[#050505] px-4 py-3 text-sm text-[#f4f0e8] placeholder:text-[#4c4640] outline-none transition-colors focus:border-[#c8a96a]" placeholder={copy.addressPlaceholder} />
+                    {errors.address && <p className="mt-1 text-[10px] text-red-400">{errorText(errors.address.message)}</p>}
                   </div>
                   <div className="mt-4">
-                    <label className="mb-1.5 block text-[10px] uppercase tracking-wider text-[#8a8175]">ملاحظات اختيارية</label>
-                    <textarea {...register('notes')} rows={2} className="w-full resize-none rounded-2xl border border-[#202024] bg-[#050505] px-4 py-3 text-sm text-[#f4f0e8] placeholder:text-[#4c4640] outline-none transition-colors focus:border-[#c8a96a]" placeholder="أي تعليمات خاصة للتوصيل" />
+                    <label className="mb-1.5 block text-[10px] uppercase tracking-wider text-[#8a8175]">{copy.notes}</label>
+                    <textarea {...register('notes')} rows={2} className="w-full resize-none rounded-2xl border border-[#202024] bg-[#050505] px-4 py-3 text-sm text-[#f4f0e8] placeholder:text-[#4c4640] outline-none transition-colors focus:border-[#c8a96a]" placeholder={copy.notesPlaceholder} />
+                    {errors.notes && <p className="mt-1 text-[10px] text-red-400">{errorText(errors.notes.message)}</p>}
                   </div>
                 </div>
 
                 <div className="rounded-[30px] border border-[#17171a] bg-[#0b0b0d] p-6 shadow-[0_28px_80px_rgba(0,0,0,0.16)]">
                   <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                     <div>
-                      <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-[#f4f0e8]">طريقة الدفع</h3>
-                      <p className="mt-2 text-xs leading-6 text-[#8a8175]">اختر طريقة الدفع، وسيظهر لك المطلوب بوضوح قبل تأكيد الطلب.</p>
+                      <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-[#f4f0e8]">{copy.paymentTitle}</h3>
+                      <p className="mt-2 text-xs leading-6 text-[#8a8175]">{copy.paymentIntro}</p>
                     </div>
-                    <span className="w-fit rounded-full border border-[#c8a96a]/30 bg-[#c8a96a]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[#c8a96a]">Secure checkout</span>
+                    <span className="w-fit rounded-full border border-[#c8a96a]/30 bg-[#c8a96a]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[#c8a96a]">{copy.secureBadge}</span>
                   </div>
 
                   <div className="grid gap-3">
@@ -467,7 +481,7 @@ export default function CheckoutPage() {
                           key={method.id}
                           type="button"
                           onClick={() => setValue('paymentMethod', method.id, { shouldValidate: true })}
-                          className={`w-full rounded-[24px] border p-4 text-left transition-all rtl:text-right ${active ? 'border-[#c8a96a] bg-[#c8a96a]/10 shadow-[0_18px_45px_rgba(200,169,106,0.08)]' : 'border-[#202024] bg-[#050505] hover:border-[#6f675d]'}`}
+                          className={`w-full rounded-[24px] border p-4 ${lang === 'ar' ? 'text-right' : 'text-left'} transition-all ${active ? 'border-[#c8a96a] bg-[#c8a96a]/10 shadow-[0_18px_45px_rgba(200,169,106,0.08)]' : 'border-[#202024] bg-[#050505] hover:border-[#6f675d]'}`}
                         >
                           <div className="flex items-start gap-4">
                             <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${active ? 'bg-[#c8a96a] text-[#050505]' : 'bg-[#121214] text-[#c8a96a]'}`}>
@@ -481,9 +495,9 @@ export default function CheckoutPage() {
                               <p className="mt-2 text-xs leading-6 text-[#8a8175]">{method.description}</p>
                               {method.requiresTransfer && active && (
                                 <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-[#202024] bg-[#0b0b0d] p-3 text-xs text-[#b8b0a3]">
-                                  <span>رقم التحويل:</span>
+                                  <span>{copy.transferNumber}</span>
                                   <span className="font-black text-[#c8a96a]" dir="ltr">{paymentConfirmationPhone}</span>
-                                  <CopyButton value={paymentConfirmationPhone} label="نسخ" success="تم نسخ رقم التحويل" />
+                                  <CopyButton value={paymentConfirmationPhone} label={copy.copy} success={copy.transferCopied} />
                                 </div>
                               )}
                             </div>
@@ -496,23 +510,23 @@ export default function CheckoutPage() {
                   <div className="mt-4 rounded-[24px] border border-[#c8a96a]/20 bg-[#c8a96a]/5 p-4 text-xs leading-6 text-[#b8b0a3]">
                     <p className="font-semibold text-[#f4f0e8]">{selectedPayment.label}</p>
                     <p className="mt-1">{selectedPayment.note}</p>
-                    {watchedPaymentMethod === 'valu' && <p className="mt-2 text-[#c8a96a]">رقم التواصل لتأكيد ValU: <span dir="ltr">{paymentConfirmationPhone}</span></p>}
+                    {watchedPaymentMethod === 'valu' && <p className="mt-2 text-[#c8a96a]">{copy.valuContact} <span dir="ltr">{paymentConfirmationPhone}</span></p>}
                   </div>
                 </div>
 
                 <button type="submit" disabled={isSubmitting} className="w-full rounded-full bg-[#c8a96a] px-6 py-4 text-sm font-black uppercase tracking-[0.16em] text-[#050505] transition hover:bg-[#d8bb7b] disabled:opacity-50">
-                  {isSubmitting ? 'جاري تسجيل الطلب...' : selectedPayment.cta}
+                  {isSubmitting ? copy.processing : selectedPayment.cta}
                 </button>
               </form>
             </div>
 
             <div className="lg:col-span-1">
               <div className="sticky top-24 rounded-[30px] border border-[#17171a] bg-[#0b0b0d] p-6 shadow-[0_28px_80px_rgba(0,0,0,0.16)]">
-                <h3 className="mb-5 text-xs font-bold uppercase tracking-[0.2em] text-[#f4f0e8]">ملخص الطلب</h3>
+                <h3 className="mb-5 text-xs font-bold uppercase tracking-[0.2em] text-[#f4f0e8]">{copy.summaryTitle}</h3>
                 {freeShippingThreshold > 0 && <div className="mb-5"><FreeShippingProgress subtotal={subtotal} threshold={freeShippingThreshold} enabled={showFreeShippingProgress} messageTemplate={freeShippingMessage} /></div>}
                 <div className="mb-5 rounded-2xl border border-[#202024] bg-[#050505] p-4">
-                  <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#c8a96a]"><Truck className="h-4 w-4" /> عرض التوصيل</div>
-                  <p className="text-xs leading-6 text-[#8a8175]">{isCalculatingShipping ? 'جاري حساب التوصيل...' : shippingQuote?.available ? `${shippingQuote.deliveryEstimate || SHIPPING_ESTIMATE_TEXT}${shippingQuote.freeShippingApplied ? ' · تم تطبيق الشحن المجاني' : ''}` : (shippingQuote?.reason || 'اختر المحافظة والمدينة لحساب التوصيل.')}</p>
+                  <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#c8a96a]"><Truck className="h-4 w-4" /> {copy.deliveryQuote}</div>
+                  <p className="text-xs leading-6 text-[#8a8175]">{isCalculatingShipping ? copy.calculatingDelivery : shippingQuote?.available ? `${shippingQuote.deliveryEstimate || SHIPPING_ESTIMATE_TEXT}${shippingQuote.freeShippingApplied ? ` · ${copy.freeShippingApplied}` : ''}` : (shippingQuote?.reason || copy.chooseAreaForDelivery)}</p>
                 </div>
                 <div className="mb-5 max-h-64 space-y-3 overflow-y-auto pr-1">
                   {items.map((item) => (
@@ -521,9 +535,9 @@ export default function CheckoutPage() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-xs font-semibold text-[#f4f0e8]">{item.name}</p>
                         <div className="mt-1 space-y-1 text-[10px] leading-5 text-[#8a8175]">
-                          <p>المقاس: {item.sizeLabel || getSizeDisplayLabel(item.size, item.weightRange)}</p>
-                          {item.color && <p className="flex items-center gap-1.5">اللون: <ColorSwatch color={item.colorHex} pattern={item.colorPattern} label={item.color} size="xs" /> {item.color}</p>}
-                          <p>الكمية: {item.quantity}</p>
+                          <p>{copy.size}: {item.sizeLabel || getSizeDisplayLabel(item.size, item.weightRange)}</p>
+                          {item.color && <p className="flex items-center gap-1.5">{copy.color}: <ColorSwatch color={item.colorHex} pattern={item.colorPattern} label={item.color} size="xs" /> {item.color}</p>}
+                          <p>{copy.quantity}: {item.quantity}</p>
                         </div>
                       </div>
                       <span className="shrink-0 text-xs font-semibold text-[#b8b0a3]">{formatPrice(item.price * item.quantity)}</span>
@@ -532,23 +546,23 @@ export default function CheckoutPage() {
                 </div>
                 <div className="mb-4 h-px bg-[#17171a]" />
                 <div className="mb-4">
-                  <label className="mb-1.5 block text-[10px] uppercase tracking-wider text-[#8a8175]">كود الخصم</label>
+                  <label className="mb-1.5 block text-[10px] uppercase tracking-wider text-[#8a8175]">{copy.coupon}</label>
                   <div className="flex gap-2">
-                    <input value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} className="min-w-0 flex-1 rounded-2xl border border-[#202024] bg-[#050505] px-3 py-2 text-xs text-[#f4f0e8] outline-none focus:border-[#c8a96a]" placeholder="NEXORA10" />
-                    <button type="button" onClick={applyCoupon} disabled={isCheckingCoupon} className="rounded-2xl bg-[#c8a96a]/10 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-[#c8a96a] disabled:opacity-50">{isCheckingCoupon ? '...' : 'تطبيق'}</button>
+                    <input value={couponCode} onChange={(event) => setCouponCode(event.target.value.toUpperCase())} className="min-w-0 flex-1 rounded-2xl border border-[#202024] bg-[#050505] px-3 py-2 text-xs text-[#f4f0e8] outline-none focus:border-[#c8a96a]" placeholder="NEXORA10" />
+                    <button type="button" onClick={applyCoupon} disabled={isCheckingCoupon} className="rounded-2xl bg-[#c8a96a]/10 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-[#c8a96a] disabled:opacity-50">{isCheckingCoupon ? '...' : copy.apply}</button>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm"><span className="text-[#b8b0a3]">المجموع الفرعي</span><span className="text-[#f4f0e8]">{formatPrice(subtotal)}</span></div>
-                  {appliedCoupon && <div className="flex justify-between text-sm"><span className="text-[#b8b0a3]">الخصم ({appliedCoupon.code})</span><span className="text-green-400">-{formatPrice(discount)}</span></div>}
-                  <div className="flex justify-between text-sm"><span className="text-[#b8b0a3]">التوصيل</span><span className={deliveryFee === 0 && shippingQuote?.available ? 'text-green-400' : 'text-[#f4f0e8]'}>{deliveryFee === 0 && shippingQuote?.available ? 'مجاني' : formatPrice(deliveryFee)}</span></div>
-                  {watchedPaymentMethod === 'cod' && Number(shippingQuote?.codFee || 0) > 0 && <div className="flex justify-between text-sm"><span className="text-[#b8b0a3]">رسوم الدفع عند الاستلام</span><span className="text-[#f4f0e8]">{formatPrice(Number(shippingQuote?.codFee || 0))}</span></div>}
+                  <div className="flex justify-between text-sm"><span className="text-[#b8b0a3]">{copy.subtotal}</span><span className="text-[#f4f0e8]">{formatPrice(subtotal)}</span></div>
+                  {appliedCoupon && <div className="flex justify-between text-sm"><span className="text-[#b8b0a3]">{copy.discount} ({appliedCoupon.code})</span><span className="text-green-400">-{formatPrice(discount)}</span></div>}
+                  <div className="flex justify-between text-sm"><span className="text-[#b8b0a3]">{copy.delivery}</span><span className={deliveryFee === 0 && shippingQuote?.available ? 'text-green-400' : 'text-[#f4f0e8]'}>{deliveryFee === 0 && shippingQuote?.available ? copy.free : formatPrice(deliveryFee)}</span></div>
+                  {watchedPaymentMethod === 'cod' && codFee > 0 && <div className="flex justify-between text-sm"><span className="text-[#b8b0a3]">{copy.codFee}</span><span className="text-[#f4f0e8]">{formatPrice(codFee)}</span></div>}
                   <div className="my-2 h-px bg-[#17171a]" />
-                  <div className="flex justify-between"><span className="text-sm font-bold text-[#f4f0e8]">الإجمالي</span><span className="text-lg font-black text-[#c8a96a]">{formatPrice(total)}</span></div>
+                  <div className="flex justify-between"><span className="text-sm font-bold text-[#f4f0e8]">{copy.total}</span><span className="text-lg font-black text-[#c8a96a]">{formatPrice(total)}</span></div>
                 </div>
                 <div className="mt-4 rounded-2xl border border-[#202024] bg-[#050505] p-3 text-[10px] leading-5 text-[#6f675d]">
-                  <div className="mb-1 flex items-center gap-2 text-[#8a8175]"><Shield className="h-3 w-3" /><span>الإجمالي النهائي شامل الشحن والخصومات حسب المنطقة المختارة.</span></div>
-                  {watchedPaymentMethod !== 'cod' && <p>لا يتم إضافة رسوم الدفع عند الاستلام على Instapay أو Vodafone Cash أو ValU.</p>}
+                  <div className="mb-1 flex items-center gap-2 text-[#8a8175]"><Shield className="h-3 w-3" /><span>{copy.totalNote}</span></div>
+                  {watchedPaymentMethod !== 'cod' && <p>{copy.noCodFeeNote}</p>}
                 </div>
               </div>
             </div>
