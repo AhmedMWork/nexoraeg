@@ -1,6 +1,6 @@
 // ============================================================
 // NEXORA V5.5.3 — Clean Light Admin Layout
-// Daily admin stays quiet. Technical recovery is moved into الجاهزية.
+// Daily admin stays quiet. Technical recovery is moved into Readiness.
 // ============================================================
 
 import { type ReactNode, useMemo, useState } from 'react';
@@ -28,7 +28,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   const clearSession = () => {
     clearStudioToken();
-    toast.success('تم مسح جلسة لوحة التحكم. أدخل الرمز مرة أخرى.');
+    toast.success('Admin session cleared. Enter the access code again.');
     window.location.reload();
   };
 
@@ -47,7 +47,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 </span>
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#B39D89]">NEXORA HQ</p>
-                  <p className="mt-1 text-sm font-semibold text-[#231916]">لوحة تشغيل يومية واضحة</p>
+                  <p className="mt-1 text-sm font-semibold text-[#231916]">Daily operations command center</p>
                 </div>
               </div>
 
@@ -57,7 +57,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="ابحث داخل أدوات الأدمن..."
+                    placeholder="Search admin tools..."
                     className="h-11 w-full rounded-2xl border border-[#E4D6C5] bg-[#FFFDF8] pl-11 pr-4 text-sm text-[#231916] outline-none placeholder:text-[#A48F7E] focus:border-[#D6B58F]"
                   />
                   {matches.length > 0 && (
@@ -74,11 +74,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
                 <Link to="/nexora-admin/controls" className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[#E4D6C5] bg-[#FFFDF8] px-3 text-xs font-semibold text-[#6F5D50] hover:border-[#D6B58F] hover:text-[#231916]">
                   <ShieldCheck className="h-4 w-4 text-[#9D7159]" />
-                  الجاهزية
+                  Readiness
                 </Link>
                 <button onClick={clearSession} className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[#E4D6C5] bg-[#FFFDF8] px-3 text-xs font-semibold text-[#6F5D50] hover:border-amber-500/40 hover:text-amber-700">
                   <LogOut className="h-3.5 w-3.5" />
-                  {session.isActive ? `${session.minutesLeft}m` : 'مغلق'}
+                  {session.isActive ? `${session.minutesLeft}m` : 'Locked'}
                 </button>
               </div>
             </div>

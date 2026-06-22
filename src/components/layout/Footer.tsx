@@ -95,9 +95,9 @@ export default function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={`NEXORA ${label}`}
-                  className={`flex h-10 w-10 items-center justify-center rounded-full border transition-all hover:-translate-y-0.5 ${label === 'WhatsApp' ? 'border-[var(--v33-accent)] bg-[var(--v33-accent)]/12 text-[var(--v33-accent-strong)] shadow-[0_12px_30px_rgba(214,181,143,0.14)]' : 'border-[var(--v33-border)] text-[var(--v33-muted)] hover:border-[var(--v33-accent)] hover:text-[var(--v33-accent-strong)]'}`}
+                  className={`group relative flex items-center justify-center rounded-full border transition-all duration-300 hover:-translate-y-0.5 ${label === 'WhatsApp' ? 'h-12 w-12 border-[var(--v33-accent)] bg-[var(--v33-accent)] text-[#171210] shadow-[0_18px_42px_rgba(214,181,143,0.26)] hover:shadow-[0_24px_58px_rgba(214,181,143,0.34)]' : 'h-10 w-10 border-[var(--v33-border)] text-[var(--v33-muted)] hover:border-[var(--v33-accent)] hover:text-[var(--v33-accent-strong)]'}`}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className={label === 'WhatsApp' ? 'h-5 w-5' : 'h-4 w-4'} />
                 </a>
               ))}
             </div>
