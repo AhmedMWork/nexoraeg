@@ -84,3 +84,9 @@ verify_jwt = false
 
 [functions.studio-health-check]
 verify_jwt = false
+
+[functions.studio-workflow]
+verify_jwt = false
+
+[functions.submit-review]
+verify_jwt = false

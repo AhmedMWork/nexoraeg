@@ -16,15 +16,20 @@ Deno.serve(async (req) => {
     if (body.action === 'create') {
       const r = body.review || {};
       const { data, error } = await supabase.from('reviews').insert({
+        review_type: r.productId === 'brand' || r.reviewType === 'site' ? 'site' : 'product',
         product_id: r.productId === 'brand' ? null : r.productId || null,
         product_name: r.productName,
         customer_name: r.customerName,
+        customer_phone: r.customerPhone || null,
         rating: Number(r.rating || 5),
         title: r.title,
         body_en: r.body,
+        body: r.body,
         images: Array.isArray(r.images) ? r.images : [],
+        admin_reply: r.adminReply || null,
         featured: Boolean(r.isFeatured),
-        status: r.isApproved ? 'published' : 'draft',
+        status: r.status || (r.isApproved ? 'published' : 'pending'),
+        approved_at: (r.status === 'published' || r.isApproved) ? new Date().toISOString() : null,
         helpful_count: Number(r.helpfulCount || 0),
       }).select('id').single();
       if (error) throw error;
@@ -35,14 +40,19 @@ Deno.serve(async (req) => {
       const r = body.review || {};
       const patch: Record<string, unknown> = {};
       if ('customerName' in r) patch.customer_name = r.customerName;
+      if ('customerPhone' in r) patch.customer_phone = r.customerPhone;
       if ('productName' in r) patch.product_name = r.productName;
-      if ('productId' in r) patch.product_id = r.productId === 'brand' ? null : r.productId;
+      if ('productId' in r) { patch.product_id = r.productId === 'brand' ? null : r.productId; patch.review_type = r.productId === 'brand' ? 'site' : 'product'; }
+      if ('reviewType' in r) patch.review_type = r.reviewType;
       if ('rating' in r) patch.rating = Number(r.rating);
       if ('title' in r) patch.title = r.title;
-      if ('body' in r) patch.body_en = r.body;
+      if ('body' in r) { patch.body_en = r.body; patch.body = r.body; }
       if ('images' in r) patch.images = Array.isArray(r.images) ? r.images : [];
+      if ('adminReply' in r) patch.admin_reply = r.adminReply;
       if ('isFeatured' in r) patch.featured = r.isFeatured;
-      if ('isApproved' in r) patch.status = r.isApproved ? 'published' : 'draft';
+      if ('status' in r) patch.status = r.status;
+      if ('isApproved' in r) patch.status = r.isApproved ? 'published' : 'hidden';
+      if (patch.status === 'published') patch.approved_at = new Date().toISOString();
       if ('helpfulCount' in r) patch.helpful_count = Number(r.helpfulCount || 0);
       const { error } = await supabase.from('reviews').update(patch).eq('id', body.id);
       if (error) throw error;

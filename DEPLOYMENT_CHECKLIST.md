@@ -1,27 +1,26 @@
 # Nexora Deployment Checklist
 
-## Vercel
+1. Confirm Vercel env variables are set.
+2. Reset Supabase only if there is no live data.
+3. Run migrations.
+4. Deploy Edge Functions.
+5. Clear Vercel build cache and redeploy.
+6. Clear browser storage and test fresh checkout.
 
-- `VITE_SITE_URL` = production domain
-- `VITE_SUPABASE_URL` = `https://PROJECT_REF.supabase.co` with no `/rest/v1` or `/functions/v1`
-- `VITE_SUPABASE_PUBLISHABLE_KEY` = public anon/publishable key
-- `VITE_STORE_WHATSAPP` = store WhatsApp number
-- `VITE_SUPPORT_EMAIL` = support email
+## Required tests
 
-## Supabase Secrets
-
-- `REQUIRE_STUDIO_PIN=true`
-- `STUDIO_ACCESS_PIN=YOUR_PRIVATE_PIN`
-- `STUDIO_SESSION_SECRET=LONG_RANDOM_SECRET`
-- `ALLOWED_ORIGIN=https://your-production-domain.com`
-- Optional: `SHIPBLU_API_KEY`
-
-## Commands
-
-```powershell
-supabase link --project-ref ccmuazjkgzjqzybxwrfd
-supabase db push
-powershell -ExecutionPolicy Bypass -File .\scripts\deploy-supabase-functions.ps1 -ProjectRef ccmuazjkgzjqzybxwrfd
-```
-
-Then redeploy Vercel with Clear Build Cache.
+- Product page opens on mobile.
+- Size + weight labels show correctly.
+- Add to cart works.
+- Buy It Now works.
+- Checkout COD works.
+- Checkout Instapay / Bank transfer works and shows screenshot instructions.
+- Checkout Vodafone Cash works and shows screenshot instructions.
+- Checkout ValU works and saves pending confirmation.
+- Admin Orders opens.
+- Admin separate order detail page opens.
+- Invoice shows product images.
+- Follow-up log saves Sent / متابعة 2 / Paid / ShipBlu.
+- Storefront page can add, hide, delete, reorder tiles up to max 5.
+- Facebook/Instagram links open correctly.
+- Meta Pixel can be saved in Controls.

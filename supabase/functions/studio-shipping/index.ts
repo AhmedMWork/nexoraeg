@@ -93,6 +93,35 @@ Deno.serve(async (req) => {
       return json({ ok: true }, 200, req);
     }
 
+
+    if (action === 'manual-shipment') {
+      const orderId = String(body.orderId || '');
+      const details = body.details || {};
+      if (!orderId) return json({ error: 'Order id is required.' }, 400, req);
+      const trackingNumber = String(details.trackingNumber || details.tracking_number || `MANUAL-${Date.now()}`).trim();
+      const status = String(details.status || 'manual_created');
+      const courier = String(details.courier || 'manual');
+      const { data: existing } = await supabase.from('shipping_shipments').select('*').eq('order_id', orderId).maybeSingle();
+      const row = {
+        order_id: orderId,
+        provider: courier,
+        provider_order_id: trackingNumber,
+        tracking_number: trackingNumber,
+        status,
+        delivery_estimate: details.deliveryEstimate || details.delivery_estimate || null,
+        raw_response: { manual: true, notes: details.notes || '', created_from: 'nexora_hq' },
+        updated_at: new Date().toISOString(),
+      };
+      const query = existing?.id
+        ? supabase.from('shipping_shipments').update(row).eq('id', existing.id).select('*').single()
+        : supabase.from('shipping_shipments').insert(row).select('*').single();
+      const { data: shipment, error } = await query;
+      if (error) throw error;
+      await supabase.from('orders').update({ shipping_status: status, shipping_provider: courier, tracking_number: trackingNumber, shipment_id: shipment.id, updated_at: new Date().toISOString() }).eq('id', orderId);
+      await supabase.from('shipping_events').insert({ shipment_id: shipment.id, order_id: orderId, provider: courier, status, message: details.notes || 'Manual shipment saved.', raw_payload: row.raw_response });
+      return json({ shipment, manual: true }, 200, req);
+    }
+
     if (action === 'test-provider') {
       const { data: settings } = await supabase.from('shipping_settings').select('*').eq('id', 'main').maybeSingle();
       const key = Deno.env.get('SHIPBLU_API_KEY');
