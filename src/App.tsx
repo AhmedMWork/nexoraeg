@@ -52,7 +52,9 @@ const AdminSEO = lazy(() => import('@/pages/admin/AdminSEO'));
 const AdminPromotions = lazy(() => import('@/pages/admin/AdminPromotions'));
 const AdminStorefront = lazy(() => import('@/pages/admin/AdminStorefront'));
 const AdminShipping = lazy(() => import('@/pages/admin/AdminShipping'));
+const AdminWorkflow = lazy(() => import('@/pages/admin/AdminWorkflow'));
 const AdminControls = lazy(() => import('@/pages/admin/AdminControls'));
+const AdminUsersRoles = lazy(() => import('@/pages/admin/AdminUsersRoles'));
 
 // ─── Scroll to top on route change ───
 function ScrollToTop() {
@@ -113,7 +115,9 @@ function AdminRoutes() {
           <Route path="/orders/:orderId" element={<PageTransition><AdminOrderDetail /></PageTransition>} />
           <Route path="/inventory" element={<PageTransition><AdminInventory /></PageTransition>} />
           <Route path="/shipping" element={<PageTransition><AdminShipping /></PageTransition>} />
+          <Route path="/workflow" element={<PageTransition><AdminWorkflow /></PageTransition>} />
           <Route path="/controls" element={<PageTransition><AdminControls /></PageTransition>} />
+          <Route path="/users-roles" element={<PageTransition><AdminUsersRoles /></PageTransition>} />
           <Route path="/reviews" element={<PageTransition><AdminReviews /></PageTransition>} />
           <Route path="/coupons" element={<PageTransition><AdminCoupons /></PageTransition>} />
           <Route path="/drops" element={<PageTransition><AdminDrops /></PageTransition>} />

@@ -8,6 +8,7 @@
 
 import { supabase, invokeStudioFunction, getStudioToken } from './client';
 import { DEFAULT_HOME_COLLECTION_TILES, normalizeHomeTiles, type HomeCollectionTile } from '@/content/homeTiles';
+import { DEFAULT_FOLLOWUP_TYPES, DEFAULT_ORDER_WORKFLOW_STATUSES, normalizeFollowupTypes, normalizeOrderWorkflow, type FollowupTypeConfig, type WorkflowStatus } from '@/lib/workflow';
 import type {
   Product,
   ProductVariant,
@@ -262,19 +263,26 @@ function rowToReview(row: Record<string, any>): Review {
   const images = Array.isArray(row.images)
     ? row.images.map((image: any) => typeof image === 'string' ? image : (image.public_url || image.url)).filter(Boolean)
     : [row.review_image_url, row.avatar_url].filter(Boolean);
+  const status = row.status || (row.isApproved || row.is_approved ? 'published' : 'pending');
   return {
     id: row.id,
+    reviewType: row.review_type || row.reviewType || (row.product_id || row.productId ? 'product' : 'site'),
     productId: row.product_id || row.productId || '',
-    productName: row.product_name || row.productName || '',
+    productName: row.product_name || row.productName || (row.review_type === 'site' ? 'NEXORA Experience' : ''),
     customerName: row.customer_name || row.customerName || '',
+    customerPhone: row.customer_phone || row.customerPhone || '',
     rating: Number(row.rating || 5),
     title: row.title || '',
     body: row.body || row.body_en || row.body_ar || '',
     images,
-    isApproved: row.status ? row.status === 'published' : Boolean(row.isApproved ?? row.is_approved ?? true),
+    adminReply: row.admin_reply || row.adminReply || '',
+    status,
+    isApproved: status === 'published',
     isFeatured: Boolean(row.featured ?? row.isFeatured ?? row.is_featured),
     helpfulCount: Number(row.helpful_count || row.helpfulCount || 0),
     createdAt: toDate(row.created_at || row.createdAt),
+    updatedAt: row.updated_at || row.updatedAt ? toDate(row.updated_at || row.updatedAt) : undefined,
+    approvedAt: row.approved_at || row.approvedAt ? toDate(row.approved_at || row.approvedAt) : undefined,
   };
 }
 
@@ -605,6 +613,12 @@ export async function updateDrop(id: string, data: Partial<Drop>): Promise<void>
 export async function deleteDrop(id: string): Promise<void> { await invokeStudioFunction('studio-drops', studioHeadersPayload('delete', { id })); }
 
 // Reviews
+export async function submitCustomerReview(review: { reviewType?: 'product' | 'site'; productId?: string; productName?: string; customerName: string; customerPhone?: string; rating: number; title?: string; body: string; experienceType?: string; orderNumber?: string }): Promise<string> {
+  const { data, error } = await supabase.functions.invoke<{ id: string }>('submit-review', { body: review });
+  if (error) throw error;
+  return data?.id || '';
+}
+
 export async function getReviews(filters?: { productId?: string; isApproved?: boolean; isFeatured?: boolean }): Promise<Review[]> {
   if (getStudioToken() && !filters?.isApproved) {
     const data = await invokeStudioFunction<Record<string, unknown>, { reviews: any[] }>('studio-reviews', { action: 'list' });
@@ -612,7 +626,10 @@ export async function getReviews(filters?: { productId?: string; isApproved?: bo
   }
   let q = supabase.from('reviews').select('*').order('sort_order', { ascending: true }).order('created_at', { ascending: false });
   if (filters?.productId) q = q.eq('product_id', filters.productId);
-  if (filters?.isApproved !== undefined) q = q.eq('status', filters.isApproved ? 'published' : 'draft');
+  if (filters?.isApproved !== undefined) {
+    if (filters.isApproved) q = q.eq('status', 'published');
+    else q = q.in('status', ['pending', 'hidden', 'rejected', 'draft']);
+  }
   else q = q.eq('status', 'published');
   if (filters?.isFeatured) q = q.eq('featured', true);
   const { data, error } = await q;
@@ -621,7 +638,10 @@ export async function getReviews(filters?: { productId?: string; isApproved?: bo
 }
 export async function createReview(review: Omit<Review, 'id' | 'createdAt'>): Promise<string> { const data = await invokeStudioFunction('studio-reviews', studioHeadersPayload('create', { review })); return (data as any).id; }
 export async function updateReview(id: string, data: Partial<Review>): Promise<void> { await invokeStudioFunction('studio-reviews', studioHeadersPayload('update', { id, review: data })); }
-export async function approveReview(id: string): Promise<void> { await updateReview(id, { isApproved: true }); }
+export async function approveReview(id: string): Promise<void> { await updateReview(id, { isApproved: true, status: 'published', approvedAt: new Date() as any }); }
+export async function rejectReview(id: string): Promise<void> { await updateReview(id, { isApproved: false, status: 'rejected' }); }
+export async function hideReview(id: string): Promise<void> { await updateReview(id, { isApproved: false, status: 'hidden' }); }
+export async function featureReview(id: string, isFeatured: boolean): Promise<void> { await updateReview(id, { isFeatured }); }
 export async function deleteReview(id: string): Promise<void> { await invokeStudioFunction('studio-reviews', studioHeadersPayload('delete', { id })); }
 
 // Newsletter/contact
@@ -997,4 +1017,37 @@ export async function createLeadTask(leadId: string, title: string, dueAt?: stri
 
 export async function completeLeadTask(taskId: string): Promise<void> {
   await invokeStudioFunction('studio-leads', { action: 'complete-task', taskId });
+}
+
+
+// Admin workflow controls
+export async function getAdminWorkflow(): Promise<{ statuses: WorkflowStatus[]; followupTypes: FollowupTypeConfig[] }> {
+  try {
+    const data = await invokeStudioFunction<Record<string, unknown>, { statuses?: any[]; followupTypes?: any[] }>('studio-workflow', { action: 'get' });
+    return {
+      statuses: normalizeOrderWorkflow(data.statuses || DEFAULT_ORDER_WORKFLOW_STATUSES),
+      followupTypes: normalizeFollowupTypes(data.followupTypes || DEFAULT_FOLLOWUP_TYPES),
+    };
+  } catch {
+    return { statuses: DEFAULT_ORDER_WORKFLOW_STATUSES, followupTypes: DEFAULT_FOLLOWUP_TYPES };
+  }
+}
+
+export async function saveAdminWorkflow(payload: { statuses: WorkflowStatus[]; followupTypes: FollowupTypeConfig[] }): Promise<void> {
+  await invokeStudioFunction('studio-workflow', { action: 'save', statuses: payload.statuses, followupTypes: payload.followupTypes });
+}
+
+export async function saveOrderStatuses(statuses: WorkflowStatus[]): Promise<void> {
+  const current = await getAdminWorkflow();
+  await saveAdminWorkflow({ statuses, followupTypes: current.followupTypes });
+}
+
+export async function saveFollowupTypes(followupTypes: FollowupTypeConfig[]): Promise<void> {
+  const current = await getAdminWorkflow();
+  await saveAdminWorkflow({ statuses: current.statuses, followupTypes });
+}
+
+export async function createManualShipment(orderId: string, details: { courier?: string; trackingNumber?: string; status?: string; notes?: string }): Promise<any> {
+  const data = await invokeStudioFunction<Record<string, unknown>, any>('studio-shipping', { action: 'manual-shipment', orderId, details });
+  return data.shipment ? rowToShipment(data.shipment) : data;
 }

@@ -1,16 +1,24 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from 'react';
-import { RefreshCw, Search, MapPin, Phone, Mail, Clock, Tag, MessageCircle, Save } from 'lucide-react';
+import { MessageCircle, RefreshCw, Search, Tag, UserRound, UsersRound, WalletCards, MapPin, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { AdminPageHeader, AdminStatCard, AdminTabBar } from '@/components/admin/AdminPageHeader';
+import { AdminEmptyBlock, AdminFilterChip, AdminHero, AdminMetricCard, AdminPageShell, AdminPanel, AdminStatusPill } from '@/components/admin/AdminCommandCenter';
 import { formatPrice, formatTimestamp } from '@/lib/utils';
 
-const tabs = ['Profiles', 'Segments', 'Notes'];
+const tags = ['VIP', 'High intent', 'Needs follow-up', 'Returning customer', 'Asked for size', 'ValU lead'];
+const segments = ['all', 'vip', 'repeat', 'needs-follow-up', 'inactive'] as const;
+
+type Segment = typeof segments[number];
+
+function waUrl(phone?: string) {
+  const normalized = String(phone || '').replace(/\D/g, '').replace(/^0/, '20');
+  return normalized ? `https://wa.me/${normalized}` : '#';
+}
 
 export default function AdminCustomers() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [query, setQuery] = useState('');
-  const [active, setActive] = useState(tabs[0]);
+  const [segment, setSegment] = useState<Segment>('all');
   const [selected, setSelected] = useState<any | null>(null);
   const [note, setNote] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -29,11 +37,41 @@ export default function AdminCustomers() {
 
   useEffect(() => { void load(); }, []);
 
-  const filtered = useMemo(() => customers.filter((customer) => `${customer.full_name || ''} ${customer.phone || ''} ${customer.email || ''} ${customer.governorate || ''} ${customer.city || ''} ${(customer.tags || []).join(' ')}`.toLowerCase().includes(query.toLowerCase())), [customers, query]);
-  const totalRevenue = customers.reduce((sum, c) => sum + Number(c.total_revenue || 0), 0);
-  const repeat = customers.filter((c) => Number(c.total_orders || 0) > 1).length;
-  const vip = customers.filter((c) => Number(c.total_revenue || 0) >= 3000 || Number(c.total_orders || 0) >= 3).length;
-  const topCity = Object.entries(customers.reduce<Record<string, number>>((acc, c) => { const key = [c.governorate, c.city].filter(Boolean).join(' / '); if (key) acc[key] = (acc[key] || 0) + 1; return acc; }, {})).sort((a, b) => b[1] - a[1])[0]?.[0] || 'No data';
+  const stats = useMemo(() => {
+    const totalRevenue = customers.reduce((sum, c) => sum + Number(c.total_revenue || 0), 0);
+    const repeat = customers.filter((c) => Number(c.total_orders || 0) > 1).length;
+    const vip = customers.filter((c) => Number(c.total_revenue || 0) >= 3000 || Number(c.total_orders || 0) >= 3).length;
+    const withNotes = customers.filter((c) => Array.isArray(c.notes) && c.notes.length).length;
+    const topLocation = Object.entries(customers.reduce<Record<string, number>>((acc, c) => { const key = [c.governorate, c.city].filter(Boolean).join(' / '); if (key) acc[key] = (acc[key] || 0) + 1; return acc; }, {})).sort((a, b) => b[1] - a[1])[0]?.[0] || 'No data';
+    return { totalRevenue, repeat, vip, withNotes, topLocation };
+  }, [customers]);
+
+  const filtered = useMemo(() => customers.filter((customer) => {
+    const text = `${customer.full_name || ''} ${customer.phone || ''} ${customer.email || ''} ${customer.governorate || ''} ${customer.city || ''} ${(customer.tags || []).join(' ')}`.toLowerCase();
+    const matchesQuery = text.includes(query.toLowerCase().trim());
+    const orders = Number(customer.total_orders || 0);
+    const revenue = Number(customer.total_revenue || 0);
+    const customerTags: string[] = Array.isArray(customer.tags) ? customer.tags : [];
+    const matchesSegment = segment === 'all'
+      || (segment === 'vip' && (revenue >= 3000 || orders >= 3 || customerTags.includes('VIP')))
+      || (segment === 'repeat' && orders > 1)
+      || (segment === 'needs-follow-up' && customerTags.includes('Needs follow-up'))
+      || (segment === 'inactive' && orders === 0);
+    return matchesQuery && matchesSegment;
+  }), [customers, query, segment]);
+
+  const updateTags = async (customer: any, tag: string) => {
+    const current = Array.isArray(customer.tags) ? customer.tags : [];
+    const next = current.includes(tag) ? current.filter((item: string) => item !== tag) : [...current, tag];
+    try {
+      const { updateCustomerProfile } = await import('@/lib/supabase/db');
+      await updateCustomerProfile(customer.id, { tags: next });
+      setCustomers((rows) => rows.map((row) => row.id === customer.id ? { ...row, tags: next } : row));
+      setSelected((row: any) => row?.id === customer.id ? { ...row, tags: next } : row);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not update tags');
+    }
+  };
 
   const saveNote = async () => {
     if (!selected || !note.trim()) return;
@@ -47,94 +85,78 @@ export default function AdminCustomers() {
     }
   };
 
-  const updateTags = async (customer: any, tag: string) => {
-    const current = Array.isArray(customer.tags) ? customer.tags : [];
-    const next = current.includes(tag) ? current.filter((t: string) => t !== tag) : [...current, tag];
-    try {
-      const { updateCustomerProfile } = await import('@/lib/supabase/db');
-      await updateCustomerProfile(customer.id, { tags: next });
-      setCustomers((rows) => rows.map((row) => row.id === customer.id ? { ...row, tags: next } : row));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not update tags');
-    }
-  };
-
-  const tagOptions = ['VIP', 'High intent', 'Needs follow-up', 'Returned customer', 'Asked for size'];
-
   return (
-    <div className="space-y-6">
-      <AdminPageHeader
-        title="Customer profiles"
-        description="A real customer layer: phone, location, order value, source/campaign, tags, notes, and follow-up signals. Built from orders and updated by Studio."
-        actions={<button onClick={load} className="nexora-button"><RefreshCw className="h-4 w-4" />Refresh</button>}
+    <AdminPageShell>
+      <AdminHero
+        eyebrow="Customers"
+        title="Customer Hub"
+        description="A practical CRM layer for orders, value, tags, notes, WhatsApp follow-ups and location insights. No capability was removed; this organizes customer control in one place."
+        actions={<button onClick={load} className="nexora-button-primary"><RefreshCw className="h-4 w-4" /> Refresh customers</button>}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <AdminStatCard label="Customers" value={customers.length} helper="Unique customer profiles, primarily matched by phone." />
-        <AdminStatCard label="Revenue" value={formatPrice(totalRevenue)} helper="Total non-cancelled order value in profiles." tone="good" />
-        <AdminStatCard label="Repeat buyers" value={repeat} helper="Customers with more than one order." tone={repeat ? 'good' : 'default'} />
-        <AdminStatCard label="Top location" value={topCity} helper={`${vip} VIP/high-value customers detected.`} />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <AdminMetricCard label="Customers" value={customers.length} helper="Unique customer profiles." icon={<UsersRound className="h-4 w-4" />} />
+        <AdminMetricCard label="Revenue" value={formatPrice(stats.totalRevenue)} helper="Customer lifetime revenue." icon={<WalletCards className="h-4 w-4" />} tone="good" />
+        <AdminMetricCard label="Repeat buyers" value={stats.repeat} helper="More than one order." icon={<RefreshCw className="h-4 w-4" />} tone={stats.repeat ? 'good' : 'neutral'} />
+        <AdminMetricCard label="VIP" value={stats.vip} helper="High value or frequent buyers." icon={<UserRound className="h-4 w-4" />} tone="accent" />
+        <AdminMetricCard label="Top location" value={stats.topLocation} helper={`${stats.withNotes} profiles have notes.`} icon={<MapPin className="h-4 w-4" />} />
       </div>
 
-      <AdminTabBar tabs={tabs} active={active} onChange={setActive} />
-
-      <div className="studio-card p-4">
-        <label className="flex items-center gap-3 rounded-2xl border border-[#2E3442] bg-[#0D1016] px-4 py-3">
-          <Search className="h-4 w-4 text-[#D7B98E]" />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search customer, phone, city, source, tag..." className="w-full bg-transparent text-sm text-[#F5F1EA] outline-none placeholder:text-[#697286]" />
-        </label>
-      </div>
-
-      {active === 'Profiles' && (
-        <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
-          <div className="grid gap-4">
-            {isLoading ? <div className="studio-card p-8 text-center text-sm text-[#A7AEBB]">Loading customer profiles...</div> : filtered.length ? filtered.map((customer) => (
-              <article key={customer.id || customer.phone} onClick={() => setSelected(customer)} className={`studio-card cursor-pointer p-5 transition hover:border-[#D7B98E] ${selected?.id === customer.id ? 'border-[#D7B98E] ring-2 ring-[#D7B98E]/10' : ''}`}>
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <h2 className="text-base font-semibold text-[#F5F1EA]">{customer.full_name || 'Unnamed customer'}</h2>
-                    <div className="mt-2 flex flex-wrap gap-3 text-xs text-[#A7AEBB]">
-                      {customer.phone && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{customer.phone}</span>}
-                      {customer.email && <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" />{customer.email}</span>}
-                      <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{[customer.governorate, customer.city].filter(Boolean).join(' / ') || 'No location'}</span>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {(customer.tags || []).map((tag: string) => <span key={tag} className="rounded-full border border-[#D7B98E]/30 bg-[#D7B98E]/10 px-3 py-1 text-[10px] font-bold text-[#D7B98E]">{tag}</span>)}
-                    </div>
-                  </div>
-                  <div className="grid min-w-[260px] grid-cols-2 gap-2 text-xs">
-                    <div className="rounded-2xl border border-[#2E3442] bg-[#11141A] p-3"><p className="text-[#A7AEBB]">Orders</p><p className="mt-1 text-lg font-bold text-[#F5F1EA]">{customer.total_orders || 0}</p></div>
-                    <div className="rounded-2xl border border-[#2E3442] bg-[#11141A] p-3"><p className="text-[#A7AEBB]">Revenue</p><p className="mt-1 text-lg font-bold text-[#D7B98E]">{formatPrice(customer.total_revenue || 0)}</p></div>
-                  </div>
-                </div>
-                <div className="mt-5 grid gap-3 border-t border-[#2E3442] pt-4 text-xs text-[#A7AEBB] sm:grid-cols-3">
-                  <p><span className="text-[#F5F1EA]">First source:</span> {customer.first_source || '—'}</p>
-                  <p><span className="text-[#F5F1EA]">Last campaign:</span> {customer.last_campaign || '—'}</p>
-                  <p><span className="text-[#F5F1EA]">Last order:</span> {customer.last_order_at ? formatTimestamp(new Date(customer.last_order_at)) : '—'}</p>
-                </div>
-              </article>
-            )) : <div className="studio-card p-8 text-center text-sm text-[#A7AEBB]">No customers found yet. Create orders, then refresh profiles.</div>}
-          </div>
-
-          <aside className="studio-card h-fit p-5">
-            <h2 className="text-base font-semibold text-[#F5F1EA]">Customer drawer</h2>
-            {selected ? (
-              <div className="mt-4 space-y-4">
-                <div><p className="text-sm font-semibold text-[#F5F1EA]">{selected.full_name || 'Unnamed customer'}</p><p className="mt-1 text-xs text-[#A7AEBB]">{selected.phone || selected.email || 'No contact data'}</p></div>
-                <div className="flex flex-wrap gap-2">
-                  {tagOptions.map((tag) => <button key={tag} onClick={() => updateTags(selected, tag)} className="studio-chip" data-active={(selected.tags || []).includes(tag)}><Tag className="h-3 w-3" />{tag}</button>)}
-                </div>
-                <textarea value={note} onChange={(e) => setNote(e.target.value)} className="studio-input min-h-28" placeholder="Internal note: asked for size, prefers WhatsApp, needs follow-up..." />
-                <button onClick={saveNote} disabled={!note.trim()} className="nexora-button-primary w-full"><Save className="h-4 w-4" />Save note</button>
-                {selected.phone && <a href={`https://wa.me/${String(selected.phone).replace(/\D/g, '').replace(/^0/, '20')}`} target="_blank" rel="noreferrer" className="nexora-button flex justify-center"><MessageCircle className="h-4 w-4" />Open WhatsApp</a>}
-              </div>
-            ) : <p className="mt-4 text-sm leading-7 text-[#A7AEBB]">Select a customer to tag, note, and follow up.</p>}
-          </aside>
+      <AdminPanel title="Customer filters" description="Search by name, phone, city, email or tag. Segments keep daily follow-up fast.">
+        <div className="flex flex-wrap gap-2">
+          {segments.map((item) => <AdminFilterChip key={item} active={segment === item} onClick={() => setSegment(item)}>{item.replace(/-/g, ' ')}</AdminFilterChip>)}
         </div>
-      )}
+        <div className="relative mt-4">
+          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9D7159]" />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search customer, phone, city, email, or tag..." className="studio-input pl-11" />
+        </div>
+      </AdminPanel>
 
-      {active === 'Segments' && <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{tagOptions.map((tag) => <div key={tag} className="studio-card p-5"><h3 className="font-semibold text-[#F5F1EA]">{tag}</h3><p className="mt-2 text-3xl font-semibold text-[#D7B98E]">{customers.filter((c) => (c.tags || []).includes(tag)).length}</p><p className="mt-2 text-xs text-[#A7AEBB]">Customers manually tagged for follow-up and segmentation.</p></div>)}</div>}
-      {active === 'Notes' && <div className="studio-card p-8 text-sm leading-7 text-[#A7AEBB]"><Clock className="mb-3 h-5 w-5 text-[#D7B98E]" />Notes are stored per customer in Supabase. Use Profiles → Customer drawer to add notes. A future export can include note history when needed.</div>}
-    </div>
+      <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
+        <AdminPanel title="Customer profiles" description={`${filtered.length} profile(s) match your current view.`}>
+          <div className="space-y-3">
+            {isLoading ? <p className="p-6 text-center text-sm text-[#6F5D50]">Loading customers...</p> : filtered.length ? filtered.map((customer) => {
+              const customerTags: string[] = Array.isArray(customer.tags) ? customer.tags : [];
+              const isVip = customerTags.includes('VIP') || Number(customer.total_revenue || 0) >= 3000 || Number(customer.total_orders || 0) >= 3;
+              return (
+                <button key={customer.id || customer.phone} type="button" onClick={() => setSelected(customer)} className={`w-full rounded-[24px] border p-4 text-left transition hover:border-[#D6B58F] ${selected?.id === customer.id ? 'border-[#D6B58F] bg-[#F2E7D8]' : 'border-[#E4D6C5] bg-[#FAF5EE]'}`}>
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2"><h3 className="text-sm font-black text-[#231916]">{customer.full_name || 'Unnamed customer'}</h3>{isVip && <AdminStatusPill tone="accent">VIP</AdminStatusPill>}</div>
+                      <p className="mt-1 text-xs text-[#6F5D50]" dir="ltr">{customer.phone || customer.email || 'No contact data'}</p>
+                      <p className="mt-1 text-xs text-[#8E7664]">{[customer.governorate, customer.city].filter(Boolean).join(' / ') || 'No location'}</p>
+                      <div className="mt-3 flex flex-wrap gap-2">{customerTags.map((tag) => <span key={tag} className="rounded-full border border-[#D7C5B2] bg-[#FFFDF8] px-3 py-1 text-[10px] font-bold text-[#6F5D50]">{tag}</span>)}</div>
+                    </div>
+                    <div className="grid min-w-[230px] grid-cols-2 gap-2 text-xs">
+                      <div className="rounded-2xl border border-[#E4D6C5] bg-[#FFFDF8] p-3"><span className="text-[#8E7664]">Orders</span><strong className="mt-1 block text-lg text-[#231916]">{customer.total_orders || 0}</strong></div>
+                      <div className="rounded-2xl border border-[#E4D6C5] bg-[#FFFDF8] p-3"><span className="text-[#8E7664]">Spent</span><strong className="mt-1 block text-lg text-[#9D7159]">{formatPrice(customer.total_revenue || 0)}</strong></div>
+                    </div>
+                  </div>
+                  <div className="mt-4 grid gap-2 border-t border-[#E4D6C5] pt-3 text-[10px] text-[#8E7664] sm:grid-cols-3"><span>First source: {customer.first_source || '—'}</span><span>Campaign: {customer.last_campaign || '—'}</span><span>Last order: {customer.last_order_at ? formatTimestamp(new Date(customer.last_order_at), 'en-EG') : '—'}</span></div>
+                </button>
+              );
+            }) : <AdminEmptyBlock title="No customers found" description="Create orders or clear filters to show customer profiles." />}
+          </div>
+        </AdminPanel>
+
+        <aside className="space-y-4">
+          <AdminPanel title="Customer drawer" description="Select a profile to add tags, notes and WhatsApp actions.">
+            {selected ? (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-[#E4D6C5] bg-[#FAF5EE] p-4"><p className="text-base font-black text-[#231916]">{selected.full_name || 'Unnamed customer'}</p><p className="mt-1 text-xs text-[#6F5D50]" dir="ltr">{selected.phone || selected.email || 'No contact data'}</p></div>
+                <div className="flex flex-wrap gap-2">{tags.map((tag) => <button key={tag} type="button" onClick={() => updateTags(selected, tag)} className={`inline-flex items-center gap-1 rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] ${Array.isArray(selected.tags) && selected.tags.includes(tag) ? 'border-[#231916] bg-[#231916] text-[#FFFDF8]' : 'border-[#E4D6C5] bg-[#FFFDF8] text-[#6F5D50]'}`}><Tag className="h-3 w-3" />{tag}</button>)}</div>
+                <textarea value={note} onChange={(event) => setNote(event.target.value)} className="studio-input min-h-28" placeholder="Internal note: asked for size, needs follow-up, prefers WhatsApp..." />
+                <button onClick={saveNote} disabled={!note.trim()} className="nexora-button-primary w-full"><Save className="h-4 w-4" /> Save note</button>
+                {selected.phone && <a href={waUrl(selected.phone)} target="_blank" rel="noreferrer" className="nexora-button flex w-full justify-center"><MessageCircle className="h-4 w-4" /> Open WhatsApp</a>}
+              </div>
+            ) : <AdminEmptyBlock title="No profile selected" description="Choose a customer from the list to manage tags, notes and follow-up actions." />}
+          </AdminPanel>
+
+          <AdminPanel title="Segments" description="Quick view of operational customer groups.">
+            <div className="space-y-2">{tags.map((tag) => <div key={tag} className="flex items-center justify-between rounded-2xl border border-[#E4D6C5] bg-[#FAF5EE] px-3 py-2 text-xs"><span>{tag}</span><strong>{customers.filter((customer) => Array.isArray(customer.tags) && customer.tags.includes(tag)).length}</strong></div>)}</div>
+          </AdminPanel>
+        </aside>
+      </div>
+    </AdminPageShell>
   );
 }

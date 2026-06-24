@@ -17,6 +17,7 @@ import {
   MessageSquare,
   X,
   ZoomIn,
+  Send,
 } from 'lucide-react';
 import { useWishlistStore } from '@/stores/wishlistStore';
 import { useCartStore } from '@/stores/cartStore';
@@ -53,6 +54,8 @@ export default function ProductDetailPage() {
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'description' | 'shipping' | 'reviews'>('description');
+  const [reviewDraft, setReviewDraft] = useState({ customerName: '', customerPhone: '', rating: 5, title: '', body: '' });
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   const { isInWishlist, toggleItem } = useWishlistStore();
   const addItem = useCartStore((s) => s.addItem);
@@ -285,6 +288,35 @@ export default function ProductDetailPage() {
     toast.success(`${product.name} added to cart`);
   };
 
+
+  const submitProductReview = async () => {
+    if (!product) return;
+    if (!reviewDraft.customerName.trim() || reviewDraft.body.trim().length < 8) {
+      toast.error('Please add your name and a clear review before submitting.');
+      return;
+    }
+    setIsSubmittingReview(true);
+    try {
+      const { submitCustomerReview } = await import('@/lib/supabase/db');
+      await submitCustomerReview({
+        reviewType: 'product',
+        productId: product.id,
+        productName: product.name,
+        customerName: reviewDraft.customerName,
+        customerPhone: reviewDraft.customerPhone,
+        rating: reviewDraft.rating,
+        title: reviewDraft.title,
+        body: reviewDraft.body,
+      });
+      toast.success('Thanks. Your review will appear after admin approval.');
+      setReviewDraft({ customerName: '', customerPhone: '', rating: 5, title: '', body: '' });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not submit review');
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
   const handleBuyNow = () => {
     if (!addSelectedToCart()) return;
     void trackEvent('checkout_start', { itemsCount: quantity, subtotal: product.price * quantity, productId: product.id });
@@ -476,8 +508,22 @@ export default function ProductDetailPage() {
             ].map(([title, body]) => <div key={title} className="p-4 bg-[#0b0b0d] border border-[#17171a]"><h4 className="text-xs font-bold tracking-wider uppercase text-[#f4f0e8] mb-2">{title}</h4><p className="text-xs text-[#b8b0a3] leading-relaxed">{body}</p></div>)}<div className="rounded-3xl border border-[#202024] bg-[#0b0b0d] p-5"><h4 className="text-xs font-bold tracking-wider uppercase text-[#f4f0e8] mb-3">سياسة الاسترجاع والاستبدال</h4><ul className="space-y-2 text-sm leading-6 text-[#b8b0a3] rtl:text-right">{RETURN_EXCHANGE_POLICY_AR.map((item) => <li key={item}>• {item}</li>)}</ul><p className="mt-4 text-xs font-semibold text-[#c8a96a]">مدة الشحن: {SHIPPING_ESTIMATE_TEXT_AR}</p></div></div></motion.div>}
 
             {activeTab === 'reviews' && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                {visibleReviews.length > 0 ? <div className="space-y-4 max-w-2xl">{visibleReviews.map((review) => <div key={review.id} className="p-5 bg-[#0b0b0d] border border-[#17171a]"><div className="flex items-center gap-2 mb-2"><div className="flex">{Array.from({ length: 5 }).map((_, j) => <Star key={j} className={`w-3 h-3 ${j < review.rating ? 'text-[#c8a96a] fill-[#c8a96a]' : 'text-[#2a2a2d]'}`} />)}</div><span className="text-xs text-[#b8b0a3]">{review.customerName}</span></div><h4 className="text-sm font-semibold text-[#f4f0e8] mb-1">{review.title}</h4><p className="text-xs text-[#b8b0a3] leading-relaxed">{review.body}</p>{review.images && review.images.length > 0 && <div className="mt-4 grid grid-cols-2 gap-3">{review.images.map((image) => <img key={image} src={image} alt={`${review.customerName} review`} loading="lazy" decoding="async" className="h-28 w-full rounded-2xl object-cover" />)}</div>}</div>)}</div> : <div className="text-center py-10"><MessageSquare className="w-8 h-8 text-[#2a2a2d] mx-auto mb-3" /><p className="text-sm text-[#8a8175]">No product reviews have been published yet.</p></div>}
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid gap-8 lg:grid-cols-[1fr_0.9fr]">
+                <div>
+                  {visibleReviews.length > 0 ? <div className="space-y-4 max-w-2xl">{visibleReviews.map((review) => <div key={review.id} className="p-5 bg-[#0b0b0d] border border-[#17171a] rounded-3xl"><div className="flex items-center gap-2 mb-2"><div className="flex">{Array.from({ length: 5 }).map((_, j) => <Star key={j} className={`w-3 h-3 ${j < review.rating ? 'text-[#c8a96a] fill-[#c8a96a]' : 'text-[#2a2a2d]'}`} />)}</div><span className="text-xs text-[#b8b0a3]">{review.customerName}</span></div><h4 className="text-sm font-semibold text-[#f4f0e8] mb-1">{review.title}</h4><p className="text-xs text-[#b8b0a3] leading-relaxed">{review.body}</p>{review.images && review.images.length > 0 && <div className="mt-4 grid grid-cols-2 gap-3">{review.images.map((image) => <img key={image} src={image} alt={`${review.customerName} review`} loading="lazy" decoding="async" className="h-28 w-full rounded-2xl object-cover" />)}</div>}</div>)}</div> : <div className="text-center py-10"><MessageSquare className="w-8 h-8 text-[#2a2a2d] mx-auto mb-3" /><p className="text-sm text-[#8a8175]">No product reviews have been published yet.</p></div>}
+                </div>
+                <div className="rounded-[28px] border border-[#202024] bg-[#0b0b0d] p-5">
+                  <p className="mb-1 text-[10px] font-black uppercase tracking-[0.22em] text-[#c8a96a]">Write a review</p>
+                  <h3 className="mb-4 text-lg font-bold text-[#f4f0e8]">Share your product experience</h3>
+                  <div className="grid gap-3">
+                    <input value={reviewDraft.customerName} onChange={(e) => setReviewDraft({ ...reviewDraft, customerName: e.target.value })} placeholder="Your name" className="rounded-2xl border border-[#202024] bg-[#050505] px-4 py-3 text-sm text-[#f4f0e8] outline-none focus:border-[#c8a96a]" />
+                    <input value={reviewDraft.customerPhone} onChange={(e) => setReviewDraft({ ...reviewDraft, customerPhone: e.target.value })} placeholder="Phone optional" className="rounded-2xl border border-[#202024] bg-[#050505] px-4 py-3 text-sm text-[#f4f0e8] outline-none focus:border-[#c8a96a]" dir="ltr" />
+                    <select value={reviewDraft.rating} onChange={(e) => setReviewDraft({ ...reviewDraft, rating: Number(e.target.value) })} className="rounded-2xl border border-[#202024] bg-[#050505] px-4 py-3 text-sm text-[#f4f0e8] outline-none focus:border-[#c8a96a]">{[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating} stars</option>)}</select>
+                    <input value={reviewDraft.title} onChange={(e) => setReviewDraft({ ...reviewDraft, title: e.target.value })} placeholder="Review title optional" className="rounded-2xl border border-[#202024] bg-[#050505] px-4 py-3 text-sm text-[#f4f0e8] outline-none focus:border-[#c8a96a]" />
+                    <textarea value={reviewDraft.body} onChange={(e) => setReviewDraft({ ...reviewDraft, body: e.target.value })} rows={5} placeholder="Write your review. Customers cannot upload images; admins can attach images later if needed." className="rounded-2xl border border-[#202024] bg-[#050505] px-4 py-3 text-sm text-[#f4f0e8] outline-none focus:border-[#c8a96a]" />
+                  </div>
+                  <button onClick={submitProductReview} disabled={isSubmittingReview} className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#c8a96a] px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-[#050505] disabled:opacity-60"><Send className="h-4 w-4" />{isSubmittingReview ? 'Submitting...' : 'Submit review'}</button>
+                </div>
               </motion.div>
             )}
           </div>

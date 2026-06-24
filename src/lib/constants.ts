@@ -84,38 +84,58 @@ export type AdminNavGroup = { label: string; links: AdminNavLink[] };
 
 export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
   {
-    label: 'Daily',
+    label: 'Overview',
     links: [
-      { label: 'Dashboard', href: '/nexora-admin/dashboard', icon: 'LayoutDashboard', description: 'Today’s orders, stock, shipping, and priority follow-ups' },
-      { label: 'Orders', href: '/nexora-admin/orders', icon: 'ShoppingBag', description: 'Confirm, edit, ship, and follow up customer orders' },
+      { label: 'Dashboard', href: '/nexora-admin/dashboard', icon: 'LayoutDashboard', description: 'Command center with revenue, queues, charts, reviews, shipping and readiness signals' },
     ],
   },
   {
     label: 'Operations',
     links: [
-      { label: 'Products', href: '/nexora-admin/products', icon: 'Package', description: 'Manage products, images, sizes, colors, and publishing' },
-      { label: 'Inventory', href: '/nexora-admin/inventory', icon: 'Warehouse', description: 'Size/color inventory and stock alerts' },
-      { label: 'Shipping', href: '/nexora-admin/shipping', icon: 'Truck', description: 'Delivery fees, active zones, COD fees, and courier settings' },
+      { label: 'Orders', href: '/nexora-admin/orders', icon: 'ShoppingBag', description: 'Confirm, edit, follow up, ship and export customer orders' },
+      { label: 'Shipping', href: '/nexora-admin/shipping', icon: 'Truck', description: 'Zones, fees, ShipBlu diagnostics, manual shipments and tracking' },
+      { label: 'Workflow', href: '/nexora-admin/workflow', icon: 'ClipboardList', description: 'Order statuses, follow-up types, transitions and quick actions' },
+      { label: 'Reviews', href: '/nexora-admin/reviews', icon: 'Star', description: 'Moderate product and site reviews, admin images, featured stories and replies' },
     ],
   },
   {
-    label: 'Customers',
+    label: 'Catalog',
     links: [
-      { label: 'Customers', href: '/nexora-admin/customers', icon: 'UserRound', description: 'Customer profiles, orders, and notes' },
-      { label: 'Reports', href: '/nexora-admin/reports', icon: 'FileBarChart', description: 'Sales, campaigns, visitor, and conversion reports' },
+      { label: 'Products', href: '/nexora-admin/products', icon: 'Package', description: 'Manage products, images, prices, sizes, colors, variants, SEO and publishing' },
+      { label: 'Inventory', href: '/nexora-admin/inventory', icon: 'Warehouse', description: 'Size/color stock, low stock thresholds and inventory adjustments' },
+      { label: 'Drops', href: '/nexora-admin/drops', icon: 'CalendarClock', description: 'Limited releases and scheduled drops' },
+      { label: 'Coupons', href: '/nexora-admin/coupons', icon: 'Tag', description: 'Discount codes, free shipping and campaign offers' },
     ],
   },
   {
-    label: 'Store',
+    label: 'Growth',
     links: [
-      { label: 'Storefront', href: '/nexora-admin/storefront', icon: 'MonitorSmartphone', description: 'Homepage sections, tiles, banners, and content' },
-      { label: 'Store Readiness', href: '/nexora-admin/controls', icon: 'Settings', description: 'Payments, integrations, health checks, and recovery tools' },
+      { label: 'Customers', href: '/nexora-admin/customers', icon: 'UserRound', description: 'Customer profiles, orders, notes, reviews and WhatsApp actions' },
+      { label: 'Leads', href: '/nexora-admin/leads', icon: 'UserPlus', description: 'Potential customers and follow-up queue' },
+      { label: 'Campaigns', href: '/nexora-admin/campaigns', icon: 'Target', description: 'Campaign URLs, attribution and marketing launches' },
+      { label: 'Promotions', href: '/nexora-admin/promotions', icon: 'BadgePercent', description: 'Promo messages and announcement bar' },
+    ],
+  },
+  {
+    label: 'Insights',
+    links: [
+      { label: 'Analytics', href: '/nexora-admin/analytics', icon: 'BarChart3', description: 'Cart, checkout, product engagement and revenue signals' },
+      { label: 'Reports', href: '/nexora-admin/reports', icon: 'FileBarChart', description: 'Sales, payment, inventory, reviews and shipping reports' },
+      { label: 'Visitors', href: '/nexora-admin/visitors', icon: 'MousePointerClick', description: 'Visitor journey, sources and behavior analytics' },
+      { label: 'SEO', href: '/nexora-admin/seo', icon: 'SearchCheck', description: 'Search visibility, sitemap, indexing and metadata quality' },
+    ],
+  },
+  {
+    label: 'Storefront',
+    links: [
+      { label: 'Storefront', href: '/nexora-admin/storefront', icon: 'MonitorSmartphone', description: 'Homepage sections, tiles, banners, reviews block and mobile preview' },
+      { label: 'Store Readiness', href: '/nexora-admin/controls', icon: 'Settings', description: 'Payments, shipping integrations, health checks and launch checklist' },
+      { label: 'Users & Roles', href: '/nexora-admin/users-roles', icon: 'ShieldCheck', description: 'Role presets, permissions and safe access guidance' },
     ],
   },
 ];
 
 export const ADMIN_SECONDARY_NAV_LINKS: AdminNavLink[] = [
-  { label: 'Reviews', href: '/nexora-admin/reviews', icon: 'Star', description: 'Customer reviews and publishing' },
   { label: 'Leads', href: '/nexora-admin/leads', icon: 'UserPlus', description: 'Potential customers and follow-up queue' },
   { label: 'Visitors', href: '/nexora-admin/visitors', icon: 'MousePointerClick', description: 'Visitor journey and behavior analytics' },
   { label: 'Campaigns', href: '/nexora-admin/campaigns', icon: 'Target', description: 'Campaign URLs and traffic attribution' },

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { CheckCircle2, Plus, RefreshCw, Save, Ship, Trash2, Truck, XCircle } from 'lucide-react';
+import { CheckCircle2, Plus, RefreshCw, Save, Trash2, Truck, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatPrice } from '@/lib/utils';
 
@@ -122,7 +122,7 @@ export default function AdminShipping() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard title="Shipping Status" value={settings?.shippingEnabled ? 'Enabled' : 'Paused'} helper="When paused, customers cannot complete delivery checkout." icon={Truck} tone={settings?.shippingEnabled ? 'good' : 'warn'} />
-        <SummaryCard title="Average Fee" value={formatPrice(avgFee || settings?.defaultShippingFee || 0)} helper="Average zone price or fallback default fee." icon={Ship} />
+        <SummaryCard title="Average Fee" value={formatPrice(avgFee || settings?.defaultShippingFee || 0)} helper="Average zone price or fallback default fee." icon={Truck} />
         <SummaryCard title="Active Zones" value={`${enabledZones}/${zones.length}`} helper="Enabled zones out of all configured shipping zones." icon={CheckCircle2} tone={enabledZones ? 'good' : 'warn'} />
         <SummaryCard title="ShipBlu" value={providerConnected && settings?.providerEnabled ? 'Connected' : 'Manual'} helper="Ship manually now, or enable courier automation later." icon={providerConnected ? CheckCircle2 : XCircle} tone={providerConnected && settings?.providerEnabled ? 'good' : 'neutral'} />
       </div>
@@ -174,7 +174,7 @@ export default function AdminShipping() {
           </div>
           <div className="flex flex-wrap gap-2">
             <button onClick={saveSettings} className="nexora-button"><Save className="h-4 w-4" />Save Settings</button>
-            <button onClick={testProvider} className="nexora-button"><Ship className="h-4 w-4" />Test ShipBlu</button>
+            <button onClick={testProvider} className="nexora-button"><Truck className="h-4 w-4" />Test ShipBlu</button>
           </div>
         </div>
         <div className="overflow-x-auto">

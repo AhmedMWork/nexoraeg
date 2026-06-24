@@ -128,6 +128,7 @@ export interface Order {
   paymentConfirmationPhone?: string;
   followupStatus?: string;
   followups?: OrderFollowup[];
+  events?: OrderFollowup[];
   invoiceSnapshot?: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
@@ -180,17 +181,49 @@ export interface TrackingUpdate {
 
 export interface Review {
   id: string;
+  reviewType?: 'product' | 'site';
   productId: string;
   productName: string;
   customerName: string;
+  customerPhone?: string;
   rating: number;
   title: string;
   body: string;
   images?: string[];
+  adminReply?: string;
+  status?: 'pending' | 'published' | 'rejected' | 'hidden' | 'archived';
   isApproved: boolean;
   isFeatured: boolean;
   helpfulCount: number;
   createdAt: Date;
+  updatedAt?: Date;
+  approvedAt?: Date;
+}
+
+export interface WorkflowStatusConfig {
+  id?: string;
+  key: string;
+  label: string;
+  description?: string;
+  color?: string;
+  sortOrder: number;
+  isActive: boolean;
+  isDefault?: boolean;
+  isFinal?: boolean;
+  nextStatusKey?: string | null;
+}
+
+export interface FollowupTypeConfig {
+  id?: string;
+  key: string;
+  label: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  sortOrder: number;
+  isActive: boolean;
+  isQuickAction: boolean;
+  templateText?: string;
 }
 
 export type DiscountType = 'percentage' | 'fixed' | 'free_shipping';
