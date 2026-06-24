@@ -1,5 +1,5 @@
 // ============================================================
-// NEXORA V5 Pro — Cart/order math helpers
+// NEXORA Premium — Cart/order math helpers
 // ============================================================
 
 import type { CartItem } from '@/types';

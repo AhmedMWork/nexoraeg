@@ -129,6 +129,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     label: 'Storefront',
     links: [
       { label: 'Storefront', href: '/nexora-admin/storefront', icon: 'MonitorSmartphone', description: 'Homepage sections, tiles, banners, reviews block and mobile preview' },
+      { label: 'Launch Mode', href: '/nexora-admin/launch', icon: 'Rocket', description: 'Opening Soon page, countdown, global store lock, subscribers and launch copy' },
       { label: 'Store Readiness', href: '/nexora-admin/controls', icon: 'Settings', description: 'Payments, shipping integrations, health checks and launch checklist' },
       { label: 'Users & Roles', href: '/nexora-admin/users-roles', icon: 'ShieldCheck', description: 'Role presets, permissions and safe access guidance' },
     ],

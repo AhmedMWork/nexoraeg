@@ -1,5 +1,5 @@
 // ============================================================
-// NEXORA V5 — Customer Order Tracking
+// NEXORA — Customer Order Tracking
 // Public lookup uses order number + phone via secure Edge Function.
 // ============================================================
 

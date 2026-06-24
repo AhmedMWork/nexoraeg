@@ -1,5 +1,5 @@
 // ============================================================
-// NEXORA V5 — Studio Session Store
+// NEXORA — Studio Session Store
 // Admin access is enforced by StudioGate + signed Edge Function token.
 // This lightweight store only represents local Studio UI identity.
 // ============================================================

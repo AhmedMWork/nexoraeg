@@ -489,7 +489,7 @@ html.dark .v34-logo-img { filter: brightness(1.14) contrast(1.08) drop-shadow(0 
   .studio-chip[data-active="true"] { border-color: #D7B98E !important; background: rgba(215,185,142,.14) !important; color: #F5F1EA !important; }
 }
 
-/* NEXORA V5.5.1 — Light Admin Polish + visual noise cleanup */
+/* NEXORA — Light Admin Polish + visual noise cleanup */
 @layer components {
   .nexora-admin-light {
     --admin-bg: #F8F0E4;
@@ -619,7 +619,7 @@ html.dark .v34-logo-img { filter: brightness(1.14) contrast(1.08) drop-shadow(0 
   }
 }
 
-/* NEXORA V5.5.3 — Clean Light Admin Reset
+/* NEXORA — Clean Light Admin Reset
    Strong owner-facing light UI pass. Existing technical pages remain available,
    but dark command-center colors are neutralized inside the admin shell. */
 @layer components {

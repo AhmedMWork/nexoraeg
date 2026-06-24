@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // ============================================================
-// NEXORA V4 — Supabase Data Layer
-// Supabase compatibility API for the existing storefront/admin.
+// NEXORA — Supabase Data Layer
+// Supabase compatibility API for the storefront and admin.
 // Public reads use RLS-protected tables. Sensitive writes use Edge
 // Functions with a Studio token.
 // ============================================================
@@ -9,6 +9,7 @@
 import { supabase, invokeStudioFunction, getStudioToken } from './client';
 import { DEFAULT_HOME_COLLECTION_TILES, normalizeHomeTiles, type HomeCollectionTile } from '@/content/homeTiles';
 import { DEFAULT_FOLLOWUP_TYPES, DEFAULT_ORDER_WORKFLOW_STATUSES, normalizeFollowupTypes, normalizeOrderWorkflow, type FollowupTypeConfig, type WorkflowStatus } from '@/lib/workflow';
+import { normalizeLaunchSettings, fromInputDateTime, launchVerificationSummary } from '@/lib/launchMode';
 import type {
   Product,
   ProductVariant,
@@ -23,6 +24,7 @@ import type {
   ContactMessage,
   SiteSettings,
   OrderStatus,
+  LaunchSubscriber,
 } from '@/types';
 
 function toDate(value: unknown): Date {
@@ -679,40 +681,18 @@ export async function resetHomeCollectionTiles(): Promise<void> {
 }
 
 // Settings
-function defaultLaunchSettings(): NonNullable<SiteSettings['launchSettings']> {
-  const soon = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString();
+function rowToLaunchSubscriber(row: Record<string, any>): LaunchSubscriber {
   return {
-    enabled: false,
-    launchAt: soon,
-    timezone: 'Africa/Cairo',
-    autoOpen: true,
-    title: 'NEXORA is Opening Soon',
-    subtitle: 'A new premium shopping experience is almost here.',
-    eyebrow: 'Premium launch experience',
-    announcement: 'We are preparing new drops, smoother checkout, and a better shopping journey.',
-    buttonText: 'Contact us on WhatsApp',
-    whatsappMessage: 'Hello NEXORA, I would like to know more about the launch.',
-    backgroundImage: '',
-    showCountdown: true,
-    showNotifyForm: true,
-    showSocialLinks: true,
-    allowAdminBypass: true,
-    notifySuccessMessage: 'You are on the launch list. We will contact you when NEXORA opens.',
-  };
-}
-
-function normalizeLaunchSettings(value: unknown): NonNullable<SiteSettings['launchSettings']> {
-  const base = defaultLaunchSettings();
-  const raw = (value && typeof value === 'object') ? value as Record<string, unknown> : {};
-  return {
-    ...base,
-    ...raw,
-    enabled: Boolean(raw.enabled ?? base.enabled),
-    autoOpen: Boolean(raw.autoOpen ?? base.autoOpen),
-    showCountdown: Boolean(raw.showCountdown ?? base.showCountdown),
-    showNotifyForm: Boolean(raw.showNotifyForm ?? base.showNotifyForm),
-    showSocialLinks: Boolean(raw.showSocialLinks ?? base.showSocialLinks),
-    allowAdminBypass: Boolean(raw.allowAdminBypass ?? base.allowAdminBypass),
+    id: row.id,
+    name: row.name || undefined,
+    contact: row.contact || '',
+    email: row.email || undefined,
+    phone: row.phone || undefined,
+    source: row.source || 'opening_soon',
+    status: row.status || 'active',
+    metadata: row.metadata || {},
+    createdAt: toDate(row.created_at || row.createdAt),
+    updatedAt: row.updated_at ? toDate(row.updated_at) : undefined,
   };
 }
 
@@ -763,7 +743,36 @@ export async function getSiteSettings(): Promise<SiteSettings | null> {
     updatedAt: toDate(data.updated_at),
   };
 }
-export async function updateSiteSettings(data: Partial<SiteSettings>): Promise<void> { await invokeStudioFunction('studio-settings', studioHeadersPayload('update', { settings: data })); }
+export async function updateSiteSettings(data: Partial<SiteSettings>): Promise<SiteSettings | null> {
+  await invokeStudioFunction('studio-settings', studioHeadersPayload('update', { settings: data }));
+  return getSiteSettings();
+}
+
+export async function getLaunchSettings(): Promise<NonNullable<SiteSettings['launchSettings']>> {
+  const settings = await getSiteSettings();
+  return normalizeLaunchSettings(settings?.launchSettings || null);
+}
+
+export async function saveLaunchSettings(settings: NonNullable<SiteSettings['launchSettings']>): Promise<NonNullable<SiteSettings['launchSettings']>> {
+  const normalized = normalizeLaunchSettings({ ...settings, launchAt: fromInputDateTime(settings.launchAt) });
+  await invokeStudioFunction('studio-settings', studioHeadersPayload('launch-update', { launchSettings: normalized }));
+  const stored = await getLaunchSettings();
+  const verification = launchVerificationSummary(normalized, stored);
+  if (!verification.verified) {
+    throw new Error(`Launch Mode settings were not verified after save: ${verification.mismatches.join(', ')}`);
+  }
+  return stored;
+}
+
+export async function getLaunchSubscribers(): Promise<LaunchSubscriber[]> {
+  const data = await invokeStudioFunction<Record<string, unknown>, { subscribers?: any[] }>('studio-settings', { action: 'launch-subscribers' });
+  return (data.subscribers || []).map(rowToLaunchSubscriber);
+}
+
+export async function updateLaunchSubscriberStatus(id: string, status: LaunchSubscriber['status']): Promise<void> {
+  await invokeStudioFunction('studio-settings', studioHeadersPayload('launch-subscriber-update', { id, status }));
+}
+
 
 // Inventory/Audit/Dashboard
 export async function updateProductStock(productId: string, size: string, quantity: number, reason: InventoryLog['reason'] = 'manual_adjustment', note?: string): Promise<void> { await invokeStudioFunction('studio-products', studioHeadersPayload('adjust-stock', { productId, size, quantity, reason, note })); }
@@ -916,7 +925,7 @@ export async function createCampaignLink(payload: { name: string; platform: stri
 export async function getCampaignReports(filters: { days?: number } = {}): Promise<any> {
   return invokeStudioFunction<Record<string, unknown>, any>('studio-reports', { action: 'campaigns', ...filters });
 }
-// Shipping / Delivery Operations V5.4
+// Shipping / Delivery Operations shipping hardening
 export type ShippingQuote = {
   available: boolean;
   reason?: string;
@@ -1044,7 +1053,7 @@ export async function getProductAnalyticsReport(filters: { days?: number; source
 }
 
 
-// Admin OS / CRM V5.5
+// Admin OS / CRM stable admin
 export async function getStudioHealthCheck(): Promise<any> {
   return invokeStudioFunction<Record<string, unknown>, any>('studio-health-check', { action: 'check' });
 }

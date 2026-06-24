@@ -1,5 +1,5 @@
 // ============================================================
-// NEXORA V5 Pro — WhatsApp helpers
+// NEXORA Premium — WhatsApp helpers
 // ============================================================
 
 import type { Order } from '@/types';

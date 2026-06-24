@@ -1,5 +1,5 @@
 // ============================================================
-// NEXORA V5 Pro — Payment configuration and copy helpers
+// NEXORA Premium — Payment configuration and copy helpers
 // Centralizes storefront/admin payment logic so Checkout, Orders
 // and Settings stay consistent without changing the brand design.
 // ============================================================

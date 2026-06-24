@@ -1,4 +1,4 @@
-// NEXORA V5 Pro — Design token reference for future UI work.
+// NEXORA Premium — Design token reference for future UI work.
 export const nexoraTokens = {
   colors: {
     bg: '#F8F0E4',

@@ -402,7 +402,7 @@ export default function AdminProducts() {
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h3 className="text-sm font-semibold text-[#FFF0E1]">Variant Matrix Preview</h3>
-                <p className="mt-1 text-xs leading-5 text-[#BCAEA0]">V5.1 generates operational size/color combinations from the selected colors and stock entries. Dedicated product_variants APIs are included for future granular SKU control.</p>
+                <p className="mt-1 text-xs leading-5 text-[#BCAEA0]">order editing generates operational size/color combinations from the selected colors and stock entries. Dedicated product_variants APIs are included for future granular SKU control.</p>
               </div>
               <span className="rounded-full border border-[#D2B48C]/30 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-[#D2B48C]">
                 {Object.values(draft.sizes).filter((stock) => Number(stock) > 0).length * Math.max(1, draft.colors.length)} variants

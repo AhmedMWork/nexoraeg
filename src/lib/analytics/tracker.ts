@@ -19,12 +19,12 @@ export type AttributionPayload = {
   lastTouch?: Record<string, unknown> | null;
 };
 
-const VISITOR_KEY = 'nexora-visitor-id-v5-2';
-const SESSION_KEY = 'nexora-session-id-v5-2';
-const SESSION_TS_KEY = 'nexora-session-ts-v5-2';
-const FIRST_TOUCH_KEY = 'nexora-first-touch-v5-2';
-const LAST_TOUCH_KEY = 'nexora-last-touch-v5-2';
-const CONSENT_KEY = 'nexora-consent-v5-2';
+const VISITOR_KEY = 'nexora-visitor-id';
+const SESSION_KEY = 'nexora-session-id';
+const SESSION_TS_KEY = 'nexora-session-ts';
+const FIRST_TOUCH_KEY = 'nexora-first-touch';
+const LAST_TOUCH_KEY = 'nexora-last-touch';
+const CONSENT_KEY = 'nexora-consent';
 const SESSION_TTL = 1000 * 60 * 30;
 
 function canUseStorage() {
@@ -194,7 +194,7 @@ export async function trackVisitorEvent(eventName: string, payload: Record<strin
   try {
     await supabase.functions.invoke('track-visitor-event', { body });
   } catch {
-    // Analytics must never break storefront UX. Public table fallback was removed in V5.3
+    // Analytics must never break storefront UX. Public table fallback was removed in checkout foundation
     // so visitor events stay service-role-only through Edge Functions.
   }
 }

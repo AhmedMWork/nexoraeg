@@ -1,5 +1,5 @@
 // ============================================================
-// NEXORA V5.1 — Central Brand Copy System
+// NEXORA — Central Brand Copy System
 // Keep all premium brand language here to avoid drift between
 // storefront, SEO, footer, Studio defaults, and launch screens.
 // ============================================================

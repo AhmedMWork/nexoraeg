@@ -1,5 +1,5 @@
 // ============================================================
-// NEXORA V5 — Supabase Client
+// NEXORA — Supabase Client
 // Public browser client only. Service-role operations stay inside
 // Supabase Edge Functions and must never be exposed to the browser.
 // ============================================================
@@ -18,9 +18,9 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   },
 });
 
-const STUDIO_TOKEN_KEY = 'nexora-studio-token-v5';
-const STUDIO_ACCESS_KEY = 'nexora-studio-access-v5';
-const STUDIO_EXPIRES_KEY = 'nexora-studio-expires-v5';
+const STUDIO_TOKEN_KEY = 'nexora-studio-token';
+const STUDIO_ACCESS_KEY = 'nexora-studio-access';
+const STUDIO_EXPIRES_KEY = 'nexora-studio-expires';
 
 export const STUDIO_TOKEN_STORAGE_KEYS = [STUDIO_TOKEN_KEY, STUDIO_ACCESS_KEY, STUDIO_EXPIRES_KEY] as const;
 

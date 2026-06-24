@@ -1,5 +1,5 @@
 // ============================================================
-// NEXORA — Admin Inventory Page V5.2.1
+// NEXORA — Admin Inventory Page inventory hardening.1
 // ============================================================
 
 import { useCallback, useEffect, useMemo, useState } from 'react';

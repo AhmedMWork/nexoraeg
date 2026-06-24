@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { Helmet } from 'react-helmet-async';
 import { useI18n } from '@/i18n/I18nProvider';
 import { buildWhatsAppUrl } from '@/lib/whatsapp';
+import { normalizeLaunchSettings } from '@/lib/launchMode';
 import type { SiteSettings } from '@/types';
 
 type Remaining = { days: number; hours: number; minutes: number; seconds: number; ended: boolean };
@@ -34,7 +35,7 @@ function TimeBox({ value, label }: { value: number; label: string }) {
 
 export default function OpeningSoonPage({ settings }: { settings?: SiteSettings | null }) {
   const { lang } = useI18n();
-  const launch = useMemo(() => settings?.launchSettings || {}, [settings?.launchSettings]);
+  const launch = useMemo(() => normalizeLaunchSettings(settings?.launchSettings || null), [settings?.launchSettings]);
   const [remaining, setRemaining] = useState(() => getRemaining(launch.launchAt));
   const [name, setName] = useState('');
   const [contact, setContact] = useState('');
@@ -46,7 +47,7 @@ export default function OpeningSoonPage({ settings }: { settings?: SiteSettings 
   }, [launch.launchAt]);
 
   useEffect(() => {
-    if (remaining.ended && launch.autoOpen) window.location.reload();
+    if (remaining.ended && launch.autoOpen) window.location.replace('/');
   }, [remaining.ended, launch.autoOpen]);
 
   const copy = useMemo(() => {

@@ -38,7 +38,7 @@ export default function AdminSystemHealth() {
       </div>
 
       <div className="studio-card p-6">
-        <h2 className="text-sm font-semibold text-[#FFF0E1]">V5.1 production deployment order</h2>
+        <h2 className="text-sm font-semibold text-[#FFF0E1]">order editing production deployment order</h2>
         <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-7 text-[#BCAEA0]">
           <li>Run <span className="text-[#FFF0E1]">supabase db push</span> so migrations 0001 → 0004 are applied.</li>
           <li>Confirm Supabase Secrets: STUDIO_SESSION_SECRET, REQUIRE_STUDIO_PIN, STUDIO_ACCESS_PIN, and optional ALLOWED_ORIGIN.</li>

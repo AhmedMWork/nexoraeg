@@ -7,7 +7,7 @@ import { clearStudioToken } from '@/lib/supabase/client';
 import { DEFAULT_PAYMENT_SETTINGS, normalizePaymentSettings, type PaymentSettings } from '@/lib/payments';
 import type { SiteSettings } from '@/types';
 
-const tabs = ['Store Readiness', 'Launch Mode', 'Payments', 'Integrations', 'Privacy', 'Recovery'];
+const tabs = ['Store Readiness', 'Payments', 'Integrations', 'Privacy', 'Recovery'];
 
 
 const DEFAULT_LAUNCH_SETTINGS: NonNullable<SiteSettings['launchSettings']> = {
@@ -190,6 +190,19 @@ export default function AdminControls() {
             <AdminStatCard label="Warnings" value={summary.warnings} helper="Not blocking, but worth reviewing." tone={summary.warnings ? 'warn' : 'good'} />
             <AdminStatCard label="Issues" value={summary.failed} helper="Needs attention before relying on operations." tone={summary.failed ? 'danger' : 'good'} />
           </div>
+          <div className="rounded-[28px] border border-[#e6ded1] bg-white p-5 shadow-[0_18px_45px_rgba(43,33,29,.04)]">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="flex gap-3">
+                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#f2e7d8] text-[#9a8461]"><Rocket className="h-5 w-5" /></span>
+                <div>
+                  <h2 className="text-base font-black tracking-[-0.03em] text-[#2b211d]">Launch Mode is now managed separately</h2>
+                  <p className="mt-1 text-sm leading-6 text-[#8a8175]">Example: use Launch Mode to lock the storefront, edit the Opening Soon countdown, export subscribers, and verify that settings persist after refresh.</p>
+                </div>
+              </div>
+              <a href="/nexora-admin/launch" className="nexora-button inline-flex items-center justify-center">Open Launch Mode</a>
+            </div>
+          </div>
+
           <div className="studio-card p-5">
             <div className="mb-4 flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-[#9a8461]" /><h2 className="text-base font-semibold text-[#2b211d]">Store readiness checks</h2></div>
             <div className="space-y-3">{(health?.checks || []).map((check: any) => <CheckRow key={check.key} check={check} />)}</div>

@@ -1,5 +1,5 @@
 // ============================================================
-// NEXORA — Checkout Page V5.1
+// NEXORA — Checkout Page order editing
 // Fully bilingual customer checkout with payment-aware totals.
 // ============================================================
 
@@ -9,7 +9,7 @@ import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, ArrowRight, Banknote, CheckCircle, CreditCard, MessageCircle, Shield, Smartphone, Truck, Wallet } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Banknote, CheckCircle, CreditCard, MessageCircle, Shield, Smartphone, Tag, Truck, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useCartStore } from '@/stores/cartStore';
 import { checkoutSchema, type CheckoutFormData } from '@/lib/validators';
@@ -55,6 +55,7 @@ export default function CheckoutPage() {
   const [completedPaymentMethod, setCompletedPaymentMethod] = useState<PaymentMethod>('cod');
   const [whatsAppNumber, setWhatsAppNumber] = useState(DEFAULT_WHATSAPP);
   const [couponCode, setCouponCode] = useState('');
+  const [showCoupon, setShowCoupon] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number; freeShipping?: boolean } | null>(null);
   const [isCheckingCoupon, setIsCheckingCoupon] = useState(false);
   const [shippingQuote, setShippingQuote] = useState<import('@/lib/supabase/db').ShippingQuote | null>(null);
@@ -63,12 +64,12 @@ export default function CheckoutPage() {
   const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
   const [idempotencyKey, setIdempotencyKey] = useState(() => {
     if (typeof window === 'undefined') return `nx-${Date.now()}`;
-    const existing = window.sessionStorage.getItem('nexora-checkout-idempotency-key-v5-5-3');
+    const existing = window.sessionStorage.getItem('nexora-checkout-idempotency-key');
     if (existing) return existing;
     const key = typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? `nx-${crypto.randomUUID()}`
       : `nx-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    window.sessionStorage.setItem('nexora-checkout-idempotency-key-v5-5-3', key);
+    window.sessionStorage.setItem('nexora-checkout-idempotency-key', key);
     return key;
   });
 
@@ -322,7 +323,7 @@ export default function CheckoutPage() {
       setCompletedPaymentMethod(data.paymentMethod);
       setOrderComplete(true);
       clearCart();
-      if (typeof window !== 'undefined') window.sessionStorage.removeItem('nexora-checkout-idempotency-key-v5-5-3');
+      if (typeof window !== 'undefined') window.sessionStorage.removeItem('nexora-checkout-idempotency-key');
       setIdempotencyKey(`nx-${Date.now()}-${Math.random().toString(16).slice(2)}`);
       toast.success(copy.orderSaved);
     } catch (error) {
@@ -553,12 +554,17 @@ export default function CheckoutPage() {
                   ))}
                 </div>
                 <div className="mb-4 h-px bg-[var(--v33-card-muted)]" />
-                <div className="mb-4">
-                  <label className="mb-1.5 block text-[10px] uppercase tracking-wider text-[var(--v33-subtle)]">{copy.coupon}</label>
-                  <div className="flex gap-2">
-                    <input value={couponCode} onChange={(event) => setCouponCode(event.target.value.toUpperCase())} className="min-w-0 flex-1 rounded-2xl border border-[var(--v33-border)] bg-[var(--v33-bg)] px-3 py-2 text-xs text-[var(--v33-text)] outline-none focus:border-[var(--v33-accent)]" placeholder={lang === 'ar' ? 'أدخل كود الخصم' : 'Enter coupon code'} />
-                    <button type="button" onClick={applyCoupon} disabled={isCheckingCoupon} className="rounded-2xl bg-[var(--v33-accent)]/10 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-[var(--v33-accent-strong)] disabled:opacity-50">{isCheckingCoupon ? '...' : copy.apply}</button>
-                  </div>
+                <div className="mb-4 rounded-2xl border border-[var(--v33-border)] bg-[var(--v33-bg)] p-3">
+                  <button type="button" onClick={() => setShowCoupon((value) => !value)} className="flex w-full items-center justify-between gap-3 text-left text-[10px] font-black uppercase tracking-[0.18em] text-[var(--v33-subtle)]">
+                    <span className="inline-flex items-center gap-2"><Tag className="h-3.5 w-3.5" />{lang === 'ar' ? 'هل لديك كود خصم؟' : 'Have a promo code?'}</span>
+                    <span className="text-[var(--v33-accent-strong)]">{showCoupon ? '−' : '+'}</span>
+                  </button>
+                  {showCoupon && (
+                    <div className="mt-3 flex gap-2">
+                      <input value={couponCode} onChange={(event) => setCouponCode(event.target.value.toUpperCase())} className="min-w-0 flex-1 rounded-2xl border border-[var(--v33-border)] bg-[var(--v33-card)] px-3 py-2 text-xs text-[var(--v33-text)] outline-none focus:border-[var(--v33-accent)]" placeholder={lang === 'ar' ? 'أدخل كود الخصم' : 'Enter coupon code'} />
+                      <button type="button" onClick={applyCoupon} disabled={isCheckingCoupon} className="rounded-2xl bg-[var(--v33-accent)]/10 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-[var(--v33-accent-strong)] disabled:opacity-50">{isCheckingCoupon ? '...' : copy.apply}</button>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm"><span className="text-[var(--v33-muted)]">{copy.subtotal}</span><span className="text-[var(--v33-text)]">{formatPrice(subtotal)}</span></div>

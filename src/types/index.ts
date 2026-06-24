@@ -367,6 +367,19 @@ export interface LaunchSettings {
   notifySuccessMessage?: string;
 }
 
+export interface LaunchSubscriber {
+  id: string;
+  name?: string;
+  contact: string;
+  email?: string;
+  phone?: string;
+  source: string;
+  status: 'active' | 'contacted' | 'archived' | 'blocked' | string;
+  metadata?: Record<string, unknown>;
+  createdAt: Date;
+  updatedAt?: Date;
+}
+
 export interface SiteSettings {
   id: string;
   storeName: string;

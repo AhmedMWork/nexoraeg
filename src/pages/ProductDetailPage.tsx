@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // ============================================================
-// NEXORA V5 — Product Detail Page (premium PDP)
+// NEXORA — Product Detail Page (premium PDP)
 // ============================================================
 
 import { useState, useEffect } from 'react';

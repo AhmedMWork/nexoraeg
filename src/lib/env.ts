@@ -1,5 +1,5 @@
 // ============================================================
-// NEXORA V5.5 — Environment helpers
+// NEXORA — Environment helpers
 // Runtime-safe validation for browser public configuration.
 // ============================================================
 
