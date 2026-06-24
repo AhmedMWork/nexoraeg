@@ -1,4 +1,4 @@
-# NEXORA V5.3 — Set required custom Supabase Edge Function secrets
+# NEXORA — Set required custom Supabase Edge Function secrets
 # Supabase automatically provides SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to hosted Edge Functions.
 # Do NOT set secrets that start with SUPABASE_; the CLI rejects them and they should not be copied around.
 # Example:
@@ -29,5 +29,5 @@ if ($ShipBluBaseUrl -ne "") {
   supabase secrets set SHIPBLU_BASE_URL="$ShipBluBaseUrl" --project-ref $ProjectRef
 }
 
-Write-Host "NEXORA V5.4 custom Supabase secrets set." -ForegroundColor Green
+Write-Host "NEXORA custom Supabase secrets set." -ForegroundColor Green
 Write-Host "Note: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are managed automatically by Supabase Edge Functions." -ForegroundColor Yellow

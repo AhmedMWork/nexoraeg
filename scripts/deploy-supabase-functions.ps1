@@ -1,4 +1,4 @@
-# NEXORA V5.5.5 — Deploy Supabase Edge Functions
+# NEXORA — Deploy Supabase Edge Functions
 # Run from project root:
 # powershell -ExecutionPolicy Bypass -File .\scripts\deploy-supabase-functions.ps1 -ProjectRef YOUR_PROJECT_REF
 
@@ -36,7 +36,10 @@ $Functions = @(
   "calculate-shipping",
   "studio-shipping",
   "create-shipment",
-  "track-shipment"
+  "track-shipment",
+  "studio-workflow",
+  "submit-review",
+  "launch-subscribe"
 )
 
 if ($ProjectRef -and $ProjectRef.Trim().Length -gt 0) {
@@ -53,4 +56,4 @@ foreach ($Function in $Functions) {
   }
 }
 
-Write-Host "NEXORA V5.5.5 Recovery Stable functions deployed." -ForegroundColor Green
+Write-Host "NEXORA Recovery Stable functions deployed." -ForegroundColor Green
