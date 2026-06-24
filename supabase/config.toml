@@ -90,3 +90,6 @@ verify_jwt = false
 
 [functions.submit-review]
 verify_jwt = false
+
+[functions.launch-subscribe]
+verify_jwt = false
