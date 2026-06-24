@@ -10,12 +10,12 @@ import { useI18n } from '@/i18n/I18nProvider';
 export default function SplashScreen() {
   const { t } = useI18n();
   const [isLeaving, setIsLeaving] = useState(false);
-  const [isVisible, setIsVisible] = useState(() => sessionStorage.getItem('nexora-entry-v5') !== 'entered');
+  const [isVisible, setIsVisible] = useState(() => sessionStorage.getItem('nexora-entry') !== 'entered');
 
   const handleEnter = useCallback(() => {
     setIsLeaving(true);
     window.setTimeout(() => {
-      sessionStorage.setItem('nexora-entry-v5', 'entered');
+      sessionStorage.setItem('nexora-entry', 'entered');
       setIsVisible(false);
     }, 760);
   }, []);

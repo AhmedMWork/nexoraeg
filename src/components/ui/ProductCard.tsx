@@ -4,7 +4,7 @@
 
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Heart, ShoppingBag } from 'lucide-react';
+import { Heart, ShoppingBag, Star } from 'lucide-react';
 import { useWishlistStore } from '@/stores/wishlistStore';
 import { useCartStore } from '@/stores/cartStore';
 import type { Product } from '@/types';
@@ -140,7 +140,7 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
           <h3 className="mb-3 line-clamp-1 text-sm font-bold text-[var(--v33-text)] transition-colors group-hover:text-[var(--v33-accent-strong)]">
             {product.name}
           </h3>
-          <div className="flex items-center justify-between gap-3">
+          <div className="mb-3 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <span className="text-sm font-black text-[var(--v33-text)]">
                 {formatPrice(product.price)}
@@ -151,12 +151,26 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
                 </span>
               )}
             </div>
-            {isLowStock && (
+            {product.rating > 0 ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[var(--v33-accent-strong)]"><Star className="h-3 w-3 fill-current" /> {product.rating.toFixed(1)}</span>
+            ) : isLowStock ? (
               <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-[var(--v33-accent-strong)]">
                 {totalStock} left
               </span>
-            )}
+            ) : null}
           </div>
+          {product.colors.length > 0 && (
+            <div className="flex items-center justify-between gap-3 border-t border-[var(--v33-border)] pt-3">
+              <div className="flex items-center gap-1.5">
+                {product.colors.slice(0, 5).map((color) => {
+                  const value = typeof color === 'string' ? color : color.nameEn || color.name || color.nameAr || 'custom';
+                  const hex = typeof color === 'string' ? undefined : color.hex;
+                  return <span key={value} title={value} className="h-4 w-4 rounded-full border border-[var(--v33-border)] shadow-sm" style={{ background: hex || value }} />;
+                })}
+              </div>
+              <span className="text-[9px] font-black uppercase tracking-[0.16em] text-[var(--v33-subtle)]">{availableSizes.length} sizes</span>
+            </div>
+          )}
         </div>
       </Link>
     </motion.div>

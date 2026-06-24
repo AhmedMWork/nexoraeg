@@ -1,5 +1,5 @@
 // ============================================================
-// NEXORA V5 — Secure Studio Gate
+// NEXORA — Secure Studio Gate
 // Studio access requires a Supabase Edge Function PIN session.
 // The admin route is hidden from storefront navigation, but security is
 // enforced by verify-studio-access + signed short-lived Studio token.

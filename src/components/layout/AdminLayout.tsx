@@ -1,16 +1,17 @@
 // ============================================================
-// NEXORA V5.5.3 — Clean Light Admin Layout
-// Daily admin stays quiet. Technical recovery is moved into Readiness.
+// NEXORA — Premium Admin Layout
+// Daily operations stay clear, stable, searchable, and action-first.
 // ============================================================
 
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { Navigate, useLocation, Link } from 'react-router-dom';
-import { Search, ShieldCheck, LogOut, Sparkles } from 'lucide-react';
+import { Search, ShieldCheck, LogOut, Sparkles, Rocket, Bell, Plus, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AdminSidebar from '@/components/layout/AdminSidebar';
 import StudioGate from '@/components/admin/StudioGate';
 import { clearStudioToken, getStudioSessionStatus } from '@/lib/supabase/client';
 import { ADMIN_NAV_LINKS } from '@/lib/constants';
+import { isLaunchActive } from '@/lib/launchMode';
 
 interface AdminLayoutProps { children: ReactNode; }
 
@@ -18,6 +19,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const location = useLocation();
   const [query, setQuery] = useState('');
   const session = getStudioSessionStatus();
+  const [launchLocked, setLaunchLocked] = useState(false);
   const isStudioRoot = location.pathname === '/nexora-admin/' || location.pathname === '/nexora-admin';
 
   const matches = useMemo(() => {
@@ -25,6 +27,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     if (!q) return [];
     return ADMIN_NAV_LINKS.filter((link) => `${link.label} ${link.description}`.toLowerCase().includes(q)).slice(0, 7);
   }, [query]);
+
+  useEffect(() => {
+    let mounted = true;
+    import('@/lib/supabase/db')
+      .then(({ getSiteSettings }) => getSiteSettings())
+      .then((settings) => { if (mounted) setLaunchLocked(isLaunchActive(settings)); })
+      .catch(() => { if (mounted) setLaunchLocked(false); });
+    return () => { mounted = false; };
+  }, [location.pathname]);
 
   const clearSession = () => {
     clearStudioToken();
@@ -72,10 +83,26 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   )}
                 </div>
 
+                <Link to="/nexora-admin/launch" className={`inline-flex h-11 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-semibold ${launchLocked ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-[#E4D6C5] bg-[#FFFDF8] text-[#6F5D50] hover:border-[#D6B58F] hover:text-[#231916]'}`}>
+                  <Rocket className="h-4 w-4 text-[#9D7159]" />
+                  {launchLocked ? 'Launch Locked' : 'Launch Mode'}
+                </Link>
+                <Link to="/nexora-admin/orders" className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[#E4D6C5] bg-[#FFFDF8] px-3 text-xs font-semibold text-[#6F5D50] hover:border-[#D6B58F] hover:text-[#231916]">
+                  <Plus className="h-4 w-4 text-[#9D7159]" />
+                  Orders
+                </Link>
                 <Link to="/nexora-admin/controls" className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[#E4D6C5] bg-[#FFFDF8] px-3 text-xs font-semibold text-[#6F5D50] hover:border-[#D6B58F] hover:text-[#231916]">
                   <ShieldCheck className="h-4 w-4 text-[#9D7159]" />
                   Readiness
                 </Link>
+                <a href="/" target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[#E4D6C5] bg-[#FFFDF8] px-3 text-xs font-semibold text-[#6F5D50] hover:border-[#D6B58F] hover:text-[#231916]">
+                  <ExternalLink className="h-4 w-4 text-[#9D7159]" />
+                  Store
+                </a>
+                <span className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[#E4D6C5] bg-[#FFFDF8] px-3 text-xs font-semibold text-[#6F5D50]">
+                  <Bell className="h-4 w-4 text-[#9D7159]" />
+                  Alerts
+                </span>
                 <button onClick={clearSession} className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[#E4D6C5] bg-[#FFFDF8] px-3 text-xs font-semibold text-[#6F5D50] hover:border-amber-500/40 hover:text-amber-700">
                   <LogOut className="h-3.5 w-3.5" />
                   {session.isActive ? `${session.minutesLeft}m` : 'Locked'}
