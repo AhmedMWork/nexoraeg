@@ -1,8 +1,19 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Facebook, Instagram, MessageCircle } from 'lucide-react';
+import { Facebook, Instagram } from 'lucide-react';
 import { useI18n } from '@/i18n/I18nProvider';
 import { buildWhatsAppUrl } from '@/lib/whatsapp';
+
+
+function WhatsAppMark({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" className={className} aria-hidden="true" fill="none">
+      <path d="M16 3.5c-6.82 0-12.35 5.36-12.35 11.96 0 2.25.65 4.35 1.77 6.14L4.2 28.5l7.12-1.85A12.75 12.75 0 0 0 16 27.43c6.82 0 12.35-5.36 12.35-11.97C28.35 8.86 22.82 3.5 16 3.5Z" fill="currentColor" opacity=".18" />
+      <path d="M16 4.75c-6.1 0-11.04 4.8-11.04 10.71 0 2.13.65 4.12 1.77 5.78l-.78 4.3 4.5-1.17A11.34 11.34 0 0 0 16 26.18c6.1 0 11.04-4.8 11.04-10.72S22.1 4.76 16 4.76Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+      <path d="M12.36 10.84c-.25-.56-.5-.58-.74-.58h-.63c-.22 0-.57.08-.87.4-.3.33-1.14 1.1-1.14 2.67 0 1.58 1.17 3.1 1.33 3.32.16.21 2.27 3.52 5.58 4.8 2.75 1.06 3.32.85 3.92.8.6-.06 1.94-.78 2.21-1.54.27-.76.27-1.4.19-1.54-.08-.14-.3-.22-.63-.38-.33-.16-1.94-.94-2.24-1.05-.3-.1-.52-.16-.74.16-.22.32-.85 1.05-1.04 1.27-.19.21-.38.24-.71.08-.33-.16-1.38-.5-2.64-1.58-.98-.86-1.64-1.92-1.83-2.24-.19-.32-.02-.5.14-.66.15-.15.33-.38.49-.57.16-.19.22-.32.33-.54.11-.21.05-.4-.03-.56-.08-.16-.72-1.75-.96-2.25Z" fill="currentColor" />
+    </svg>
+  );
+}
 
 const socialLinksBase = [
   { label: 'Instagram', href: 'https://www.instagram.com/nexora.eg_wear?igsh=Zm9zN2ZjZ3Q3Zmlw&utm_source=qr', Icon: Instagram },
@@ -14,7 +25,7 @@ export default function Footer() {
   const whatsappMessage = lang === 'ar' ? 'مرحبًا NEXORA، أريد الاستفسار عن المنتجات.' : 'Hello NEXORA, I would like to ask about your products.';
   const socialLinks = [
     ...socialLinksBase,
-    { label: 'WhatsApp', href: buildWhatsAppUrl('201037141322', whatsappMessage), Icon: MessageCircle, featured: true },
+    { label: 'WhatsApp', href: buildWhatsAppUrl('201037141322', whatsappMessage), Icon: WhatsAppMark, featured: true },
   ];
 
   const groups = [
@@ -95,9 +106,10 @@ export default function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={`NEXORA ${label}`}
-                  className={`group relative flex items-center justify-center rounded-full border transition-all duration-300 hover:-translate-y-0.5 ${label === 'WhatsApp' ? 'h-12 w-12 border-[var(--v33-accent)] bg-[var(--v33-accent)] text-[#171210] shadow-[0_18px_42px_rgba(214,181,143,0.26)] hover:shadow-[0_24px_58px_rgba(214,181,143,0.34)]' : 'h-10 w-10 border-[var(--v33-border)] text-[var(--v33-muted)] hover:border-[var(--v33-accent)] hover:text-[var(--v33-accent-strong)]'}`}
+                  className={`group relative flex items-center justify-center rounded-full border transition-all duration-300 hover:-translate-y-0.5 ${label === 'WhatsApp' ? 'h-12 min-w-12 gap-2 border-[var(--v33-accent)] bg-gradient-to-br from-[var(--v33-accent)] to-[#f1ddbd] px-3 text-[#171210] shadow-[0_18px_42px_rgba(214,181,143,0.26)] hover:shadow-[0_24px_58px_rgba(214,181,143,0.34)]' : 'h-10 w-10 border-[var(--v33-border)] text-[var(--v33-muted)] hover:border-[var(--v33-accent)] hover:text-[var(--v33-accent-strong)]'}`}
                 >
                   <Icon className={label === 'WhatsApp' ? 'h-5 w-5' : 'h-4 w-4'} />
+                  {label === 'WhatsApp' && <span className="hidden text-[10px] font-black uppercase tracking-[0.16em] sm:inline">Chat</span>}
                 </a>
               ))}
             </div>
