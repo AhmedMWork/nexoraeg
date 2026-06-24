@@ -347,6 +347,26 @@ export interface Announcement {
   endDate: Date;
 }
 
+
+export interface LaunchSettings {
+  enabled?: boolean;
+  launchAt?: string;
+  timezone?: string;
+  autoOpen?: boolean;
+  title?: string;
+  subtitle?: string;
+  eyebrow?: string;
+  announcement?: string;
+  buttonText?: string;
+  whatsappMessage?: string;
+  backgroundImage?: string;
+  showCountdown?: boolean;
+  showNotifyForm?: boolean;
+  showSocialLinks?: boolean;
+  allowAdminBypass?: boolean;
+  notifySuccessMessage?: string;
+}
+
 export interface SiteSettings {
   id: string;
   storeName: string;
@@ -363,6 +383,7 @@ export interface SiteSettings {
   codEnabled?: boolean;
   onlinePaymentEnabled?: boolean;
   maintenanceMode?: boolean;
+  launchSettings?: LaunchSettings;
   defaultLanguage?: 'en' | 'ar';
   defaultTheme?: 'dark' | 'light' | 'system';
   socialLinks: { instagram?: string; facebook?: string; twitter?: string; tiktok?: string; whatsapp?: string; };

@@ -3,7 +3,7 @@
 // NEXORA — Main Application Router
 // ============================================================
 
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
@@ -32,6 +32,7 @@ const CheckoutPage = lazy(() => import('@/pages/CheckoutPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 const TrackOrderPage = lazy(() => import('@/pages/TrackOrderPage'));
 const InfoPage = lazy(() => import('@/pages/info/InfoPage'));
+const OpeningSoonPage = lazy(() => import('@/pages/OpeningSoonPage'));
 
 // ─── Lazy-loaded Admin Pages ───
 const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard'));
@@ -77,10 +78,32 @@ function PageLoader() {
 
 // ─── Public Routes ───
 function PublicRoutes() {
+  const [settings, setSettings] = useState<any>(null);
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    import('@/lib/supabase/db')
+      .then(({ getSiteSettings }) => getSiteSettings())
+      .then((value) => { if (active) setSettings(value); })
+      .catch(() => { if (active) setSettings(null); })
+      .finally(() => { if (active) setChecked(true); });
+    return () => { active = false; };
+  }, []);
+
+  const launchSettings = settings?.launchSettings;
+  const launchEndsAt = launchSettings?.launchAt ? new Date(launchSettings.launchAt).getTime() : 0;
+  const shouldAutoOpen = Boolean(launchSettings?.autoOpen && launchEndsAt && launchEndsAt <= Date.now());
+  const isLaunchLocked = checked && Boolean(launchSettings?.enabled) && !shouldAutoOpen;
+
+  if (!checked) return <PageLoader />;
+  if (isLaunchLocked) return <OpeningSoonPage settings={settings} />;
+
   return (
     <AppLayout>
       <AnimatePresence mode="wait">
         <Routes>
+          <Route path="/opening-soon" element={<PageTransition><OpeningSoonPage settings={settings} /></PageTransition>} />
           <Route path="/" element={<PageTransition><HomePage /></PageTransition>} />
           <Route path="/shop" element={<PageTransition><ShopPage /></PageTransition>} />
           <Route path="/shop/:category" element={<PageTransition><ShopPage /></PageTransition>} />

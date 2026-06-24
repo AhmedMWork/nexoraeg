@@ -556,7 +556,7 @@ export default function CheckoutPage() {
                 <div className="mb-4">
                   <label className="mb-1.5 block text-[10px] uppercase tracking-wider text-[var(--v33-subtle)]">{copy.coupon}</label>
                   <div className="flex gap-2">
-                    <input value={couponCode} onChange={(event) => setCouponCode(event.target.value.toUpperCase())} className="min-w-0 flex-1 rounded-2xl border border-[var(--v33-border)] bg-[var(--v33-bg)] px-3 py-2 text-xs text-[var(--v33-text)] outline-none focus:border-[var(--v33-accent)]" placeholder="NEXORA10" />
+                    <input value={couponCode} onChange={(event) => setCouponCode(event.target.value.toUpperCase())} className="min-w-0 flex-1 rounded-2xl border border-[var(--v33-border)] bg-[var(--v33-bg)] px-3 py-2 text-xs text-[var(--v33-text)] outline-none focus:border-[var(--v33-accent)]" placeholder={lang === 'ar' ? 'أدخل كود الخصم' : 'Enter coupon code'} />
                     <button type="button" onClick={applyCoupon} disabled={isCheckingCoupon} className="rounded-2xl bg-[var(--v33-accent)]/10 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-[var(--v33-accent-strong)] disabled:opacity-50">{isCheckingCoupon ? '...' : copy.apply}</button>
                   </div>
                 </div>

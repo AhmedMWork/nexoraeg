@@ -1,12 +1,40 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Copy, CreditCard, Database, PlugZap, RefreshCw, ShieldCheck, Trash2, Truck, XCircle } from 'lucide-react';
+import { AlertTriangle, CalendarClock, CheckCircle2, Copy, CreditCard, Database, Eye, PlugZap, RefreshCw, Rocket, ShieldCheck, Trash2, Truck, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AdminPageHeader, AdminStatCard, AdminTabBar } from '@/components/admin/AdminPageHeader';
 import { clearStudioToken } from '@/lib/supabase/client';
 import { DEFAULT_PAYMENT_SETTINGS, normalizePaymentSettings, type PaymentSettings } from '@/lib/payments';
+import type { SiteSettings } from '@/types';
 
-const tabs = ['Store Readiness', 'Payments', 'Integrations', 'Privacy', 'Recovery'];
+const tabs = ['Store Readiness', 'Launch Mode', 'Payments', 'Integrations', 'Privacy', 'Recovery'];
+
+
+const DEFAULT_LAUNCH_SETTINGS: NonNullable<SiteSettings['launchSettings']> = {
+  enabled: false,
+  launchAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString().slice(0, 16),
+  timezone: 'Africa/Cairo',
+  autoOpen: true,
+  title: 'NEXORA is Opening Soon',
+  subtitle: 'A new premium shopping experience is almost here.',
+  eyebrow: 'Premium launch experience',
+  announcement: 'We are preparing new drops, smoother checkout, and a better shopping journey.',
+  buttonText: 'Contact us on WhatsApp',
+  whatsappMessage: 'Hello NEXORA, I would like to know more about the launch.',
+  backgroundImage: '',
+  showCountdown: true,
+  showNotifyForm: true,
+  showSocialLinks: true,
+  allowAdminBypass: true,
+  notifySuccessMessage: 'You are on the launch list. We will contact you when NEXORA opens.',
+};
+
+function toInputDateTime(value?: string) {
+  if (!value) return DEFAULT_LAUNCH_SETTINGS.launchAt || '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return DEFAULT_LAUNCH_SETTINGS.launchAt || '';
+  return date.toISOString().slice(0, 16);
+}
 
 function statusLabel(status?: string) {
   if (status === 'ok') return 'Ready';
@@ -61,6 +89,7 @@ export default function AdminControls() {
   const [metaPixelId, setMetaPixelId] = useState('');
   const [metaPixelEnabled, setMetaPixelEnabled] = useState(false);
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>(DEFAULT_PAYMENT_SETTINGS);
+  const [launchSettings, setLaunchSettings] = useState<NonNullable<SiteSettings['launchSettings']>>(DEFAULT_LAUNCH_SETTINGS);
 
   const load = async () => {
     setLoading(true);
@@ -71,6 +100,7 @@ export default function AdminControls() {
       setMetaPixelId(settings?.metaPixelId || settings?.paymentSettings?.metaPixelId || '');
       setMetaPixelEnabled(Boolean(settings?.metaPixelEnabled || settings?.paymentSettings?.metaPixelEnabled));
       setPaymentSettings(normalizePaymentSettings(settings?.paymentSettings as Record<string, unknown> | undefined));
+      setLaunchSettings({ ...DEFAULT_LAUNCH_SETTINGS, ...(settings?.launchSettings || {}), launchAt: toInputDateTime(settings?.launchSettings?.launchAt) });
     } catch (error) {
       setHealth({ score: 0, failed: 1, warnings: 0, checks: [{ key: 'health', label: 'System health check', status: 'fail', message: error instanceof Error ? error.message : 'Could not run readiness check.', fix: 'Redeploy admin functions, then sign in again.' }] });
     } finally {
@@ -120,6 +150,22 @@ export default function AdminControls() {
     }
   };
 
+
+  const updateLaunchField = <K extends keyof NonNullable<SiteSettings['launchSettings']>>(field: K, value: NonNullable<SiteSettings['launchSettings']>[K]) => {
+    setLaunchSettings((current) => ({ ...current, [field]: value }));
+  };
+
+  const saveLaunchSettings = async () => {
+    try {
+      const { updateSiteSettings } = await import('@/lib/supabase/db');
+      const launchAt = launchSettings.launchAt ? new Date(launchSettings.launchAt).toISOString() : DEFAULT_LAUNCH_SETTINGS.launchAt;
+      await updateSiteSettings({ launchSettings: { ...launchSettings, launchAt } } as any);
+      toast.success('Launch mode settings saved');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not save launch mode settings');
+    }
+  };
+
   const clearSession = () => {
     clearStudioToken();
     toast.success('Admin session cleared. The page will reload.');
@@ -147,6 +193,72 @@ export default function AdminControls() {
           <div className="studio-card p-5">
             <div className="mb-4 flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-[#9a8461]" /><h2 className="text-base font-semibold text-[#2b211d]">Store readiness checks</h2></div>
             <div className="space-y-3">{(health?.checks || []).map((check: any) => <CheckRow key={check.key} check={check} />)}</div>
+          </div>
+        </div>
+      )}
+
+
+      {active === 'Launch Mode' && (
+        <div className="space-y-4">
+          <div className="overflow-hidden rounded-[34px] border border-[#d9c9ad] bg-[#171210] text-[#fff8ec] shadow-[0_30px_90px_rgba(43,33,29,.18)]">
+            <div className="relative p-6 md:p-8">
+              <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-[#d6b58f]/25 blur-3xl" />
+              <div className="absolute -bottom-28 left-1/3 h-72 w-72 rounded-full bg-[#d09a82]/20 blur-3xl" />
+              <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#d6b58f]/30 bg-white/[.06] px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-[#d6b58f]"><Rocket className="h-4 w-4" /> Opening Soon Control</div>
+                  <h2 className="max-w-2xl text-3xl font-black tracking-[-0.05em] md:text-5xl">Lock the storefront with a premium countdown.</h2>
+                  <p className="mt-4 max-w-2xl text-sm leading-7 text-[#d8c7b0]">Admins stay fully active. Customers see the launch page until the countdown ends or you disable Launch Mode.</p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[360px]">
+                  <label className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[.06] p-4 text-sm text-[#fff8ec]"><span>Launch Mode</span><input type="checkbox" checked={Boolean(launchSettings.enabled)} onChange={(event) => updateLaunchField('enabled', event.target.checked)} /></label>
+                  <label className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[.06] p-4 text-sm text-[#fff8ec]"><span>Auto-open</span><input type="checkbox" checked={Boolean(launchSettings.autoOpen)} onChange={(event) => updateLaunchField('autoOpen', event.target.checked)} /></label>
+                  <label className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[.06] p-4 text-sm text-[#fff8ec]"><span>Countdown</span><input type="checkbox" checked={Boolean(launchSettings.showCountdown)} onChange={(event) => updateLaunchField('showCountdown', event.target.checked)} /></label>
+                  <label className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[.06] p-4 text-sm text-[#fff8ec]"><span>Notify form</span><input type="checkbox" checked={Boolean(launchSettings.showNotifyForm)} onChange={(event) => updateLaunchField('showNotifyForm', event.target.checked)} /></label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
+            <div className="studio-card p-5">
+              <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="mb-2 flex items-center gap-2"><CalendarClock className="h-5 w-5 text-[#9a8461]" /><h2 className="font-semibold text-[#2b211d]">Launch schedule & copy</h2></div>
+                  <p className="text-sm leading-7 text-[#8a8175]">Control the countdown, headline, message, and the customer call-to-action.</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <a href="/opening-soon" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full border border-[#d6c5a8] bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-[#2b211d] transition hover:-translate-y-0.5 hover:border-[#b89b6d]"><Eye className="h-4 w-4" /> Preview</a>
+                  <button onClick={saveLaunchSettings} className="nexora-button">Save Launch Mode</button>
+                </div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="text-xs font-semibold text-[#5f584f]">Launch date & time<input type="datetime-local" value={launchSettings.launchAt || ''} onChange={(event) => updateLaunchField('launchAt', event.target.value)} className="studio-input mt-2" /></label>
+                <label className="text-xs font-semibold text-[#5f584f]">Timezone<input value={launchSettings.timezone || ''} onChange={(event) => updateLaunchField('timezone', event.target.value)} className="studio-input mt-2" placeholder="Africa/Cairo" /></label>
+                <label className="text-xs font-semibold text-[#5f584f]">Eyebrow<input value={launchSettings.eyebrow || ''} onChange={(event) => updateLaunchField('eyebrow', event.target.value)} className="studio-input mt-2" /></label>
+                <label className="text-xs font-semibold text-[#5f584f]">Button text<input value={launchSettings.buttonText || ''} onChange={(event) => updateLaunchField('buttonText', event.target.value)} className="studio-input mt-2" /></label>
+              </div>
+              <label className="mt-4 block text-xs font-semibold text-[#5f584f]">Title<input value={launchSettings.title || ''} onChange={(event) => updateLaunchField('title', event.target.value)} className="studio-input mt-2" /></label>
+              <label className="mt-4 block text-xs font-semibold text-[#5f584f]">Subtitle<textarea value={launchSettings.subtitle || ''} onChange={(event) => updateLaunchField('subtitle', event.target.value)} className="studio-input mt-2 min-h-24" /></label>
+              <label className="mt-4 block text-xs font-semibold text-[#5f584f]">Announcement<textarea value={launchSettings.announcement || ''} onChange={(event) => updateLaunchField('announcement', event.target.value)} className="studio-input mt-2 min-h-24" /></label>
+            </div>
+
+            <div className="space-y-4">
+              <div className="studio-card p-5">
+                <h2 className="font-semibold text-[#2b211d]">Customer actions</h2>
+                <p className="mt-2 text-sm leading-7 text-[#8a8175]">Keep customers connected while the store is closed.</p>
+                <label className="mt-4 block text-xs font-semibold text-[#5f584f]">WhatsApp message<textarea value={launchSettings.whatsappMessage || ''} onChange={(event) => updateLaunchField('whatsappMessage', event.target.value)} className="studio-input mt-2 min-h-24" /></label>
+                <label className="mt-4 block text-xs font-semibold text-[#5f584f]">Notify success message<textarea value={launchSettings.notifySuccessMessage || ''} onChange={(event) => updateLaunchField('notifySuccessMessage', event.target.value)} className="studio-input mt-2 min-h-24" /></label>
+                <label className="mt-4 block text-xs font-semibold text-[#5f584f]">Background image URL<input value={launchSettings.backgroundImage || ''} onChange={(event) => updateLaunchField('backgroundImage', event.target.value)} className="studio-input mt-2" placeholder="Optional" /></label>
+              </div>
+              <div className="studio-card p-5">
+                <h2 className="font-semibold text-[#2b211d]">Access rules</h2>
+                <div className="mt-4 grid gap-3">
+                  <label className="flex items-center justify-between rounded-2xl border border-[#e6ded1] bg-white p-3 text-sm text-[#2b211d]"><span>Show social links</span><input type="checkbox" checked={Boolean(launchSettings.showSocialLinks)} onChange={(event) => updateLaunchField('showSocialLinks', event.target.checked)} /></label>
+                  <label className="flex items-center justify-between rounded-2xl border border-[#e6ded1] bg-white p-3 text-sm text-[#2b211d]"><span>Admin bypass</span><input type="checkbox" checked={Boolean(launchSettings.allowAdminBypass)} onChange={(event) => updateLaunchField('allowAdminBypass', event.target.checked)} /></label>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

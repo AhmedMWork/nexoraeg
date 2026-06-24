@@ -679,6 +679,57 @@ export async function resetHomeCollectionTiles(): Promise<void> {
 }
 
 // Settings
+function defaultLaunchSettings(): NonNullable<SiteSettings['launchSettings']> {
+  const soon = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString();
+  return {
+    enabled: false,
+    launchAt: soon,
+    timezone: 'Africa/Cairo',
+    autoOpen: true,
+    title: 'NEXORA is Opening Soon',
+    subtitle: 'A new premium shopping experience is almost here.',
+    eyebrow: 'Premium launch experience',
+    announcement: 'We are preparing new drops, smoother checkout, and a better shopping journey.',
+    buttonText: 'Contact us on WhatsApp',
+    whatsappMessage: 'Hello NEXORA, I would like to know more about the launch.',
+    backgroundImage: '',
+    showCountdown: true,
+    showNotifyForm: true,
+    showSocialLinks: true,
+    allowAdminBypass: true,
+    notifySuccessMessage: 'You are on the launch list. We will contact you when NEXORA opens.',
+  };
+}
+
+function normalizeLaunchSettings(value: unknown): NonNullable<SiteSettings['launchSettings']> {
+  const base = defaultLaunchSettings();
+  const raw = (value && typeof value === 'object') ? value as Record<string, unknown> : {};
+  return {
+    ...base,
+    ...raw,
+    enabled: Boolean(raw.enabled ?? base.enabled),
+    autoOpen: Boolean(raw.autoOpen ?? base.autoOpen),
+    showCountdown: Boolean(raw.showCountdown ?? base.showCountdown),
+    showNotifyForm: Boolean(raw.showNotifyForm ?? base.showNotifyForm),
+    showSocialLinks: Boolean(raw.showSocialLinks ?? base.showSocialLinks),
+    allowAdminBypass: Boolean(raw.allowAdminBypass ?? base.allowAdminBypass),
+  };
+}
+
+
+export async function submitLaunchSubscriber(payload: { name?: string; contact: string; source?: string }): Promise<void> {
+  const contact = String(payload.contact || '').trim();
+  if (!contact) throw new Error('Please enter a phone number or email.');
+  const { error } = await supabase.functions.invoke('launch-subscribe', {
+    body: {
+      name: String(payload.name || '').trim(),
+      contact,
+      source: payload.source || 'opening_soon',
+    },
+  });
+  if (error) throw new Error(await edgeErrorMessage('launch-subscribe', error, 'Could not save your launch notification request.'));
+}
+
 export async function getSiteSettings(): Promise<SiteSettings | null> {
   const { data, error } = await supabase.from('site_settings').select('*').eq('id', 'main').maybeSingle();
   if (error) throw error;
@@ -698,6 +749,7 @@ export async function getSiteSettings(): Promise<SiteSettings | null> {
     supportEmail: data.support_email || import.meta.env.VITE_SUPPORT_EMAIL || 'supportnexorastoree@gmail.com',
     codEnabled: data.cod_enabled ?? true,
     maintenanceMode: data.maintenance_mode ?? false,
+    launchSettings: normalizeLaunchSettings(data.launch_settings),
     defaultLanguage: data.default_language || 'en',
     defaultTheme: data.default_theme || 'light',
     socialLinks: data.social_links || {},
